@@ -22,7 +22,7 @@ export const exercises: Exercise[] = [
   { id: 'ex11', name: 'Lateral Raises', bodyPart: 'Shoulders', description: 'Raise dumbbells out to your sides up to shoulder level.', image: 'https://images.unsplash.com/photo-1620556393598-1a056a299596?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'lateral raise' },
 
   // Arms
-  { id: 'ex12', name: 'Bicep Curls', bodyPart: 'Arms', description: 'Curl dumbbells or a barbell up towards your shoulders, working your biceps.', image: 'https://images.unsplash.com/photo-1557564437-099514436c6a?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'bicep curl' },
+  { id: 'ex12', name: 'Bicep Curls', bodyPart: 'Arms', description: 'Curl dumbbells or a barbell up towards your shoulders, working your biceps.', image: 'https://images.unsplash.com/photo-1605296867724-2ff65dce3f19?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'bicep curl' },
   { id: 'ex13', name: 'Tricep Dips', bodyPart: 'Arms', description: 'Using parallel bars or a bench, lower and push up your body with your triceps.', image: 'https://images.unsplash.com/photo-1594737695394-3a7a4a242a54?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'tricep dip' },
 
   // Core
