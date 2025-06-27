@@ -1,6 +1,6 @@
 import type { Exercise } from './types';
 
-export const bodyParts: Exercise['bodyPart'][] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
+export const bodyParts = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'] as const;
 
 export const initialExercises: Exercise[] = [
   // Chest
