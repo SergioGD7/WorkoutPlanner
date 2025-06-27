@@ -2,29 +2,27 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Dumbbell, Terminal } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dumbbell } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
   const { toast } = useToast();
-  const isFirebaseConfigured = !!auth;
 
-  const handleAuthAction = async (action: 'login' | 'signup') => {
-    if (!isFirebaseConfigured || !auth) {
+  const handleLogin = async () => {
+    if (!email || !password) {
         toast({
-            title: "Configuration Error",
-            description: "Firebase is not configured. Please check your environment variables.",
+            title: "Validation Error",
+            description: "Please enter both email and password.",
             variant: "destructive",
         });
         return;
@@ -32,16 +30,13 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      if (action === 'login') {
-        await signInWithEmailAndPassword(auth, email, password);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, password);
-      }
+      // Simulate local login
+      login(email);
       router.push('/');
     } catch (error: any) {
       toast({
-        title: "Authentication Error",
-        description: error.message,
+        title: "Login Error",
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -57,18 +52,9 @@ export default function LoginPage() {
             <Dumbbell className="h-10 w-10 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Workout Planner</CardTitle>
-          <CardDescription>Login or sign up to continue</CardDescription>
+          <CardDescription>Login or create an account to continue</CardDescription>
         </CardHeader>
         <CardContent>
-          {!isFirebaseConfigured && (
-            <Alert variant="destructive" className="mb-4">
-              <Terminal className="h-4 w-4" />
-              <AlertTitle>Configuration Error</AlertTitle>
-              <AlertDescription>
-                Firebase is not configured. Authentication is disabled.
-              </AlertDescription>
-            </Alert>
-          )}
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -79,7 +65,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading || !isFirebaseConfigured}
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -90,16 +76,13 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading || !isFirebaseConfigured}
+                disabled={isLoading}
               />
             </div>
           </div>
           <div className="flex flex-col gap-2 mt-6">
-             <Button onClick={() => handleAuthAction('login')} disabled={isLoading || !isFirebaseConfigured} className="w-full">
-                {isLoading ? 'Loading...' : 'Login'}
-            </Button>
-            <Button onClick={() => handleAuthAction('signup')} disabled={isLoading || !isFirebaseConfigured} variant="outline" className="w-full">
-                {isLoading ? 'Loading...' : 'Sign Up'}
+             <Button onClick={handleLogin} disabled={isLoading} className="w-full">
+                {isLoading ? 'Loading...' : 'Login / Sign Up'}
             </Button>
           </div>
         </CardContent>

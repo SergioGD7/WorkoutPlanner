@@ -4,8 +4,7 @@ import { createContext, useContext, useState, ReactNode, useEffect, useCallback 
 import { initialExercises as initialExercisesData } from '@/lib/data';
 import type { Exercise } from '@/lib/types';
 import { useAuth } from './auth-context';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ExerciseContextType {
   exercises: Exercise[];
@@ -20,37 +19,46 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user && db) {
-      const q = query(collection(db, 'users', user.uid, 'exercises'));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const exercisesFromDb: Exercise[] = [];
-        querySnapshot.forEach((doc) => {
-          exercisesFromDb.push({ id: doc.id, ...doc.data() } as Exercise);
-        });
-        setCustomExercises(exercisesFromDb);
-      });
-      return () => unsubscribe();
+    if (user) {
+      try {
+        const key = `custom_exercises_${user.email}`;
+        const storedExercises = localStorage.getItem(key);
+        if (storedExercises) {
+          setCustomExercises(JSON.parse(storedExercises));
+        } else {
+          setCustomExercises([]);
+        }
+      } catch (error) {
+        console.error("Failed to load custom exercises from localStorage", error);
+        setCustomExercises([]);
+      }
     } else {
       setCustomExercises([]);
     }
   }, [user]);
 
   const addExercise = useCallback(async (exerciseData: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => {
-    if (!user || !db) {
-      console.error("No user logged in or DB not configured to add exercise");
+    if (!user) {
+      console.error("No user logged in to add exercise");
       return;
     }
-    const newExercise: Omit<Exercise, 'id'> = {
+    
+    const newExercise: Exercise = {
+      id: uuidv4(),
       ...exerciseData,
       image: 'https://placehold.co/600x400.png',
       'data-ai-hint': 'custom exercise'
     };
+
     try {
-      await addDoc(collection(db, 'users', user.uid, 'exercises'), newExercise);
-    } catch (e) {
-      console.error("Error adding document: ", e);
+      const updatedExercises = [...customExercises, newExercise];
+      const key = `custom_exercises_${user.email}`;
+      localStorage.setItem(key, JSON.stringify(updatedExercises));
+      setCustomExercises(updatedExercises);
+    } catch (error) {
+      console.error("Failed to save custom exercises to localStorage", error);
     }
-  }, [user]);
+  }, [user, customExercises]);
 
   const allExercises = [...initialExercises, ...customExercises];
 

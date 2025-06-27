@@ -12,8 +12,6 @@ import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from '@/context/auth-context';
-import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot } from 'firebase/firestore';
 import { Loader2 } from "lucide-react";
 
 const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
@@ -47,24 +45,24 @@ export default function ProgressTracker() {
   }, []);
 
   useEffect(() => {
-    if (!user || !db) {
-      setIsLoading(false);
-      return;
-    }
     setIsLoading(true);
-    const q = query(collection(db, 'users', user.uid, 'logs'));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const logData: WorkoutLog = {};
-      querySnapshot.forEach((doc) => {
-        const date = parseISO(doc.id);
-        if (isValid(date)) {
-          logData[doc.id] = doc.data().exercises as WorkoutExercise[];
+    if (user) {
+        try {
+            const key = `workout_logs_${user.email}`;
+            const storedLogs = localStorage.getItem(key);
+            if (storedLogs) {
+                setWorkoutLog(JSON.parse(storedLogs));
+            } else {
+                setWorkoutLog({});
+            }
+        } catch (error) {
+            console.error("Failed to load workout logs from localStorage", error);
+            setWorkoutLog({});
         }
-      });
-      setWorkoutLog(logData);
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
+    } else {
+        setWorkoutLog({});
+    }
+    setIsLoading(false);
   }, [user]);
 
   const chartData = useMemo(() => {

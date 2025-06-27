@@ -7,7 +7,7 @@ import { enUS } from 'date-fns/locale/en-US';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { PlusCircle, Loader2 } from "lucide-react";
-import type { WorkoutExercise, Exercise, Set } from "@/lib/types";
+import type { WorkoutExercise, Exercise, Set, WorkoutLog } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
 import AddExerciseDialog from "@/components/add-exercise-dialog";
 import EditWorkoutDialog from "@/components/edit-workout-dialog";
@@ -16,8 +16,6 @@ import * as z from "zod";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
-import { db } from "@/lib/firebase";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
 
 const addExerciseSchema = z.object({
   exerciseId: z.string().min(1, "Please select an exercise."),
@@ -25,7 +23,6 @@ const addExerciseSchema = z.object({
   reps: z.coerce.number().min(1, "At least one rep is required.").max(100),
   weight: z.coerce.number().min(0, "Weight must be positive.").max(1000),
 });
-
 
 interface DailyWorkoutProps {
   date: Date;
@@ -41,42 +38,51 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const formattedDate = format(date, "yyyy-MM-dd");
+  const WORKOUT_LOG_KEY = user ? `workout_logs_${user.email}` : null;
 
   useEffect(() => {
-    if (!user || !db) {
-      setIsLoading(false);
-      return;
-    }
     setIsLoading(true);
-    const docRef = doc(db, 'users', user.uid, 'logs', formattedDate);
-    
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setDailyExercises(data.exercises || []);
-      } else {
+    if (WORKOUT_LOG_KEY) {
+      try {
+        const allLogs: WorkoutLog = JSON.parse(localStorage.getItem(WORKOUT_LOG_KEY) || '{}');
+        setDailyExercises(allLogs[formattedDate] || []);
+      } catch (error) {
+        console.error("Failed to load workout logs from localStorage", error);
         setDailyExercises([]);
       }
-      setIsLoading(false);
-    });
+    } else {
+      setDailyExercises([]);
+    }
+    setIsLoading(false);
+  }, [date, user, formattedDate, WORKOUT_LOG_KEY]);
 
-    return () => unsubscribe();
-  }, [date, user, formattedDate]);
 
-
-  const updateWorkoutLog = async (updatedDailyExercises: WorkoutExercise[]) => {
-    if (!user || !db) return;
-    const docRef = doc(db, 'users', user.uid, 'logs', formattedDate);
-    await setDoc(docRef, { exercises: updatedDailyExercises }, { merge: true });
+  const updateWorkoutInStorage = (updatedDailyExercises: WorkoutExercise[]) => {
+    if (!WORKOUT_LOG_KEY) return;
+    try {
+        const allLogs: WorkoutLog = JSON.parse(localStorage.getItem(WORKOUT_LOG_KEY) || '{}');
+        if (updatedDailyExercises.length > 0) {
+            allLogs[formattedDate] = updatedDailyExercises;
+        } else {
+            delete allLogs[formattedDate]; // Clean up if no exercises for the day
+        }
+        localStorage.setItem(WORKOUT_LOG_KEY, JSON.stringify(allLogs));
+    } catch (error) {
+        console.error("Failed to save workout logs to localStorage", error);
+    }
   };
 
   const handleSetCompletionChange = (exerciseId: string, setIndex: number, completed: boolean) => {
-    const updatedDailyExercises = JSON.parse(JSON.stringify(dailyExercises));
-    const exerciseIndex = updatedDailyExercises.findIndex((ex: WorkoutExercise) => ex.id === exerciseId);
-    if (exerciseIndex === -1) return;
-
-    updatedDailyExercises[exerciseIndex].sets[setIndex].completed = completed;
-    updateWorkoutLog(updatedDailyExercises);
+    const updatedDailyExercises = dailyExercises.map(ex => {
+        if (ex.id === exerciseId) {
+            const newSets = [...ex.sets];
+            newSets[setIndex] = { ...newSets[setIndex], completed };
+            return { ...ex, sets: newSets };
+        }
+        return ex;
+    });
+    setDailyExercises(updatedDailyExercises);
+    updateWorkoutInStorage(updatedDailyExercises);
   };
 
   const getExerciseDetails = (exerciseId: string): Exercise | undefined => {
@@ -91,7 +97,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     setEditingWorkoutExercise(workoutExercise);
   };
 
-  const handleSaveNewExercise = async (data: z.infer<typeof addExerciseSchema>) => {
+  const handleSaveNewExercise = (data: z.infer<typeof addExerciseSchema>) => {
     const newSets: Set[] = Array.from({ length: data.sets }, () => ({
       reps: data.reps,
       weight: data.weight,
@@ -105,15 +111,17 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     };
     
     const updatedDailyExercises = [...dailyExercises, newWorkoutExercise];
-    await updateWorkoutLog(updatedDailyExercises);
+    setDailyExercises(updatedDailyExercises);
+    updateWorkoutInStorage(updatedDailyExercises);
     setIsAddDialogOpen(false);
   };
 
-  const handleSaveEditedExercise = async (updatedWorkoutExercise: WorkoutExercise) => {
+  const handleSaveEditedExercise = (updatedWorkoutExercise: WorkoutExercise) => {
     const updatedDailyExercises = dailyExercises.map(ex => 
         ex.id === updatedWorkoutExercise.id ? updatedWorkoutExercise : ex
     );
-    await updateWorkoutLog(updatedDailyExercises);
+    setDailyExercises(updatedDailyExercises);
+    updateWorkoutInStorage(updatedDailyExercises);
     setEditingWorkoutExercise(null);
   };
   

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -13,15 +12,13 @@ import ProgressTracker from "@/components/progress-tracker";
 import { useLanguage } from "@/context/language-context";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
 
 type View = "dashboard" | "library" | "progress";
 
 export default function HomePage() {
   const [view, setView] = useState<View>("dashboard");
   const { t } = useLanguage();
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -30,9 +27,8 @@ export default function HomePage() {
     }
   }, [user, loading, router]);
 
-  const handleLogout = async () => {
-    if (!auth) return;
-    await signOut(auth);
+  const handleLogout = () => {
+    logout();
     router.push('/login');
   };
 
@@ -52,7 +48,10 @@ export default function HomePage() {
     const handleViewChange = (newView: View) => {
       setView(newView);
       if (inSheet) {
-        document.querySelector('[data-radix-dialog-trigger-sheet="true"]')?.click();
+        const trigger = document.querySelector('[data-radix-dialog-trigger-sheet="true"]');
+        if (trigger instanceof HTMLElement) {
+          trigger.click();
+        }
       }
     };
   
