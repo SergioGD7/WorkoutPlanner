@@ -48,7 +48,7 @@ export default function ProgressTracker() {
     setIsLoading(true);
     if (user) {
         try {
-            const key = `workout_logs_${user.email}`;
+            const key = `workout_logs_${user.uid}`;
             const storedLogs = localStorage.getItem(key);
             if (storedLogs) {
                 setWorkoutLog(JSON.parse(storedLogs));

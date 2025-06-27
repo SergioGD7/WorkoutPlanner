@@ -1,61 +1,81 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-
-// A simple user object for local auth
-interface User {
-  email: string;
-}
+import { 
+  onAuthStateChanged,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  User
+} from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string) => void;
-  logout: () => void;
+  signInWithGoogle: () => Promise<void>;
+  signUp: (email: string, password: string) => Promise<any>;
+  login: (email: string, password: string) => Promise<any>;
+  logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  login: () => {},
-  logout: () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Check for user in localStorage on initial load
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (error) {
-      console.error("Failed to parse user from localStorage", error);
-      localStorage.removeItem('user');
-    } finally {
+    if (!auth) {
+      setUser(null);
       setLoading(false);
+      return;
     }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = useCallback((email: string) => {
-    const newUser = { email };
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setUser(newUser);
+  const signInWithGoogle = useCallback(async () => {
+    if (!auth) return;
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      toast({
+        title: "Login Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      console.error("Google Sign-In Error:", error);
+    }
+  }, [toast]);
+
+  const signUp = useCallback(async (email: string, password: string) => {
+    if (!auth) throw new Error("Firebase not configured");
+    return createUserWithEmailAndPassword(auth, email, password);
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('user');
-    setUser(null);
+  const login = useCallback(async (email: string, password: string) => {
+     if (!auth) throw new Error("Firebase not configured");
+     return signInWithEmailAndPassword(auth, email, password);
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const logout = useCallback(async () => {
+    if (!auth) return;
+    await signOut(auth);
+  }, []);
+
+  const value = { user, loading, signInWithGoogle, signUp, login, logout };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {

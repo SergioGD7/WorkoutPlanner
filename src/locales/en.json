@@ -72,5 +72,21 @@
   "plank": "Plank",
   "plankDescription": "Hold a push-up position, keeping your body in a straight line.",
   "crunches": "Crunches",
-  "crunchesDescription": "Lie on your back and lift your upper body towards your knees."
+  "crunchesDescription": "Lie on your back and lift your upper body towards your knees.",
+  "loginToContinue": "Login or create an account to continue",
+  "login": "Login",
+  "signUp": "Sign Up",
+  "loginOrSignUp": "Login / Sign Up",
+  "orContinueWith": "Or continue with",
+  "signInWithGoogle": "Sign in with Google",
+  "email": "Email",
+  "password": "Password",
+  "emailPlaceholder": "m@example.com",
+  "loginError": "Login Error",
+  "signUpError": "Sign Up Error",
+  "invalidEmail": "Please enter a valid email address.",
+  "passwordTooShort": "Password must be at least {min} characters.",
+  "firebaseNotConfigured": "Firebase is not configured. Authentication is disabled.",
+  "loading": "Loading...",
+  "unknownError": "An unknown error occurred."
 }

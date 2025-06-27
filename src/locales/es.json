@@ -72,5 +72,21 @@
   "plank": "Plancha",
   "plankDescription": "Mantenga una posición de flexión, manteniendo el cuerpo en línea recta.",
   "crunches": "Abdominales",
-  "crunchesDescription": "Acuéstese boca arriba y levante la parte superior del cuerpo hacia las rodillas."
+  "crunchesDescription": "Acuéstese boca arriba y levante la parte superior del cuerpo hacia las rodillas.",
+  "loginToContinue": "Inicia sesión o crea una cuenta para continuar",
+  "login": "Iniciar Sesión",
+  "signUp": "Registrarse",
+  "loginOrSignUp": "Iniciar Sesión / Registrarse",
+  "orContinueWith": "O continuar con",
+  "signInWithGoogle": "Iniciar sesión con Google",
+  "email": "Correo electrónico",
+  "password": "Contraseña",
+  "emailPlaceholder": "m@ejemplo.com",
+  "loginError": "Error de Inicio de Sesión",
+  "signUpError": "Error de Registro",
+  "invalidEmail": "Por favor, introduce una dirección de correo electrónico válida.",
+  "passwordTooShort": "La contraseña debe tener al menos {min} caracteres.",
+  "firebaseNotConfigured": "Firebase no está configurado. La autenticación está deshabilitada.",
+  "loading": "Cargando...",
+  "unknownError": "Ocurrió un error desconocido."
 }

@@ -21,7 +21,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       try {
-        const key = `custom_exercises_${user.email}`;
+        const key = `custom_exercises_${user.uid}`;
         const storedExercises = localStorage.getItem(key);
         if (storedExercises) {
           setCustomExercises(JSON.parse(storedExercises));
@@ -52,7 +52,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
 
     try {
       const updatedExercises = [...customExercises, newExercise];
-      const key = `custom_exercises_${user.email}`;
+      const key = `custom_exercises_${user.uid}`;
       localStorage.setItem(key, JSON.stringify(updatedExercises));
       setCustomExercises(updatedExercises);
     } catch (error) {

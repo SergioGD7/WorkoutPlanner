@@ -24,6 +24,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const storedLang = localStorage.getItem('language') as Language;
     if (storedLang && ['en', 'es'].includes(storedLang)) {
       setLanguageState(storedLang);
+    } else {
+      const browserLang = navigator.language.split('-')[0];
+      if (browserLang === 'es') {
+        setLanguageState('es');
+        localStorage.setItem('language', 'es');
+      } else {
+        setLanguageState('en');
+        localStorage.setItem('language', 'en');
+      }
     }
   }, []);
   
