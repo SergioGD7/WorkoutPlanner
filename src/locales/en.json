@@ -28,7 +28,7 @@
   "core": "Core",
   "full body": "Full Body",
   "progressTracker": "Progress Tracker",
-  "volumeByExercise": "Volume by Exercise",
+  "volumeByBodyPart": "Volume by Body Part",
   "totalVolume": "Total Volume",
   "noCompletedSets": "No completed workouts with weight recorded for this period yet.",
   "edit": "Edit",

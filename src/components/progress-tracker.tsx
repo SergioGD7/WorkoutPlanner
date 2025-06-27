@@ -2,16 +2,17 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { initialWorkoutLog, bodyParts } from '@/lib/data';
-import { format, isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
+import { isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
+import { useIsMobile } from "@/hooks/use-mobile";
 
-const chartConfig = {} satisfies ChartConfig;
+const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -33,11 +34,12 @@ export default function ProgressTracker() {
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('week');
   const { exercises } = useExercises();
   const { t, language } = useLanguage();
+  const isMobile = useIsMobile();
 
   const chartData = useMemo(() => {
     const weekStartsOn = language === 'es' ? 1 : 0;
     
-    const data: { [exerciseId: string]: { name: string, volume: number, fill: string } } = {};
+    const data: { [bodyPart: string]: { name: string, volume: number, fill: string } } = {};
 
     Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
       const date = new Date(dateStr);
@@ -69,11 +71,13 @@ export default function ProgressTracker() {
           const exerciseDetails = exercises.find(ex => ex.id === workoutEx.exerciseId);
           if (!exerciseDetails) return;
 
-          if (!data[workoutEx.exerciseId]) {
-            data[workoutEx.exerciseId] = {
-              name: t(exerciseDetails.name),
+          const bodyPart = exerciseDetails.bodyPart;
+
+          if (!data[bodyPart]) {
+            data[bodyPart] = {
+              name: t(bodyPart.toLowerCase()),
               volume: 0,
-              fill: bodyPartColorMap.get(exerciseDetails.bodyPart) || CHART_COLORS[CHART_COLORS.length - 1],
+              fill: bodyPartColorMap.get(bodyPart) || CHART_COLORS[CHART_COLORS.length - 1],
             };
           }
 
@@ -81,7 +85,7 @@ export default function ProgressTracker() {
             .filter(s => s.completed)
             .reduce((total, set) => total + (set.reps * set.weight), 0);
           
-          data[workoutEx.exerciseId].volume += exerciseVolume;
+          data[bodyPart].volume += exerciseVolume;
         });
       }
     });
@@ -105,7 +109,7 @@ export default function ProgressTracker() {
       <h2 className="text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">{t('volumeByExercise')}</CardTitle>
+          <CardTitle className="font-headline text-2xl">{t('volumeByBodyPart')}</CardTitle>
           <CardDescription>
             {t('totalVolume')} ({getTimeRangeLabel()})
           </CardDescription>
@@ -123,7 +127,7 @@ export default function ProgressTracker() {
         </CardHeader>
         <CardContent>
           {chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[400px] w-full mx-auto">
+            <ChartContainer config={chartConfig} className="h-[300px] sm:h-[400px] w-full mx-auto">
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
@@ -155,9 +159,10 @@ export default function ProgressTracker() {
                 />
                 <Legend 
                   iconSize={10} 
-                  layout="vertical" 
-                  verticalAlign="middle" 
-                  align="right" 
+                  layout={isMobile ? 'horizontal' : 'vertical'}
+                  verticalAlign={isMobile ? 'bottom' : 'middle'}
+                  align={isMobile ? 'center' : 'right'}
+                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1rem', paddingBottom: '2rem' } : {}}
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
