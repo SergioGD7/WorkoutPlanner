@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -24,11 +24,17 @@ const GoogleIcon = () => (
 
 
 export default function LoginPage() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { login, signUp, signInWithGoogle } = useAuth();
+  const { user, loading, login, signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const { t } = useLanguage();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
 
   const formSchema = z.object({
     email: z.string().email({ message: t('invalidEmail') }),
@@ -44,15 +50,15 @@ export default function LoginPage() {
   });
 
   const handleLoginOrSignup = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       await login(values.email, values.password);
-      router.push('/');
+      // The useEffect will handle the redirect
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
         try {
           await signUp(values.email, values.password);
-          router.push('/');
+           // The useEffect will handle the redirect
         } catch (signupError: any) {
            toast({
             title: t('signUpError'),
@@ -68,19 +74,31 @@ export default function LoginPage() {
         });
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
-    await signInWithGoogle();
-    // The onAuthStateChanged listener in AuthProvider will handle the redirect
-    router.push('/');
-    setIsLoading(false);
+    setIsSubmitting(true);
+    try {
+      await signInWithGoogle();
+      // The useEffect will handle the redirect
+    } catch (e) {
+      // Error is already toasted in the auth context
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const isFirebaseConfigured = !!auth;
+
+  if (loading || user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Dumbbell className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -109,7 +127,7 @@ export default function LoginPage() {
                     <FormItem>
                       <FormLabel>{t('email')}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t('emailPlaceholder')} {...field} disabled={isLoading} />
+                        <Input placeholder={t('emailPlaceholder')} {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -122,14 +140,14 @@ export default function LoginPage() {
                     <FormItem>
                       <FormLabel>{t('password')}</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
+                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={isLoading} className="w-full">
-                  {isLoading ? <Loader2 className="animate-spin" /> : t('loginOrSignUp')}
+                <Button type="submit" disabled={isSubmitting} className="w-full">
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : t('loginOrSignUp')}
                 </Button>
               </form>
             </Form>
@@ -145,8 +163,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : <><GoogleIcon /> <span className="ml-2">{t('signInWithGoogle')}</span></>}
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="animate-spin" /> : <><GoogleIcon /> <span className="ml-2">{t('signInWithGoogle')}</span></>}
             </Button>
             </>
           )}
