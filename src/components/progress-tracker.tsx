@@ -6,7 +6,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { initialWorkoutLog } from '@/lib/data';
-import { format, isToday, isThisWeek, isThisMonth, startOfWeek } from 'date-fns';
+import { format, isToday, isThisWeek, isThisMonth, isThisYear, startOfWeek } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
@@ -23,7 +23,7 @@ const CHART_COLORS = [
 
 export default function ProgressTracker() {
   const [workoutLog] = useState<WorkoutLog>(initialWorkoutLog);
-  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'all'>('week');
+  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('week');
   const { exercises } = useExercises();
   const { t, language } = useLanguage();
 
@@ -49,6 +49,9 @@ export default function ProgressTracker() {
         case 'month':
           isInRange = isThisMonth(date);
           break;
+        case 'year':
+          isInRange = isThisYear(date);
+          break;
         case 'all':
           isInRange = true;
           break;
@@ -68,7 +71,7 @@ export default function ProgressTracker() {
 
           if (!data[workoutEx.exerciseId]) {
             data[workoutEx.exerciseId] = {
-              name: exerciseDetails.name,
+              name: t(exerciseDetails.name),
               volume: 0,
               fill: exerciseColorMap.get(workoutEx.exerciseId)!,
             };
@@ -84,7 +87,18 @@ export default function ProgressTracker() {
     });
 
     return Object.values(data).filter(d => d.volume > 0).sort((a, b) => b.volume - a.volume);
-  }, [workoutLog, timeRange, exercises, language]);
+  }, [workoutLog, timeRange, exercises, language, t]);
+  
+  const getTimeRangeLabel = () => {
+    switch (timeRange) {
+        case 'day': return t('today');
+        case 'week': return t('thisWeek');
+        case 'month': return t('thisMonth');
+        case 'year': return t('thisYear');
+        case 'all': return t('allTime');
+        default: return '';
+    }
+  }
 
   return (
     <div>
@@ -93,7 +107,7 @@ export default function ProgressTracker() {
         <CardHeader>
           <CardTitle className="font-headline text-2xl">{t('volumeByExercise')}</CardTitle>
           <CardDescription>
-            {t('totalVolume')} ({t(timeRange.toLowerCase() === 'all' ? 'allTime' : `this${timeRange.charAt(0).toUpperCase() + timeRange.slice(1)}`)})
+            {t('totalVolume')} ({getTimeRangeLabel()})
           </CardDescription>
           <div className="pt-4">
              <Tabs defaultValue="week" onValueChange={(value) => setTimeRange(value as any)} className="w-full">
@@ -101,6 +115,7 @@ export default function ProgressTracker() {
                     <TabsTrigger value="day">{t('today')}</TabsTrigger>
                     <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
                     <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
+                    <TabsTrigger value="year">{t('thisYear')}</TabsTrigger>
                     <TabsTrigger value="all">{t('allTime')}</TabsTrigger>
                 </TabsList>
             </Tabs>

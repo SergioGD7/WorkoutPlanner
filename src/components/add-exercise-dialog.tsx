@@ -68,7 +68,7 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
                     <SelectContent>
                       {exercises.map((exercise: Exercise) => (
                         <SelectItem key={exercise.id} value={exercise.id}>
-                          {exercise.name}
+                          {t(exercise.name)}
                         </SelectItem>
                       ))}
                     </SelectContent>

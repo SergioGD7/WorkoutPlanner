@@ -29,7 +29,7 @@ export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetTog
         <div className="md:col-span-1 relative h-48 md:h-full min-h-[150px]">
           <Image
             src={exerciseDetails.image}
-            alt={exerciseDetails.name}
+            alt={t(exerciseDetails.name)}
             fill
             className="object-cover"
             data-ai-hint={exerciseDetails['data-ai-hint']}
@@ -38,7 +38,7 @@ export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetTog
         <div className="md:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between">
             <div>
-                <CardTitle className="font-headline text-xl">{exerciseDetails.name}</CardTitle>
+                <CardTitle className="font-headline text-xl">{t(exerciseDetails.name)}</CardTitle>
                 <p className="text-sm text-muted-foreground">{t(exerciseDetails.bodyPart.toLowerCase())}</p>
             </div>
             <Button variant="ghost" size="icon" onClick={handleEdit}>

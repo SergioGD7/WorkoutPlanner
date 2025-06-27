@@ -6,31 +6,31 @@ export const bodyParts: Exercise['bodyPart'][] = ['Chest', 'Back', 'Legs', 'Shou
 
 export const initialExercises: Exercise[] = [
   // Chest
-  { id: 'ex1', name: 'Bench Press', bodyPart: 'Chest', description: 'Lay on a flat bench, lower a barbell to your chest, and press it back up.', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'bench press' },
-  { id: 'ex2', name: 'Dumbbell Flyes', bodyPart: 'Chest', description: 'Lay on a bench with dumbbells, open your arms wide, and bring them back together over your chest.', image: 'https://images.unsplash.com/photo-1589484193003-7f21a86a342a?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'dumbbell flyes' },
-  { id: 'ex3', name: 'Push-ups', bodyPart: 'Chest', description: 'Start in a plank position, lower your body until your chest nearly touches the floor, and push back up.', image: 'https://images.unsplash.com/photo-1574680122402-2a69b251a7b8?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'person pushup' },
+  { id: 'ex1', name: 'benchPress', bodyPart: 'Chest', description: 'benchPressDescription', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'bench press' },
+  { id: 'ex2', name: 'dumbbellFlyes', bodyPart: 'Chest', description: 'dumbbellFlyesDescription', image: 'https://images.unsplash.com/photo-1589484193003-7f21a86a342a?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'dumbbell flyes' },
+  { id: 'ex3', name: 'pushups', bodyPart: 'Chest', description: 'pushupsDescription', image: 'https://images.unsplash.com/photo-1574680122402-2a69b251a7b8?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'person pushup' },
 
   // Back
-  { id: 'ex4', name: 'Pull-ups', bodyPart: 'Back', description: 'Hang from a bar with an overhand grip and pull your body up until your chin is over the bar.', image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'man pullup' },
-  { id: 'ex5', name: 'Bent-over Rows', bodyPart: 'Back', description: 'Bend at your hips and knees, holding a barbell, and pull it towards your stomach.', image: 'https://images.unsplash.com/photo-1547700793-1b8353396277?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'barbell row' },
-  { id: 'ex6', name: 'Deadlifts', bodyPart: 'Back', description: 'Lift a loaded barbell off the floor to a standing position, then lower it back down.', image: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'gym deadlift' },
+  { id: 'ex4', name: 'pullups', bodyPart: 'Back', description: 'pullupsDescription', image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'man pullup' },
+  { id: 'ex5', name: 'bentoverRows', bodyPart: 'Back', description: 'bentoverRowsDescription', image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'barbell row' },
+  { id: 'ex6', name: 'deadlifts', bodyPart: 'Back', description: 'deadliftsDescription', image: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'gym deadlift' },
   
   // Legs
-  { id: 'ex7', name: 'Squats', bodyPart: 'Legs', description: 'Lower your hips from a standing position and then stand back up.', image: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman squat' },
-  { id: 'ex8', name: 'Leg Press', bodyPart: 'Legs', description: 'Push a weight away from you using your legs on a leg press machine.', image: 'https://images.unsplash.com/photo-1534368959876-26bf04f25743?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'leg press' },
-  { id: 'ex9', name: 'Lunges', bodyPart: 'Legs', description: 'Step forward with one leg and lower your hips until both knees are bent at a 90-degree angle.', image: 'https://images.unsplash.com/photo-1596357395217-e04855a7195c?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman lunge' },
+  { id: 'ex7', name: 'squats', bodyPart: 'Legs', description: 'squatsDescription', image: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman squat' },
+  { id: 'ex8', name: 'legPress', bodyPart: 'Legs', description: 'legPressDescription', image: 'https://images.unsplash.com/photo-1534368959876-26bf04f25743?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'leg press' },
+  { id: 'ex9', name: 'lunges', bodyPart: 'Legs', description: 'lungesDescription', image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman lunge' },
 
   // Shoulders
-  { id: 'ex10', name: 'Overhead Press', bodyPart: 'Shoulders', description: 'Press a barbell or dumbbells from your shoulders up over your head.', image: 'https://images.unsplash.com/photo-1581009137054-1e0992404649?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'shoulder press' },
-  { id: 'ex11', name: 'Lateral Raises', bodyPart: 'Shoulders', description: 'Raise dumbbells out to your sides up to shoulder level.', image: 'https://images.unsplash.com/photo-1620556393598-1a056a299596?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'lateral raise' },
+  { id: 'ex10', name: 'overheadPress', bodyPart: 'Shoulders', description: 'overheadPressDescription', image: 'https://images.unsplash.com/photo-1532029887424-755b6d7a58e2?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'shoulder press' },
+  { id: 'ex11', name: 'lateralRaises', bodyPart: 'Shoulders', description: 'lateralRaisesDescription', image: 'https://images.unsplash.com/photo-1620556393598-1a056a299596?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'lateral raise' },
 
   // Arms
-  { id: 'ex12', name: 'Bicep Curls', bodyPart: 'Arms', description: 'Curl dumbbells or a barbell up towards your shoulders, working your biceps.', image: 'https://images.unsplash.com/photo-1603233779835-6498565a9f5c?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'bicep curl' },
-  { id: 'ex13', name: 'Tricep Dips', bodyPart: 'Arms', description: 'Using parallel bars or a bench, lower and push up your body with your triceps.', image: 'https://images.unsplash.com/photo-1594737695394-3a7a4a242a54?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'tricep dip' },
+  { id: 'ex12', name: 'bicepCurls', bodyPart: 'Arms', description: 'bicepCurlsDescription', image: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'bicep curl' },
+  { id: 'ex13', name: 'tricepDips', bodyPart: 'Arms', description: 'tricepDipsDescription', image: 'https://images.unsplash.com/photo-1594737695394-3a7a4a242a54?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'tricep dip' },
 
   // Core
-  { id: 'ex14', name: 'Plank', bodyPart: 'Core', description: 'Hold a push-up position, keeping your body in a straight line.', image: 'https://images.unsplash.com/photo-1598971434932-5c4250210e34?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman plank' },
-  { id: 'ex15', name: 'Crunches', bodyPart: 'Core', description: 'Lie on your back and lift your upper body towards your knees.', image: 'https://images.unsplash.com/photo-1601422407620-2a62f4836430?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman crunch' },
+  { id: 'ex14', name: 'plank', bodyPart: 'Core', description: 'plankDescription', image: 'https://images.unsplash.com/photo-1598971434932-5c4250210e34?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman plank' },
+  { id: 'ex15', name: 'crunches', bodyPart: 'Core', description: 'crunchesDescription', image: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'woman crunch' },
 ];
 
 const today = new Date();

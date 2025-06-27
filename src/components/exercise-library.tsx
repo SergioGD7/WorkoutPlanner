@@ -46,7 +46,7 @@ export default function ExerciseLibrary() {
                        <div className="relative h-48 w-full">
                          <Image
                            src={exercise.image}
-                           alt={exercise.name}
+                           alt={t(exercise.name)}
                            fill
                            className="object-cover transition-transform group-hover:scale-105"
                            data-ai-hint={exercise['data-ai-hint']}
@@ -54,8 +54,8 @@ export default function ExerciseLibrary() {
                        </div>
                     </CardHeader>
                     <CardContent className="p-4">
-                      <CardTitle className="font-headline text-lg">{exercise.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{exercise.description}</p>
+                      <CardTitle className="font-headline text-lg">{t(exercise.name)}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">{t(exercise.description)}</p>
                     </CardContent>
                   </Card>
                 ))}

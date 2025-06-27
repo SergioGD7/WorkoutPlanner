@@ -54,7 +54,7 @@ export default function EditWorkoutDialog({ isOpen, onClose, onSave, workoutExer
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('edit')}: {exerciseDetails?.name}</DialogTitle>
+          <DialogTitle>{t('edit')}: {exerciseDetails ? t(exerciseDetails.name) : ''}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
