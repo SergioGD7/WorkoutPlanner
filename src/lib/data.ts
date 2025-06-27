@@ -3,31 +3,31 @@ import { format, subDays } from 'date-fns';
 
 export const exercises: Exercise[] = [
   // Chest
-  { id: 'ex1', name: 'Bench Press', bodyPart: 'Chest', description: 'Lay on a flat bench, lower a barbell to your chest, and press it back up.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'bench press' },
-  { id: 'ex2', name: 'Dumbbell Flyes', bodyPart: 'Chest', description: 'Lay on a bench with dumbbells, open your arms wide, and bring them back together over your chest.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'dumbbell flyes' },
-  { id: 'ex3', name: 'Push-ups', bodyPart: 'Chest', description: 'Start in a plank position, lower your body until your chest nearly touches the floor, and push back up.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'pushups fitness' },
+  { id: 'ex1', name: 'Bench Press', bodyPart: 'Chest', description: 'Lay on a flat bench, lower a barbell to your chest, and press it back up.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'man bench press' },
+  { id: 'ex2', name: 'Dumbbell Flyes', bodyPart: 'Chest', description: 'Lay on a bench with dumbbells, open your arms wide, and bring them back together over your chest.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'dumbbell flys' },
+  { id: 'ex3', name: 'Push-ups', bodyPart: 'Chest', description: 'Start in a plank position, lower your body until your chest nearly touches the floor, and push back up.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'man pushup' },
 
   // Back
-  { id: 'ex4', name: 'Pull-ups', bodyPart: 'Back', description: 'Hang from a bar with an overhand grip and pull your body up until your chin is over the bar.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'pullups fitness' },
-  { id: 'ex5', name: 'Bent-over Rows', bodyPart: 'Back', description: 'Bend at your hips and knees, holding a barbell, and pull it towards your stomach.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'barbell row' },
-  { id: 'ex6', name: 'Deadlifts', bodyPart: 'Back', description: 'Lift a loaded barbell off the floor to a standing position, then lower it back down.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'deadlift gym' },
+  { id: 'ex4', name: 'Pull-ups', bodyPart: 'Back', description: 'Hang from a bar with an overhand grip and pull your body up until your chin is over the bar.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'man pullup' },
+  { id: 'ex5', name: 'Bent-over Rows', bodyPart: 'Back', description: 'Bend at your hips and knees, holding a barbell, and pull it towards your stomach.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'bent over row' },
+  { id: 'ex6', name: 'Deadlifts', bodyPart: 'Back', description: 'Lift a loaded barbell off the floor to a standing position, then lower it back down.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'man deadlift' },
   
   // Legs
-  { id: 'ex7', name: 'Squats', bodyPart: 'Legs', description: 'Lower your hips from a standing position and then stand back up.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'squat fitness' },
-  { id: 'ex8', name: 'Leg Press', bodyPart: 'Legs', description: 'Push a weight away from you using your legs on a leg press machine.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'leg press' },
-  { id: 'ex9', name: 'Lunges', bodyPart: 'Legs', description: 'Step forward with one leg and lower your hips until both knees are bent at a 90-degree angle.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'lunge exercise' },
+  { id: 'ex7', name: 'Squats', bodyPart: 'Legs', description: 'Lower your hips from a standing position and then stand back up.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'woman squat' },
+  { id: 'ex8', name: 'Leg Press', bodyPart: 'Legs', description: 'Push a weight away from you using your legs on a leg press machine.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'leg press machine' },
+  { id: 'ex9', name: 'Lunges', bodyPart: 'Legs', description: 'Step forward with one leg and lower your hips until both knees are bent at a 90-degree angle.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'woman lunge' },
 
   // Shoulders
-  { id: 'ex10', name: 'Overhead Press', bodyPart: 'Shoulders', description: 'Press a barbell or dumbbells from your shoulders up over your head.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'overhead press' },
+  { id: 'ex10', name: 'Overhead Press', bodyPart: 'Shoulders', description: 'Press a barbell or dumbbells from your shoulders up over your head.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'shoulder press' },
   { id: 'ex11', name: 'Lateral Raises', bodyPart: 'Shoulders', description: 'Raise dumbbells out to your sides up to shoulder level.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'lateral raise' },
 
   // Arms
-  { id: 'ex12', name: 'Bicep Curls', bodyPart: 'Arms', description: 'Curl dumbbells or a barbell up towards your shoulders, working your biceps.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'bicep curl' },
-  { id: 'ex13', name: 'Tricep Dips', bodyPart: 'Arms', description: 'Using parallel bars or a bench, lower and push up your body with your triceps.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'tricep dips' },
+  { id: 'ex12', name: 'Bicep Curls', bodyPart: 'Arms', description: 'Curl dumbbells or a barbell up towards your shoulders, working your biceps.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'man bicep curl' },
+  { id: 'ex13', name: 'Tricep Dips', bodyPart: 'Arms', description: 'Using parallel bars or a bench, lower and push up your body with your triceps.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'tricep dip' },
 
   // Core
-  { id: 'ex14', name: 'Plank', bodyPart: 'Core', description: 'Hold a push-up position, keeping your body in a straight line.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'plank exercise' },
-  { id: 'ex15', name: 'Crunches', bodyPart: 'Core', description: 'Lie on your back and lift your upper body towards your knees.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'crunches fitness' },
+  { id: 'ex14', name: 'Plank', bodyPart: 'Core', description: 'Hold a push-up position, keeping your body in a straight line.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'woman plank' },
+  { id: 'ex15', name: 'Crunches', bodyPart: 'Core', description: 'Lie on your back and lift your upper body towards your knees.', image: 'https://placehold.co/600x400.png', 'data-ai-hint': 'woman crunches' },
 ];
 
 const today = new Date();

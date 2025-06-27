@@ -7,22 +7,18 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import type { WorkoutExercise, Exercise } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
 
 interface WorkoutCardProps {
   workoutExercise: WorkoutExercise;
   exerciseDetails: Exercise;
   onSetToggle: (exerciseId: string, setIndex: number, checked: boolean) => void;
+  onEdit: (workoutExercise: WorkoutExercise) => void;
 }
 
-export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetToggle }: WorkoutCardProps) {
-  const { toast } = useToast();
+export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetToggle, onEdit }: WorkoutCardProps) {
   
   const handleEdit = () => {
-    toast({
-        title: "Feature not available",
-        description: "Editing exercises is not implemented in this demo.",
-    })
+    onEdit(workoutExercise);
   }
 
   return (
