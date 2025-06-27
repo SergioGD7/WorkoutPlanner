@@ -176,7 +176,6 @@ export default function ProgressTracker() {
                 />
                 <RadialBar
                   background
-                  clockWise
                   dataKey="volume"
                 />
                 <Legend
