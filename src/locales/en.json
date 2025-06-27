@@ -86,5 +86,6 @@
   "passwordTooShort": "Password must be at least {min} characters.",
   "firebaseNotConfigured": "Firebase is not configured. Authentication is disabled.",
   "loading": "Loading...",
-  "unknownError": "An unknown error occurred."
+  "unknownError": "An unknown error occurred.",
+  "userExistsPasswordIncorrect": "An account with this email already exists. Please check your password."
 }

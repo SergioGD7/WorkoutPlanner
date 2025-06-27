@@ -12,12 +12,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useLanguage } from '@/context/language-context';
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { user, loading, loginOrSignUp } = useAuth();
   const { t } = useLanguage();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && user) {
@@ -38,10 +40,19 @@ export default function LoginPage() {
     },
   });
 
-  const handleLogin = (values: z.infer<typeof formSchema>) => {
+  const handleLogin = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    loginOrSignUp(values.email);
-    // The useEffect will handle the redirect after the user state is updated.
+    const result = await loginOrSignUp(values.email, values.password);
+    
+    if (!result.success && result.messageKey) {
+        toast({
+            variant: "destructive",
+            title: t('loginError'),
+            description: t(result.messageKey),
+        });
+    }
+    // The useEffect will handle the redirect after the user state is updated on success.
+    setIsSubmitting(false);
   };
 
   if (loading || user) {
