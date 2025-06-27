@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -25,10 +25,10 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
-  const formSchema = z.object({
+  const formSchema = useMemo(() => z.object({
     email: z.string().email({ message: t('invalidEmail') }),
     password: z.string().min(6, { message: t('passwordTooShort', { min: 6 }) }),
-  });
+  }), [t]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
