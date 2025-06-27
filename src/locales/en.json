@@ -77,8 +77,6 @@
   "login": "Login",
   "signUp": "Sign Up",
   "loginOrSignUp": "Login / Sign Up",
-  "orContinueWith": "Or continue with",
-  "signInWithGoogle": "Sign in with Google",
   "email": "Email",
   "password": "Password",
   "emailPlaceholder": "m@example.com",

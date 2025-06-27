@@ -4,8 +4,6 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { 
   onAuthStateChanged,
   signOut,
-  GoogleAuthProvider,
-  signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   User
@@ -16,7 +14,6 @@ import { useToast } from '@/hooks/use-toast';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<any>;
   login: (email: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
@@ -43,21 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
-    if (!auth) return;
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error: any) {
-      toast({
-        title: "Login Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      console.error("Google Sign-In Error:", error);
-    }
-  }, [toast]);
-
   const signUp = useCallback(async (email: string, password: string) => {
     if (!auth) throw new Error("Firebase not configured");
     return createUserWithEmailAndPassword(auth, email, password);
@@ -73,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut(auth);
   }, []);
 
-  const value = { user, loading, signInWithGoogle, signUp, login, logout };
+  const value = { user, loading, signUp, login, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
