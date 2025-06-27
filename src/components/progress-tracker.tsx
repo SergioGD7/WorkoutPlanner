@@ -175,11 +175,9 @@ export default function ProgressTracker() {
                   }}
                 />
                 <RadialBar
-                  minAngle={15}
                   background
                   clockWise
                   dataKey="volume"
-                  nameKey="name"
                 />
                 <Legend
                   iconSize={10}
