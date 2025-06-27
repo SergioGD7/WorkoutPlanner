@@ -10,6 +10,7 @@ import ExerciseLibrary from "@/components/exercise-library";
 import ProgressTracker from "@/components/progress-tracker";
 import { useLanguage } from "@/context/language-context";
 import LanguageSwitcher from "@/components/language-switcher";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 type View = "dashboard" | "library" | "progress";
 
@@ -99,7 +100,10 @@ export default function HomePage() {
           <div className="flex-1">
              <h2 className="text-xl font-semibold capitalize font-headline">{t(view)}</h2>
           </div>
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <ThemeSwitcher />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {renderView()}

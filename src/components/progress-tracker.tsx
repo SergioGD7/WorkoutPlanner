@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
@@ -21,7 +21,6 @@ const CHART_COLORS = [
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
   "hsl(var(--chart-6))",
-  "hsl(var(--chart-7))",
 ];
 
 const bodyPartColorMap = new Map<string, string>();
@@ -35,6 +34,11 @@ export default function ProgressTracker() {
   const { exercises } = useExercises();
   const { t, language } = useLanguage();
   const isMobile = useIsMobile();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const chartData = useMemo(() => {
     const weekStartsOn = language === 'es' ? 1 : 0;
@@ -104,6 +108,10 @@ export default function ProgressTracker() {
     }
   }
 
+  if (!isMounted) {
+    return null;
+  }
+
   return (
     <div>
       <h2 className="text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
@@ -127,7 +135,7 @@ export default function ProgressTracker() {
         </CardHeader>
         <CardContent>
           {chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[300px] sm:h-[400px] w-full mx-auto">
+            <ChartContainer config={chartConfig} className="h-[400px] sm:h-[500px] w-full mx-auto">
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
