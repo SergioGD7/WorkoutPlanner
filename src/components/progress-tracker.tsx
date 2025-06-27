@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -163,11 +162,11 @@ export default function ProgressTracker() {
                   layout={isMobile ? 'horizontal' : 'vertical'}
                   verticalAlign={isMobile ? 'bottom' : 'middle'}
                   align={isMobile ? 'center' : 'right'}
-                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1rem', paddingBottom: '2rem', paddingLeft: '1rem', paddingRight: '1rem' } : {}}
+                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1.5rem', paddingBottom: '2rem', paddingLeft: '2rem', paddingRight: '2rem' } : {}}
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <span>
+                      <span className="text-sm">
                         {value} ({payload.volume.toLocaleString()} kg)
                       </span>
                     );
