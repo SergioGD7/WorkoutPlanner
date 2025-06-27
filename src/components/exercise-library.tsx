@@ -30,7 +30,7 @@ export default function ExerciseLibrary() {
       </div>
 
       <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 sm:grid-cols-4 lg:grid-cols-7">
           {bodyPartsWithAll.map((part) => (
             <TabsTrigger key={part} value={part} className="data-[state=active]:bg-border">
               {t(part.toLowerCase())}
@@ -38,8 +38,8 @@ export default function ExerciseLibrary() {
           ))}
         </TabsList>
         {bodyPartsWithAll.map((part) => (
-          <TabsContent key={part} value={part}>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pt-4">
+          <TabsContent key={part} value={part} className="mt-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {exercises
                 .filter((ex) => activeTab === 'all' || ex.bodyPart === activeTab)
                 .map((exercise) => (
