@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { initialWorkoutLog } from '@/lib/data';
-import { format, isToday, isThisWeek, isThisMonth, isThisYear, startOfWeek } from 'date-fns';
+import { initialWorkoutLog, bodyParts } from '@/lib/data';
+import { format, isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
@@ -19,7 +19,14 @@ const CHART_COLORS = [
   "hsl(var(--chart-3))",
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
+  "hsl(var(--chart-6))",
+  "hsl(var(--chart-7))",
 ];
+
+const bodyPartColorMap = new Map<string, string>();
+bodyParts.forEach((part, index) => {
+  bodyPartColorMap.set(part, CHART_COLORS[index % CHART_COLORS.length]);
+});
 
 export default function ProgressTracker() {
   const [workoutLog] = useState<WorkoutLog>(initialWorkoutLog);
@@ -31,8 +38,6 @@ export default function ProgressTracker() {
     const weekStartsOn = language === 'es' ? 1 : 0;
     
     const data: { [exerciseId: string]: { name: string, volume: number, fill: string } } = {};
-    const exerciseColorMap = new Map<string, string>();
-    let colorIndex = 0;
 
     Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
       const date = new Date(dateStr);
@@ -64,16 +69,11 @@ export default function ProgressTracker() {
           const exerciseDetails = exercises.find(ex => ex.id === workoutEx.exerciseId);
           if (!exerciseDetails) return;
 
-          if (!exerciseColorMap.has(workoutEx.exerciseId)) {
-            exerciseColorMap.set(workoutEx.exerciseId, CHART_COLORS[colorIndex % CHART_COLORS.length]);
-            colorIndex++;
-          }
-
           if (!data[workoutEx.exerciseId]) {
             data[workoutEx.exerciseId] = {
               name: t(exerciseDetails.name),
               volume: 0,
-              fill: exerciseColorMap.get(workoutEx.exerciseId)!,
+              fill: bodyPartColorMap.get(exerciseDetails.bodyPart) || CHART_COLORS[CHART_COLORS.length - 1],
             };
           }
 
@@ -151,8 +151,22 @@ export default function ProgressTracker() {
                   background
                   clockWise
                   dataKey="volume"
+                  nameKey="name"
                 />
-                <Legend iconSize={10} layout="vertical" verticalAlign="middle" align="right" />
+                <Legend 
+                  iconSize={10} 
+                  layout="vertical" 
+                  verticalAlign="middle" 
+                  align="right" 
+                  formatter={(value, entry: any) => {
+                    const { payload } = entry;
+                    return (
+                      <span>
+                        {value} ({payload.volume.toLocaleString()} kg)
+                      </span>
+                    );
+                  }}
+                />
               </RadialBarChart>
             </ChartContainer>
           ) : (
