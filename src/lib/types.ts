@@ -1,3 +1,5 @@
+import type { bodyParts } from './data';
+
 export interface Set {
   reps: number;
   weight: number;
@@ -17,7 +19,7 @@ export interface WorkoutLog {
 export interface Exercise {
   id: string;
   name: string;
-  bodyPart: 'Chest' | 'Back' | 'Legs' | 'Shoulders' | 'Arms' | 'Core';
+  bodyPart: (typeof bodyParts)[number];
   description: string;
   image: string;
   'data-ai-hint': string;
