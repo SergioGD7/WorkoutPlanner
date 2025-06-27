@@ -2,11 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import { ChartContainer } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { initialWorkoutLog, bodyParts } from '@/lib/data';
-import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
+import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
@@ -43,6 +43,7 @@ export default function ProgressTracker() {
 
     Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
       const date = parseISO(dateStr);
+      if (!isValid(date)) return;
 
       let isInRange = false;
       switch (timeRange) {
@@ -130,7 +131,7 @@ export default function ProgressTracker() {
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
-                outerRadius="90%"
+                outerRadius={isMobile ? "80%" : "90%"}
                 startAngle={90}
                 endAngle={-270}
                 cx="50%" 
@@ -158,15 +159,28 @@ export default function ProgressTracker() {
                 />
                 <Legend
                   iconSize={10}
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
+                  layout={isMobile ? "horizontal" : "vertical"}
+                  verticalAlign={isMobile ? "bottom" : "middle"}
+                  align={isMobile ? "center" : "right"}
+                  wrapperStyle={
+                    isMobile
+                      ? {
+                          paddingTop: "16px",
+                          display: "flex",
+                          flexWrap: "wrap",
+                          justifyContent: "center",
+                          gap: "8px",
+                        }
+                      : {
+                          paddingLeft: "16px",
+                        }
+                  }
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <div className="w-full break-words p-1 text-base">
+                      <span className="p-1 text-base align-middle">
                         {value} ({payload.volume.toLocaleString()} kg)
-                      </div>
+                      </span>
                     );
                   }}
                 />
