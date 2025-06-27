@@ -7,10 +7,9 @@ import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { bodyParts } from '@/lib/data';
 import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid } from 'date-fns';
-import type { WorkoutLog, WorkoutExercise } from '@/lib/types';
+import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from '@/context/auth-context';
 import { Loader2 } from "lucide-react";
 
@@ -36,13 +35,7 @@ export default function ProgressTracker() {
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('week');
   const { exercises } = useExercises();
   const { t, language } = useLanguage();
-  const isMobile = useIsMobile();
-  const [isMounted, setIsMounted] = useState(false);
   const { user } = useAuth();
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -133,10 +126,6 @@ export default function ProgressTracker() {
     }
   }
 
-  if (!isMounted) {
-    return null;
-  }
-
   return (
     <div>
       <h2 className="text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
@@ -158,15 +147,15 @@ export default function ProgressTracker() {
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent className="h-[550px] flex items-center justify-center">
+        <CardContent className="h-auto min-h-[550px] flex flex-col items-center justify-center p-4 sm:p-6">
           {isLoading ? (
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           ) : chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[400px] sm:h-[500px] w-full mx-auto">
+            <ChartContainer config={chartConfig} className="h-[450px] sm:h-[550px] w-full max-w-2xl mx-auto">
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
-                outerRadius={isMobile ? "80%" : "90%"}
+                outerRadius="80%"
                 startAngle={90}
                 endAngle={-270}
                 cx="50%" 
@@ -194,27 +183,21 @@ export default function ProgressTracker() {
                 />
                 <Legend
                   iconSize={10}
-                  layout={isMobile ? "horizontal" : "vertical"}
-                  verticalAlign={isMobile ? "bottom" : "middle"}
-                  align={isMobile ? "center" : "right"}
-                  wrapperStyle={
-                    isMobile
-                      ? {
-                          paddingTop: "16px",
-                          display: "flex",
-                          flexWrap: "wrap",
-                          justifyContent: "center",
-                          gap: "8px",
-                          width: '100%',
-                        }
-                      : {
-                          paddingLeft: "16px",
-                        }
-                  }
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  align="center"
+                  wrapperStyle={{
+                    paddingTop: "24px",
+                    display: "flex",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    gap: "16px",
+                    width: '100%',
+                  }}
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <span className="p-1 text-base align-middle inline-block w-full">
+                      <span className="p-1 text-sm sm:text-base align-middle">
                         {value} ({payload.volume.toLocaleString()} kg)
                       </span>
                     );
@@ -223,8 +206,8 @@ export default function ProgressTracker() {
               </RadialBarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-[400px] items-center justify-center text-muted-foreground">
-                <p>{t('noCompletedSets')}</p>
+            <div className="flex h-[400px] flex-col items-center justify-center text-center text-muted-foreground">
+              <p className="text-lg">{t('noCompletedSets')}</p>
             </div>
           )}
         </CardContent>

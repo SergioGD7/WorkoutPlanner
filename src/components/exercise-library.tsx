@@ -49,12 +49,13 @@ export default function ExerciseLibrary() {
                 .map((exercise) => (
                   <Card key={exercise.id} className="overflow-hidden group transition-all hover:shadow-lg">
                     <CardHeader className="p-0">
-                       <div className="relative h-48 w-full">
+                       <div className="overflow-hidden h-48 w-full">
                          <Image
                            src={exercise.image}
                            alt={t(exercise.name)}
-                           fill
-                           className="object-cover transition-transform group-hover:scale-105"
+                           width={600}
+                           height={400}
+                           className="object-cover w-full h-full transition-transform group-hover:scale-105"
                            data-ai-hint={exercise['data-ai-hint']}
                          />
                        </div>

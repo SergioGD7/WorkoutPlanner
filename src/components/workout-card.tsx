@@ -26,12 +26,13 @@ export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetTog
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md">
       <div className="grid md:grid-cols-3">
-        <div className="md:col-span-1 relative h-48 md:h-full min-h-[150px]">
+        <div className="md:col-span-1 min-h-[150px] overflow-hidden">
           <Image
             src={exerciseDetails.image}
             alt={t(exerciseDetails.name)}
-            fill
-            className="object-cover"
+            width={600}
+            height={400}
+            className="object-cover w-full h-full"
             data-ai-hint={exerciseDetails['data-ai-hint']}
           />
         </div>
