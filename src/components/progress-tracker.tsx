@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -159,14 +160,14 @@ export default function ProgressTracker() {
                 />
                 <Legend 
                   iconSize={10} 
-                  layout={isMobile ? 'horizontal' : 'vertical'}
+                  layout={isMobile ? 'vertical' : 'vertical'}
                   verticalAlign={isMobile ? 'bottom' : 'middle'}
                   align={isMobile ? 'center' : 'right'}
-                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1.5rem', paddingBottom: '2rem', paddingLeft: '2rem', paddingRight: '2rem' } : {}}
+                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1rem' } : {}}
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <span className="text-sm">
+                      <span className="text-base p-1">
                         {value} ({payload.volume.toLocaleString()} kg)
                       </span>
                     );
