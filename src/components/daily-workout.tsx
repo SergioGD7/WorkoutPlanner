@@ -38,7 +38,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const formattedDate = format(date, "yyyy-MM-dd");
-  const WORKOUT_LOG_KEY = user ? `workout_logs_${user.uid}` : null;
+  const WORKOUT_LOG_KEY = user && user.email ? `workout_logs_${user.email}` : null;
 
   useEffect(() => {
     setIsLoading(true);

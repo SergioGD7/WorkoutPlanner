@@ -46,9 +46,9 @@ export default function ProgressTracker() {
 
   useEffect(() => {
     setIsLoading(true);
-    if (user) {
+    if (user && user.email) {
         try {
-            const key = `workout_logs_${user.uid}`;
+            const key = `workout_logs_${user.email}`;
             const storedLogs = localStorage.getItem(key);
             if (storedLogs) {
                 setWorkoutLog(JSON.parse(storedLogs));

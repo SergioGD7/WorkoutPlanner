@@ -6,20 +6,17 @@ import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { Dumbbell, AlertTriangle, Loader2 } from 'lucide-react';
+import { Dumbbell, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useLanguage } from '@/context/language-context';
-import { auth } from '@/lib/firebase';
 
 export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { user, loading, login, signUp } = useAuth();
-  const { toast } = useToast();
+  const { user, loading, loginOrSignUp } = useAuth();
   const { t } = useLanguage();
 
   useEffect(() => {
@@ -41,36 +38,11 @@ export default function LoginPage() {
     },
   });
 
-  const handleLoginOrSignup = async (values: z.infer<typeof formSchema>) => {
+  const handleLogin = (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    try {
-      await login(values.email, values.password);
-      // The useEffect will handle the redirect
-    } catch (error: any) {
-      if (error.code === 'auth/user-not-found') {
-        try {
-          await signUp(values.email, values.password);
-           // The useEffect will handle the redirect
-        } catch (signupError: any) {
-           toast({
-            title: t('signUpError'),
-            description: (signupError as Error).message || t('unknownError'),
-            variant: 'destructive',
-          });
-        }
-      } else {
-        toast({
-          title: t('loginError'),
-          description: error.message || t('unknownError'),
-          variant: 'destructive',
-        });
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+    loginOrSignUp(values.email);
+    // The useEffect will handle the redirect after the user state is updated.
   };
-  
-  const isFirebaseConfigured = !!auth;
 
   if (loading || user) {
     return (
@@ -91,14 +63,8 @@ export default function LoginPage() {
           <CardDescription>{t('loginToContinue')}</CardDescription>
         </CardHeader>
         <CardContent>
-          {!isFirebaseConfigured ? (
-             <div className="flex items-center gap-4 p-4 mb-4 text-sm text-destructive-foreground bg-destructive rounded-md">
-                <AlertTriangle className="h-6 w-6"/>
-                <p>{t('firebaseNotConfigured')}</p>
-            </div>
-          ) : (
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleLoginOrSignup)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="email"
@@ -130,7 +96,6 @@ export default function LoginPage() {
                 </Button>
               </form>
             </Form>
-          )}
         </CardContent>
       </Card>
     </div>

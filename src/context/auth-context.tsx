@@ -1,61 +1,61 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { 
-  onAuthStateChanged,
-  signOut,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  User
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { useToast } from '@/hooks/use-toast';
+
+// Simplified user object for local auth
+interface LocalUser {
+  email: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: LocalUser | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<any>;
-  login: (email: string, password: string) => Promise<any>;
-  logout: () => Promise<void>;
+  loginOrSignUp: (email: string) => void;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const USER_STORAGE_KEY = 'workout_planner_user';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
-    if (!auth) {
+    try {
+      const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error("Failed to load user from localStorage", error);
       setUser(null);
+    } finally {
       setLoading(false);
-      return;
     }
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    if (!auth) throw new Error("Firebase not configured");
-    return createUserWithEmailAndPassword(auth, email, password);
+  const loginOrSignUp = useCallback((email: string) => {
+    const newUser: LocalUser = { email };
+    try {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
+        setUser(newUser);
+    } catch (error) {
+        console.error("Failed to save user to localStorage", error);
+    }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-     if (!auth) throw new Error("Firebase not configured");
-     return signInWithEmailAndPassword(auth, email, password);
+  const logout = useCallback(() => {
+    try {
+        localStorage.removeItem(USER_STORAGE_KEY);
+        setUser(null);
+    } catch (error) {
+        console.error("Failed to remove user from localStorage", error);
+    }
   }, []);
 
-  const logout = useCallback(async () => {
-    if (!auth) return;
-    await signOut(auth);
-  }, []);
-
-  const value = { user, loading, signUp, login, logout };
+  const value = { user, loading, loginOrSignUp, logout };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

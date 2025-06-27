@@ -19,9 +19,9 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
+    if (user && user.email) {
       try {
-        const key = `custom_exercises_${user.uid}`;
+        const key = `custom_exercises_${user.email}`;
         const storedExercises = localStorage.getItem(key);
         if (storedExercises) {
           setCustomExercises(JSON.parse(storedExercises));
@@ -38,7 +38,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const addExercise = useCallback(async (exerciseData: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => {
-    if (!user) {
+    if (!user || !user.email) {
       console.error("No user logged in to add exercise");
       return;
     }
@@ -52,7 +52,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
 
     try {
       const updatedExercises = [...customExercises, newExercise];
-      const key = `custom_exercises_${user.uid}`;
+      const key = `custom_exercises_${user.email}`;
       localStorage.setItem(key, JSON.stringify(updatedExercises));
       setCustomExercises(updatedExercises);
     } catch (error) {
