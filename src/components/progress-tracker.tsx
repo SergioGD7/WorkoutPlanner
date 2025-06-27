@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -162,7 +163,7 @@ export default function ProgressTracker() {
                   layout={isMobile ? 'horizontal' : 'vertical'}
                   verticalAlign={isMobile ? 'bottom' : 'middle'}
                   align={isMobile ? 'center' : 'right'}
-                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1rem', paddingBottom: '2rem' } : {}}
+                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1rem', paddingBottom: '2rem', paddingLeft: '1rem', paddingRight: '1rem' } : {}}
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
