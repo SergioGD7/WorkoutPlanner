@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState } from "react";
-import { Dumbbell, Home as HomeIcon, BookOpen, BarChart3, Menu } from "lucide-react";
+import { Dumbbell, HomeIcon, BookOpen, BarChart3, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
 import ProgressTracker from "@/components/progress-tracker";
@@ -87,10 +88,11 @@ export default function HomePage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0">
-               <div className="flex h-16 items-center border-b px-6">
+               <SheetHeader className="flex h-16 flex-row items-center border-b px-6 space-y-0">
                  <Dumbbell className="h-8 w-8 text-primary" />
-                 <h1 className="ml-2 text-xl font-bold font-headline">Workout Warrior</h1>
-              </div>
+                 <SheetTitle className="ml-2 text-xl font-bold font-headline">Workout Warrior</SheetTitle>
+                 <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+               </SheetHeader>
               <NavLinks inSheet={true} />
             </SheetContent>
           </Sheet>
