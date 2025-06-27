@@ -17,7 +17,7 @@ export interface WorkoutLog {
 export interface Exercise {
   id: string;
   name: string;
-  bodyPart: 'Chest' | 'Back' | 'Legs' | 'Shoulders' | 'Arms' | 'Core' | 'Full Body';
+  bodyPart: 'Chest' | 'Back' | 'Legs' | 'Shoulders' | 'Arms' | 'Core';
   description: string;
   image: string;
   'data-ai-hint': string;

@@ -1,7 +1,7 @@
 import type { Exercise, WorkoutLog } from './types';
 import { format, subDays } from 'date-fns';
 
-export const bodyParts: Exercise['bodyPart'][] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
+export const bodyParts: Exercise['bodyPart'][] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
 
 
 export const initialExercises: Exercise[] = [

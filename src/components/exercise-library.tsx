@@ -30,7 +30,7 @@ export default function ExerciseLibrary() {
       </div>
 
       <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 lg:grid-cols-7">
           {bodyPartsWithAll.map((part) => (
             <TabsTrigger key={part} value={part}>{t(part.toLowerCase())}</TabsTrigger>
           ))}
