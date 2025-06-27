@@ -2,16 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { es } from 'date-fns/locale/es';
+import { enUS } from 'date-fns/locale/en-US';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { PlusCircle } from "lucide-react";
-import { initialWorkoutLog, exercises as allExercises } from "@/lib/data";
+import { initialWorkoutLog } from "@/lib/data";
 import type { WorkoutLog, WorkoutExercise, Exercise, Set } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
 import AddExerciseDialog from "@/components/add-exercise-dialog";
 import EditWorkoutDialog from "@/components/edit-workout-dialog";
 import { v4 as uuidv4 } from 'uuid';
 import * as z from "zod";
+import { useExercises } from "@/context/exercise-context";
+import { useLanguage } from "@/context/language-context";
 
 const addExerciseSchema = z.object({
   exerciseId: z.string().min(1, "Please select an exercise."),
@@ -30,6 +34,8 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [dailyExercises, setDailyExercises] = useState<WorkoutExercise[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingWorkoutExercise, setEditingWorkoutExercise] = useState<WorkoutExercise | null>(null);
+  const { exercises: allExercises } = useExercises();
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     const formattedDate = format(date, "yyyy-MM-dd");
@@ -104,14 +110,18 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     });
     setEditingWorkoutExercise(null);
   };
-
+  
+  const getFormattedDate = () => {
+    const locale = language === 'es' ? es : enUS;
+    return format(date, "EEEE, MMMM d", { locale });
+  }
 
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">
-            Workout for {format(date, "EEEE, MMMM d")}
+          <CardTitle className="font-headline text-2xl capitalize">
+            {t('workoutFor', { date: getFormattedDate() })}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -131,14 +141,14 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
             })
           ) : (
             <div className="text-center py-10 text-muted-foreground">
-              <p className="text-lg">No workout planned for this day.</p>
-              <p>Enjoy your rest day!</p>
+              <p className="text-lg">{t('noWorkoutPlanned')}</p>
+              <p>{t('enjoyRestDay')}</p>
             </div>
           )}
         </CardContent>
         <CardFooter>
           <Button variant="outline" className="w-full" onClick={handleAddExerciseClick}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Exercise
+              <PlusCircle className="mr-2 h-4 w-4" /> {t('addExercise')}
           </Button>
         </CardFooter>
       </Card>

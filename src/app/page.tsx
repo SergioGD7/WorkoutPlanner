@@ -7,11 +7,14 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
 import ProgressTracker from "@/components/progress-tracker";
+import { useLanguage } from "@/context/language-context";
+import LanguageSwitcher from "@/components/language-switcher";
 
 type View = "dashboard" | "library" | "progress";
 
-export default function Home() {
+export default function HomePage() {
   const [view, setView] = useState<View>("dashboard");
+  const { t } = useLanguage();
 
   const renderView = () => {
     switch (view) {
@@ -25,39 +28,45 @@ export default function Home() {
     }
   };
 
-  const NavLinks = ({ inSheet = false }: { inSheet?: boolean }) => (
-    <nav className="flex flex-col gap-4 p-4">
-      <Button
-        variant={view === "dashboard" ? "secondary" : "ghost"}
-        onClick={() => {
-          setView("dashboard");
-          if (inSheet && document.querySelector('[data-radix-dialog-trigger-sheet="true"]')) {
-            (document.querySelector('[data-radix-dialog-trigger-sheet="true"]') as HTMLElement).click();
-          }
-        }}
-        className="justify-start"
-      >
-        <HomeIcon className="mr-2 h-5 w-5" />
-        Dashboard
-      </Button>
-      <Button
-        variant={view === "library" ? "secondary" : "ghost"}
-        onClick={() => setView("library")}
-        className="justify-start"
-      >
-        <BookOpen className="mr-2 h-5 w-5" />
-        Exercise Library
-      </Button>
-      <Button
-        variant={view === "progress" ? "secondary" : "ghost"}
-        onClick={() => setView("progress")}
-        className="justify-start"
-      >
-        <BarChart3 className="mr-2 h-5 w-5" />
-        Progress
-      </Button>
-    </nav>
-  );
+  const NavLinks = ({ inSheet = false }: { inSheet?: boolean }) => {
+    const handleViewChange = (newView: View) => {
+      setView(newView);
+      if (inSheet) {
+        // This is a bit of a hack to close the sheet. A more robust solution
+        // might involve passing the sheet's open state down and controlling it.
+        document.querySelector('[data-radix-dialog-trigger-sheet="true"]')?.click();
+      }
+    };
+  
+    return (
+      <nav className="flex flex-col gap-4 p-4">
+        <Button
+          variant={view === "dashboard" ? "secondary" : "ghost"}
+          onClick={() => handleViewChange("dashboard")}
+          className="justify-start"
+        >
+          <HomeIcon className="mr-2 h-5 w-5" />
+          {t('dashboard')}
+        </Button>
+        <Button
+          variant={view === "library" ? "secondary" : "ghost"}
+          onClick={() => handleViewChange("library")}
+          className="justify-start"
+        >
+          <BookOpen className="mr-2 h-5 w-5" />
+          {t('exerciseLibrary')}
+        </Button>
+        <Button
+          variant={view === "progress" ? "secondary" : "ghost"}
+          onClick={() => handleViewChange("progress")}
+          className="justify-start"
+        >
+          <BarChart3 className="mr-2 h-5 w-5" />
+          {t('progress')}
+        </Button>
+      </nav>
+    );
+  };
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -72,7 +81,7 @@ export default function Home() {
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0 md:hidden">
+              <Button variant="outline" size="icon" className="shrink-0 md:hidden" data-radix-dialog-trigger-sheet="true">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
@@ -86,8 +95,9 @@ export default function Home() {
             </SheetContent>
           </Sheet>
           <div className="flex-1">
-             <h2 className="text-xl font-semibold capitalize font-headline">{view}</h2>
+             <h2 className="text-xl font-semibold capitalize font-headline">{t(view)}</h2>
           </div>
+          <LanguageSwitcher />
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {renderView()}

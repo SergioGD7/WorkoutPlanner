@@ -1,28 +1,45 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { exercises } from "@/lib/data";
-import type { Exercise } from "@/lib/types";
-
-const bodyParts: Exercise['bodyPart'][] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'];
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
+import CreateExerciseDialog from "./create-exercise-dialog";
+import { useExercises } from "@/context/exercise-context";
+import { useLanguage } from "@/context/language-context";
+import { bodyParts as allBodyParts } from "@/lib/data";
 
 export default function ExerciseLibrary() {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { exercises } = useExercises();
+  const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<string>("all");
+
+  const bodyPartsWithAll = ["all", ...allBodyParts];
+
   return (
     <div>
-      <h2 className="text-3xl font-bold tracking-tight mb-4 font-headline">Exercise Library</h2>
-      <Tabs defaultValue="Chest" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
-          {bodyParts.map((part) => (
-            <TabsTrigger key={part} value={part}>{part}</TabsTrigger>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-3xl font-bold tracking-tight font-headline">{t('exerciseLibrary')}</h2>
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          {t('createCustomExercise')}
+        </Button>
+      </div>
+
+      <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
+          {bodyPartsWithAll.map((part) => (
+            <TabsTrigger key={part} value={part}>{t(part.toLowerCase())}</TabsTrigger>
           ))}
         </TabsList>
-        {bodyParts.map((part) => (
+        {bodyPartsWithAll.map((part) => (
           <TabsContent key={part} value={part}>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pt-4">
               {exercises
-                .filter((ex) => ex.bodyPart === part)
+                .filter((ex) => activeTab === 'all' || ex.bodyPart === activeTab)
                 .map((exercise) => (
                   <Card key={exercise.id} className="overflow-hidden group transition-all hover:shadow-lg">
                     <CardHeader className="p-0">
@@ -46,6 +63,7 @@ export default function ExerciseLibrary() {
           </TabsContent>
         ))}
       </Tabs>
+      <CreateExerciseDialog isOpen={isCreateDialogOpen} onClose={() => setIsCreateDialogOpen(false)} />
     </div>
   );
 }

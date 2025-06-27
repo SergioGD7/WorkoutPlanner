@@ -3,105 +3,146 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { initialWorkoutLog, exercises } from '@/lib/data';
-import { format } from 'date-fns';
-import type { WorkoutLog, Exercise } from '@/lib/types';
+import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { initialWorkoutLog } from '@/lib/data';
+import { format, isToday, isThisWeek, isThisMonth, startOfWeek } from 'date-fns';
+import type { WorkoutLog } from '@/lib/types';
+import { useLanguage } from '@/context/language-context';
+import { useExercises } from '@/context/exercise-context';
 
-const chartConfig = {
-  weight: {
-    label: "Weight (kg)",
-    color: "hsl(var(--primary))",
-  },
-} satisfies ChartConfig;
+const chartConfig = {} satisfies ChartConfig;
+
+const CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
 
 export default function ProgressTracker() {
   const [workoutLog] = useState<WorkoutLog>(initialWorkoutLog);
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string>(exercises[0].id);
-
-  const selectedExercise = exercises.find(ex => ex.id === selectedExerciseId);
+  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'all'>('week');
+  const { exercises } = useExercises();
+  const { t, language } = useLanguage();
 
   const chartData = useMemo(() => {
-    if (!selectedExerciseId) return [];
+    const weekStartsOn = language === 'es' ? 1 : 0;
     
-    const data: { date: string; fullDate: Date, weight: number }[] = [];
+    const data: { [exerciseId: string]: { name: string, volume: number, fill: string } } = {};
+    const exerciseColorMap = new Map<string, string>();
+    let colorIndex = 0;
+
     Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
       const date = new Date(dateStr);
-      // Ensure we have a valid date to avoid issues with timezones
       date.setUTCHours(0,0,0,0);
-      
-      workoutExercises.forEach(workoutEx => {
-        if (workoutEx.exerciseId === selectedExerciseId) {
-          const maxWeight = Math.max(...workoutEx.sets.filter(s => s.completed && s.weight > 0).map(s => s.weight), 0);
-          if (maxWeight > 0) {
-            data.push({
-              date: format(date, "MMM d"),
-              fullDate: date,
-              weight: maxWeight
-            });
+
+      let isInRange = false;
+      switch (timeRange) {
+        case 'day':
+          isInRange = isToday(date);
+          break;
+        case 'week':
+          isInRange = isThisWeek(date, { weekStartsOn });
+          break;
+        case 'month':
+          isInRange = isThisMonth(date);
+          break;
+        case 'all':
+          isInRange = true;
+          break;
+      }
+
+      if (isInRange) {
+        workoutExercises.forEach(workoutEx => {
+          if (!workoutEx.sets.some(s => s.completed)) return;
+          
+          const exerciseDetails = exercises.find(ex => ex.id === workoutEx.exerciseId);
+          if (!exerciseDetails) return;
+
+          if (!exerciseColorMap.has(workoutEx.exerciseId)) {
+            exerciseColorMap.set(workoutEx.exerciseId, CHART_COLORS[colorIndex % CHART_COLORS.length]);
+            colorIndex++;
           }
-        }
-      });
+
+          if (!data[workoutEx.exerciseId]) {
+            data[workoutEx.exerciseId] = {
+              name: exerciseDetails.name,
+              volume: 0,
+              fill: exerciseColorMap.get(workoutEx.exerciseId)!,
+            };
+          }
+
+          const exerciseVolume = workoutEx.sets
+            .filter(s => s.completed)
+            .reduce((total, set) => total + (set.reps * set.weight), 0);
+          
+          data[workoutEx.exerciseId].volume += exerciseVolume;
+        });
+      }
     });
 
-    return data.sort((a, b) => a.fullDate.getTime() - b.fullDate.getTime());
-  }, [workoutLog, selectedExerciseId]);
+    return Object.values(data).filter(d => d.volume > 0).sort((a, b) => b.volume - a.volume);
+  }, [workoutLog, timeRange, exercises, language]);
 
   return (
     <div>
-      <h2 className="text-3xl font-bold tracking-tight mb-4 font-headline">Progress Tracker</h2>
+      <h2 className="text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Exercise Progress</CardTitle>
+          <CardTitle className="font-headline text-2xl">{t('volumeByExercise')}</CardTitle>
           <CardDescription>
-            Select an exercise to see your weight progression over time.
+            {t('totalVolume')} ({t(timeRange.toLowerCase() === 'all' ? 'allTime' : `this${timeRange.charAt(0).toUpperCase() + timeRange.slice(1)}`)})
           </CardDescription>
           <div className="pt-4">
-            <Select onValueChange={setSelectedExerciseId} defaultValue={selectedExerciseId}>
-              <SelectTrigger className="w-full md:w-[280px]">
-                <SelectValue placeholder="Select an exercise" />
-              </SelectTrigger>
-              <SelectContent>
-                {exercises.map((exercise: Exercise) => (
-                  <SelectItem key={exercise.id} value={exercise.id}>
-                    {exercise.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+             <Tabs defaultValue="week" onValueChange={(value) => setTimeRange(value as any)} className="w-full">
+                <TabsList>
+                    <TabsTrigger value="day">{t('today')}</TabsTrigger>
+                    <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
+                    <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
+                    <TabsTrigger value="all">{t('allTime')}</TabsTrigger>
+                </TabsList>
+            </Tabs>
           </div>
         </CardHeader>
         <CardContent>
-          {selectedExercise && (
-            <h3 className="text-xl font-semibold mb-4 font-headline">{selectedExercise.name} Progress</h3>
-          )}
           {chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
+            <ChartContainer config={chartConfig} className="h-[400px] w-full mx-auto">
+              <RadialBarChart 
+                data={chartData} 
+                innerRadius="20%" 
+                outerRadius="90%"
+                startAngle={90}
+                endAngle={-270}
+                cx="50%" 
+                cy="50%"
+              >
+                <Tooltip
+                  cursor={{ strokeDasharray: '3 3' }}
+                  content={({ payload }) => {
+                    if (!payload || !payload.length) return null;
+                    const item = payload[0].payload;
+                    return (
+                        <div className="p-2 bg-background border rounded-lg shadow-lg">
+                            <p className="font-bold" style={{color: item.fill}}>{item.name}</p>
+                            <p>{t('totalVolume')}: {item.volume.toLocaleString()} kg</p>
+                        </div>
+                    );
+                  }}
                 />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={10}
-                  tickFormatter={(value) => `${value}kg`}
+                <RadialBar
+                  minAngle={15}
+                  background
+                  clockWise
+                  dataKey="volume"
                 />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
-                />
-                <Bar dataKey="weight" fill="var(--color-weight)" radius={8} />
-              </BarChart>
+                <Legend iconSize={10} layout="vertical" verticalAlign="middle" align="right" />
+              </RadialBarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-                <p>No completed sets with weight recorded for this exercise yet.</p>
+            <div className="flex h-[400px] items-center justify-center text-muted-foreground">
+                <p>{t('noCompletedSets')}</p>
             </div>
           )}
         </CardContent>

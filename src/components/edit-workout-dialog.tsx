@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Input } from "@/components/ui/input";
 import { Trash2, PlusCircle } from "lucide-react";
 import type { WorkoutExercise, Exercise } from "@/lib/types";
+import { useLanguage } from "@/context/language-context";
 
 const setSchema = z.object({
   reps: z.coerce.number().min(0, "Reps must be positive."),
@@ -31,6 +32,7 @@ interface EditWorkoutDialogProps {
 }
 
 export default function EditWorkoutDialog({ isOpen, onClose, onSave, workoutExercise, exerciseDetails }: EditWorkoutDialogProps) {
+  const { t } = useLanguage();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     values: workoutExercise || undefined,
@@ -52,7 +54,7 @@ export default function EditWorkoutDialog({ isOpen, onClose, onSave, workoutExer
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit: {exerciseDetails?.name}</DialogTitle>
+          <DialogTitle>{t('edit')}: {exerciseDetails?.name}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -65,7 +67,7 @@ export default function EditWorkoutDialog({ isOpen, onClose, onSave, workoutExer
                       name={`sets.${index}.reps`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Reps</FormLabel>
+                          <FormLabel>{t('reps')}</FormLabel>
                           <FormControl>
                             <Input type="number" {...field} />
                           </FormControl>
@@ -77,7 +79,7 @@ export default function EditWorkoutDialog({ isOpen, onClose, onSave, workoutExer
                       name={`sets.${index}.weight`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Weight (kg)</FormLabel>
+                          <FormLabel>{t('weightKg')}</FormLabel>
                           <FormControl>
                             <Input type="number" {...field} />
                           </FormControl>
@@ -98,14 +100,14 @@ export default function EditWorkoutDialog({ isOpen, onClose, onSave, workoutExer
               className="w-full"
               onClick={() => append({ reps: 10, weight: 0, completed: false })}
             >
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Set
+              <PlusCircle className="mr-2 h-4 w-4" /> {t('addSet')}
             </Button>
             
             <DialogFooter>
               <DialogClose asChild>
-                <Button type="button" variant="ghost">Cancel</Button>
+                <Button type="button" variant="ghost">{t('cancel')}</Button>
               </DialogClose>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit">{t('saveChanges')}</Button>
             </DialogFooter>
           </form>
         </Form>

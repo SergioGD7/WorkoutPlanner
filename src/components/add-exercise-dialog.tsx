@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { exercises } from "@/lib/data";
 import type { Exercise } from "@/lib/types";
+import { useExercises } from "@/context/exercise-context";
+import { useLanguage } from "@/context/language-context";
 
 const formSchema = z.object({
   exerciseId: z.string().min(1, "Please select an exercise."),
@@ -25,6 +26,9 @@ interface AddExerciseDialogProps {
 }
 
 export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: AddExerciseDialogProps) {
+  const { exercises } = useExercises();
+  const { t } = useLanguage();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -45,7 +49,7 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Exercise</DialogTitle>
+          <DialogTitle>{t('addNewExercise')}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -54,11 +58,11 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
               name="exerciseId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Exercise</FormLabel>
+                  <FormLabel>{t('exercise')}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select an exercise to add" />
+                        <SelectValue placeholder={t('selectAnExercise')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -78,7 +82,7 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
               name="sets"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Number of Sets</FormLabel>
+                  <FormLabel>{t('sets')}</FormLabel>
                   <FormControl>
                     <Input type="number" {...field} />
                   </FormControl>
@@ -91,7 +95,7 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
               name="reps"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reps per Set</FormLabel>
+                  <FormLabel>{t('repsPerSet')}</FormLabel>
                   <FormControl>
                     <Input type="number" {...field} />
                   </FormControl>
@@ -104,7 +108,7 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
               name="weight"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Weight (kg)</FormLabel>
+                  <FormLabel>{t('weightKg')}</FormLabel>
                   <FormControl>
                     <Input type="number" {...field} />
                   </FormControl>
@@ -114,9 +118,9 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
             />
             <DialogFooter>
                 <DialogClose asChild>
-                    <Button type="button" variant="ghost">Cancel</Button>
+                    <Button type="button" variant="ghost">{t('cancel')}</Button>
                 </DialogClose>
-                <Button type="submit">Add Exercise</Button>
+                <Button type="submit">{t('addExercise')}</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -1,7 +1,10 @@
 import type { Exercise, WorkoutLog } from './types';
 import { format, subDays } from 'date-fns';
 
-export const exercises: Exercise[] = [
+export const bodyParts: Exercise['bodyPart'][] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
+
+
+export const initialExercises: Exercise[] = [
   // Chest
   { id: 'ex1', name: 'Bench Press', bodyPart: 'Chest', description: 'Lay on a flat bench, lower a barbell to your chest, and press it back up.', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'bench press' },
   { id: 'ex2', name: 'Dumbbell Flyes', bodyPart: 'Chest', description: 'Lay on a bench with dumbbells, open your arms wide, and bring them back together over your chest.', image: 'https://images.unsplash.com/photo-1589484193003-7f21a86a342a?q=80&w=600&h=400&fit=crop', 'data-ai-hint': 'dumbbell flyes' },
@@ -55,8 +58,8 @@ export const initialWorkoutLog: WorkoutLog = {
     { id: 'we4', exerciseId: 'ex8', sets: [{ reps: 12, weight: 120, completed: true }, { reps: 12, weight: 120, completed: true }, { reps: 10, weight: 120, completed: false }] },
   ],
   [format(today, 'yyyy-MM-dd')]: [
-    { id: 'we5', exerciseId: 'ex4', sets: [{ reps: 5, weight: 0, completed: false }, { reps: 5, weight: 0, completed: false }, { reps: 5, weight: 0, completed: false }] },
-    { id: 'we6', exerciseId: 'ex5', sets: [{ reps: 8, weight: 40, completed: false }, { reps: 8, weight: 40, completed: false }, { reps: 8, weight: 40, completed: false }] },
-    { id: 'we7', exerciseId: 'ex12', sets: [{ reps: 12, weight: 12, completed: false }, { reps: 12, weight: 12, completed: false }] },
+    { id: 'we5', exerciseId: 'ex4', sets: [{ reps: 5, weight: 0, completed: true }, { reps: 5, weight: 0, completed: true }, { reps: 5, weight: 0, completed: false }] },
+    { id: 'we6', exerciseId: 'ex5', sets: [{ reps: 8, weight: 40, completed: true }, { reps: 8, weight: 40, completed: true }, { reps: 8, weight: 40, completed: false }] },
+    { id: 'we7', exerciseId: 'ex12', sets: [{ reps: 12, weight: 12, completed: true }, { reps: 12, weight: 12, completed: false }] },
   ],
 };
