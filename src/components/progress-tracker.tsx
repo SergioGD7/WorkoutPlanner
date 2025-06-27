@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { initialWorkoutLog, bodyParts } from '@/lib/data';
-import { isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
+import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
@@ -43,8 +42,7 @@ export default function ProgressTracker() {
     const data: { [bodyPart: string]: { name: string, volume: number, fill: string } } = {};
 
     Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
-      const date = new Date(dateStr);
-      date.setUTCHours(0,0,0,0);
+      const date = parseISO(dateStr);
 
       let isInRange = false;
       switch (timeRange) {
@@ -158,18 +156,17 @@ export default function ProgressTracker() {
                   dataKey="volume"
                   nameKey="name"
                 />
-                <Legend 
-                  iconSize={10} 
-                  layout={isMobile ? 'vertical' : 'vertical'}
-                  verticalAlign={isMobile ? 'bottom' : 'middle'}
-                  align={isMobile ? 'center' : 'right'}
-                  wrapperStyle={isMobile ? { position: 'relative', marginTop: '1rem' } : {}}
+                <Legend
+                  iconSize={10}
+                  layout="vertical"
+                  verticalAlign="middle"
+                  align="right"
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <span className="text-base p-1">
+                      <div className="w-full break-words p-1 text-base">
                         {value} ({payload.volume.toLocaleString()} kg)
-                      </span>
+                      </div>
                     );
                   }}
                 />
