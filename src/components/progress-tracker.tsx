@@ -5,12 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ChartContainer } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { initialWorkoutLog, bodyParts } from '@/lib/data';
+import { bodyParts } from '@/lib/data';
 import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid } from 'date-fns';
-import type { WorkoutLog } from '@/lib/types';
+import type { WorkoutLog, WorkoutExercise } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { Loader2 } from "lucide-react";
 
 const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
 
@@ -29,16 +33,39 @@ bodyParts.forEach((part, index) => {
 });
 
 export default function ProgressTracker() {
-  const [workoutLog] = useState<WorkoutLog>(initialWorkoutLog);
+  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
+  const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('week');
   const { exercises } = useExercises();
   const { t, language } = useLanguage();
   const isMobile = useIsMobile();
   const [isMounted, setIsMounted] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!user || !db) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const q = query(collection(db, 'users', user.uid, 'logs'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const logData: WorkoutLog = {};
+      querySnapshot.forEach((doc) => {
+        const date = parseISO(doc.id);
+        if (isValid(date)) {
+          logData[doc.id] = doc.data().exercises as WorkoutExercise[];
+        }
+      });
+      setWorkoutLog(logData);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   const chartData = useMemo(() => {
     const weekStartsOn = language === 'es' ? 1 : 0;
@@ -133,8 +160,10 @@ export default function ProgressTracker() {
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent>
-          {chartData.length > 0 ? (
+        <CardContent className="h-[550px] flex items-center justify-center">
+          {isLoading ? (
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          ) : chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[400px] sm:h-[500px] w-full mx-auto">
               <RadialBarChart 
                 data={chartData} 
@@ -178,6 +207,7 @@ export default function ProgressTracker() {
                           flexWrap: "wrap",
                           justifyContent: "center",
                           gap: "8px",
+                          width: '100%',
                         }
                       : {
                           paddingLeft: "16px",
@@ -186,7 +216,7 @@ export default function ProgressTracker() {
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <span className="p-1 text-base align-middle">
+                      <span className="p-1 text-base align-middle inline-block w-full">
                         {value} ({payload.volume.toLocaleString()} kg)
                       </span>
                     );

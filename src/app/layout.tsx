@@ -4,10 +4,11 @@ import { Toaster } from "@/components/ui/toaster"
 import { LanguageProvider } from '@/context/language-context';
 import { ExerciseProvider } from '@/context/exercise-context';
 import { Providers } from '@/components/providers';
+import { AuthProvider } from '@/context/auth-context';
 
 export const metadata: Metadata = {
-  title: 'Workout Warrior',
-  description: 'Track your gym progress with Workout Warrior.',
+  title: 'Workout Planner',
+  description: 'Track your gym progress with Workout Planner.',
 };
 
 export default function RootLayout({
@@ -24,12 +25,14 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <Providers>
-          <LanguageProvider>
-            <ExerciseProvider>
-              {children}
-              <Toaster />
-            </ExerciseProvider>
-          </LanguageProvider>
+          <AuthProvider>
+            <LanguageProvider>
+              <ExerciseProvider>
+                {children}
+                <Toaster />
+              </ExerciseProvider>
+            </LanguageProvider>
+          </AuthProvider>
         </Providers>
       </body>
     </html>

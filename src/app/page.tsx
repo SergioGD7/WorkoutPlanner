@@ -1,8 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
-import { Dumbbell, HomeIcon, BookOpen, BarChart3, Menu } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/auth-context';
+import { Dumbbell, HomeIcon, BookOpen, BarChart3, Menu, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import Dashboard from "@/components/dashboard";
@@ -11,12 +13,28 @@ import ProgressTracker from "@/components/progress-tracker";
 import { useLanguage } from "@/context/language-context";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 type View = "dashboard" | "library" | "progress";
 
 export default function HomePage() {
   const [view, setView] = useState<View>("dashboard");
   const { t } = useLanguage();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  const handleLogout = async () => {
+    if (!auth) return;
+    await signOut(auth);
+    router.push('/login');
+  };
 
   const renderView = () => {
     switch (view) {
@@ -34,8 +52,6 @@ export default function HomePage() {
     const handleViewChange = (newView: View) => {
       setView(newView);
       if (inSheet) {
-        // This is a bit of a hack to close the sheet. A more robust solution
-        // might involve passing the sheet's open state down and controlling it.
         document.querySelector('[data-radix-dialog-trigger-sheet="true"]')?.click();
       }
     };
@@ -70,12 +86,20 @@ export default function HomePage() {
     );
   };
 
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Dumbbell className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen w-full bg-background">
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-16 items-center border-b px-6">
           <Dumbbell className="h-8 w-8 text-primary" />
-          <h1 className="ml-2 text-2xl font-bold font-headline">Workout Warrior</h1>
+          <h1 className="ml-2 text-2xl font-bold font-headline">Workout Planner</h1>
         </div>
         <NavLinks />
       </aside>
@@ -91,7 +115,7 @@ export default function HomePage() {
             <SheetContent side="left" className="flex flex-col p-0">
                <SheetHeader className="flex h-16 flex-row items-center border-b px-6 space-y-0">
                  <Dumbbell className="h-8 w-8 text-primary" />
-                 <SheetTitle className="ml-2 text-xl font-bold font-headline">Workout Warrior</SheetTitle>
+                 <SheetTitle className="ml-2 text-xl font-bold font-headline">Workout Planner</SheetTitle>
                  <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
                </SheetHeader>
               <NavLinks inSheet={true} />
@@ -103,6 +127,10 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             <ThemeSwitcher />
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+              <LogOut className="h-5 w-5" />
+              <span className="sr-only">Logout</span>
+            </Button>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">

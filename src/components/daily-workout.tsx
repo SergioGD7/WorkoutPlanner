@@ -6,9 +6,8 @@ import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { PlusCircle } from "lucide-react";
-import { initialWorkoutLog } from "@/lib/data";
-import type { WorkoutLog, WorkoutExercise, Exercise, Set } from "@/lib/types";
+import { PlusCircle, Loader2 } from "lucide-react";
+import type { WorkoutExercise, Exercise, Set } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
 import AddExerciseDialog from "@/components/add-exercise-dialog";
 import EditWorkoutDialog from "@/components/edit-workout-dialog";
@@ -16,6 +15,9 @@ import { v4 as uuidv4 } from 'uuid';
 import * as z from "zod";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
+import { useAuth } from "@/context/auth-context";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 
 const addExerciseSchema = z.object({
   exerciseId: z.string().min(1, "Please select an exercise."),
@@ -30,33 +32,51 @@ interface DailyWorkoutProps {
 }
 
 export default function DailyWorkout({ date }: DailyWorkoutProps) {
-  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>(initialWorkoutLog);
   const [dailyExercises, setDailyExercises] = useState<WorkoutExercise[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingWorkoutExercise, setEditingWorkoutExercise] = useState<WorkoutExercise | null>(null);
   const { exercises: allExercises } = useExercises();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+
+  const formattedDate = format(date, "yyyy-MM-dd");
 
   useEffect(() => {
-    const formattedDate = format(date, "yyyy-MM-dd");
-    setDailyExercises(workoutLog[formattedDate] || []);
-  }, [date, workoutLog]);
+    if (!user || !db) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    const docRef = doc(db, 'users', user.uid, 'logs', formattedDate);
+    
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setDailyExercises(data.exercises || []);
+      } else {
+        setDailyExercises([]);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [date, user, formattedDate]);
+
+
+  const updateWorkoutLog = async (updatedDailyExercises: WorkoutExercise[]) => {
+    if (!user || !db) return;
+    const docRef = doc(db, 'users', user.uid, 'logs', formattedDate);
+    await setDoc(docRef, { exercises: updatedDailyExercises }, { merge: true });
+  };
 
   const handleSetCompletionChange = (exerciseId: string, setIndex: number, completed: boolean) => {
-    const formattedDate = format(date, "yyyy-MM-dd");
-    setWorkoutLog(currentLog => {
-      const newLog = { ...currentLog };
-      if (!newLog[formattedDate]) return currentLog;
+    const updatedDailyExercises = JSON.parse(JSON.stringify(dailyExercises));
+    const exerciseIndex = updatedDailyExercises.findIndex((ex: WorkoutExercise) => ex.id === exerciseId);
+    if (exerciseIndex === -1) return;
 
-      const updatedDailyExercises = JSON.parse(JSON.stringify(newLog[formattedDate]));
-      const exerciseIndex = updatedDailyExercises.findIndex((ex: WorkoutExercise) => ex.id === exerciseId);
-      if (exerciseIndex === -1) return currentLog;
-
-      updatedDailyExercises[exerciseIndex].sets[setIndex].completed = completed;
-      
-      newLog[formattedDate] = updatedDailyExercises;
-      return newLog;
-    });
+    updatedDailyExercises[exerciseIndex].sets[setIndex].completed = completed;
+    updateWorkoutLog(updatedDailyExercises);
   };
 
   const getExerciseDetails = (exerciseId: string): Exercise | undefined => {
@@ -71,7 +91,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     setEditingWorkoutExercise(workoutExercise);
   };
 
-  const handleSaveNewExercise = (data: z.infer<typeof addExerciseSchema>) => {
+  const handleSaveNewExercise = async (data: z.infer<typeof addExerciseSchema>) => {
     const newSets: Set[] = Array.from({ length: data.sets }, () => ({
       reps: data.reps,
       weight: data.weight,
@@ -84,30 +104,16 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
       sets: newSets,
     };
     
-    const formattedDate = format(date, "yyyy-MM-dd");
-    setWorkoutLog(currentLog => {
-      const newLog = { ...currentLog };
-      const currentDailyExercises = newLog[formattedDate] ? [...newLog[formattedDate]] : [];
-      currentDailyExercises.push(newWorkoutExercise);
-      newLog[formattedDate] = currentDailyExercises;
-      return newLog;
-    });
+    const updatedDailyExercises = [...dailyExercises, newWorkoutExercise];
+    await updateWorkoutLog(updatedDailyExercises);
     setIsAddDialogOpen(false);
   };
 
-  const handleSaveEditedExercise = (updatedWorkoutExercise: WorkoutExercise) => {
-    const formattedDate = format(date, "yyyy-MM-dd");
-    setWorkoutLog(currentLog => {
-        const newLog = { ...currentLog };
-        if (!newLog[formattedDate]) return currentLog;
-        
-        const updatedDailyExercises = newLog[formattedDate].map(ex => 
-            ex.id === updatedWorkoutExercise.id ? updatedWorkoutExercise : ex
-        );
-
-        newLog[formattedDate] = updatedDailyExercises;
-        return newLog;
-    });
+  const handleSaveEditedExercise = async (updatedWorkoutExercise: WorkoutExercise) => {
+    const updatedDailyExercises = dailyExercises.map(ex => 
+        ex.id === updatedWorkoutExercise.id ? updatedWorkoutExercise : ex
+    );
+    await updateWorkoutLog(updatedDailyExercises);
     setEditingWorkoutExercise(null);
   };
   
@@ -125,7 +131,11 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {dailyExercises.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : dailyExercises.length > 0 ? (
             dailyExercises.map((workoutExercise) => {
               const exerciseDetails = getExerciseDetails(workoutExercise.exerciseId);
               if (!exerciseDetails) return null;

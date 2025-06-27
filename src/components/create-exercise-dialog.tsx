@@ -61,8 +61,8 @@ export default function CreateExerciseDialog({
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    addExercise(values as Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>);
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    await addExercise(values as Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>);
     form.reset();
     onClose();
   };
