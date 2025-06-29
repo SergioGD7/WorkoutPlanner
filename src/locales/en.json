@@ -2,6 +2,7 @@
   "dashboard": "Dashboard",
   "exerciseLibrary": "Exercise Library",
   "progress": "Progress",
+  "calendar": "Calendar",
   "workoutFor": "Workout for {date}",
   "noWorkoutPlanned": "No workout planned for this day.",
   "enjoyRestDay": "Enjoy your rest day!",
@@ -34,7 +35,7 @@
   "progressTracker": "Progress Tracker",
   "volumeByBodyPart": "Volume by Body Part",
   "totalVolume": "Total Volume",
-  "noWorkoutData": "No workout data with weight recorded for this period yet.",
+  "noWorkoutDataForVolume": "No workout data with weight recorded for this period yet. Add weight to your exercises to see progress.",
   "edit": "Edit",
   "done": "Done",
   "createCustomExercise": "Create Custom Exercise",
@@ -92,5 +93,9 @@
   "firebaseNotConfigured": "Firebase is not configured. Authentication is disabled.",
   "loading": "Loading...",
   "unknownError": "An unknown error occurred.",
-  "userExistsPasswordIncorrect": "An account with this email already exists. Please check your password."
+  "userExistsPasswordIncorrect": "An account with this email already exists. Please check your password.",
+  "workoutDetailsFor": "Workout Details for {date}",
+  "totalVolumeLifted": "Total Volume: {volume} kg",
+  "showDetails": "Show Details",
+  "noWorkoutOnThisDay": "No workout recorded for this day."
 }

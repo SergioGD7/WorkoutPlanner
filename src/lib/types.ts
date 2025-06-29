@@ -1,5 +1,7 @@
 import type { bodyParts } from './data';
 
+export type BodyPart = (typeof bodyParts)[number];
+
 export interface Set {
   reps: number;
   weight: number;
@@ -19,7 +21,7 @@ export interface WorkoutLog {
 export interface Exercise {
   id: string;
   name: string;
-  bodyPart: (typeof bodyParts)[number];
+  bodyPart: BodyPart;
   description: string;
   image: string;
   'data-ai-hint': string;

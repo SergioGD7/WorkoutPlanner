@@ -5,29 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ChartContainer } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { bodyParts } from '@/lib/data';
 import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
 import { useAuth } from '@/context/auth-context';
 import { Loader2 } from "lucide-react";
+import { bodyPartColorMap } from '@/lib/style-utils';
 
 const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
-
-const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(var(--chart-6))",
-];
-
-const bodyPartColorMap = new Map<string, string>();
-bodyParts.forEach((part, index) => {
-  bodyPartColorMap.set(part, CHART_COLORS[index % CHART_COLORS.length]);
-});
 
 export default function ProgressTracker() {
   const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
@@ -97,7 +83,7 @@ export default function ProgressTracker() {
             data[bodyPart] = {
               name: t(bodyPart.toLowerCase()),
               volume: 0,
-              fill: bodyPartColorMap.get(bodyPart) || CHART_COLORS[CHART_COLORS.length - 1],
+              fill: bodyPartColorMap.get(bodyPart) || "hsl(var(--chart-6))",
             };
           }
 
@@ -201,7 +187,7 @@ export default function ProgressTracker() {
             </ChartContainer>
           ) : (
             <div className="flex h-[400px] flex-col items-center justify-center text-center text-muted-foreground">
-              <p className="text-lg">{t('noWorkoutData')}</p>
+              <p className="text-lg">{t('noWorkoutDataForVolume')}</p>
             </div>
           )}
         </CardContent>

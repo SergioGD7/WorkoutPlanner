@@ -3,17 +3,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Dumbbell, HomeIcon, BookOpen, BarChart3, Menu, LogOut } from "lucide-react";
+import { Dumbbell, HomeIcon, BookOpen, BarChart3, Menu, LogOut, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
 import ProgressTracker from "@/components/progress-tracker";
+import CalendarView from "@/components/calendar-view";
 import { useLanguage } from "@/context/language-context";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
-type View = "dashboard" | "library" | "progress";
+type View = "dashboard" | "library" | "progress" | "calendar";
 
 export default function HomePage() {
   const [view, setView] = useState<View>("dashboard");
@@ -38,6 +39,8 @@ export default function HomePage() {
         return <ExerciseLibrary />;
       case "progress":
         return <ProgressTracker />;
+      case "calendar":
+        return <CalendarView />;
       case "dashboard":
       default:
         return <Dashboard />;
@@ -80,6 +83,14 @@ export default function HomePage() {
         >
           <BarChart3 className="mr-2 h-5 w-5" />
           {t('progress')}
+        </Button>
+        <Button
+          variant={view === "calendar" ? "secondary" : "ghost"}
+          onClick={() => handleViewChange("calendar")}
+          className="justify-start"
+        >
+          <CalendarDays className="mr-2 h-5 w-5" />
+          {t('calendar')}
         </Button>
       </nav>
     );
