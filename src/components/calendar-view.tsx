@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
-import type { DayPickerDayProps } from 'react-day-picker';
+import type { DayContentProps } from 'react-day-picker';
 
 import { useAuth } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -91,7 +91,7 @@ export default function CalendarView() {
     };
   }, [selectedDate, workoutLog, allExercises, t]);
   
-  const DayContentWithDots = useCallback((props: DayPickerDayProps) => {
+  const DayContentWithDots = useCallback((props: DayContentProps) => {
     const dayKey = format(props.date, 'yyyy-MM-dd');
     const bodyPartsOnDay = dailyBodyParts.get(dayKey);
 
