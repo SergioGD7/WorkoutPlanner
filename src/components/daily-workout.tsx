@@ -146,7 +146,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   
   const getFormattedDate = () => {
     const locale = language === 'es' ? es : enUS;
-    return format(date, "EEEE, MMMM d", { locale });
+    return format(date, "EEEE, d", { locale });
   }
 
   return (
