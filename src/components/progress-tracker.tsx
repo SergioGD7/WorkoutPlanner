@@ -130,13 +130,13 @@ export default function ProgressTracker() {
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 h-[50vh]">
           {isLoading ? (
-            <div className="flex h-[450px] items-center justify-center">
+            <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : chartData.length > 0 ? (
-            <ChartContainer config={chartConfig}>
+            <ChartContainer config={chartConfig} className="h-full w-full aspect-auto">
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
@@ -188,7 +188,7 @@ export default function ProgressTracker() {
               </RadialBarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-[450px] flex-col items-center justify-center text-center text-muted-foreground">
+            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
               <p className="text-lg">{t('noWorkoutDataForVolume')}</p>
             </div>
           )}
