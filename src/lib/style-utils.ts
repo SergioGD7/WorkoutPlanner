@@ -15,3 +15,12 @@ export const bodyPartColorMap = new Map<BodyPart, string>();
 bodyParts.forEach((part, index) => {
   bodyPartColorMap.set(part, `hsl(${CHART_COLORS_HSL[index % CHART_COLORS_HSL.length]})`);
 });
+
+export const bodyPartEmojiMap = new Map<BodyPart, string>([
+  ['Chest', '🏋️'],
+  ['Back', '🧗'],
+  ['Legs', '🏃'],
+  ['Shoulders', '💪'],
+  ['Arms', '💪'],
+  ['Core', '🧘'],
+]);

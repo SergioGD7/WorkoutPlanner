@@ -23,4 +23,5 @@ export interface Exercise {
   name: string;
   bodyPart: BodyPart;
   description: string;
+  emoji: string;
 }

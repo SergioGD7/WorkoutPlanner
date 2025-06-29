@@ -5,10 +5,11 @@ import { initialExercises as initialExercisesData } from '@/lib/data';
 import type { Exercise } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { v4 as uuidv4 } from 'uuid';
+import { bodyPartEmojiMap } from '@/lib/style-utils';
 
 interface ExerciseContextType {
   exercises: Exercise[];
-  addExercise: (exercise: Omit<Exercise, 'id'>) => Promise<void>;
+  addExercise: (exercise: Omit<Exercise, 'id' | 'emoji'>) => Promise<void>;
   updateExercise: (exercise: Exercise) => Promise<void>;
   deleteExercise: (exerciseId: string) => Promise<void>;
 }
@@ -55,7 +56,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
+  const addExercise = async (exerciseData: Omit<Exercise, 'id' | 'emoji'>) => {
     const key = getStorageKey();
     if (!key) {
       console.error("No user logged in to add exercise");
@@ -65,21 +66,27 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     const newExercise: Exercise = {
       id: uuidv4(),
       ...exerciseData,
+      emoji: bodyPartEmojiMap.get(exerciseData.bodyPart) || '💪',
     };
 
     const updatedExercises = [...exercises, newExercise];
     updateStorageAndState(updatedExercises);
   };
   
-  const updateExercise = async (updatedExercise: Exercise) => {
+  const updateExercise = async (updatedExerciseData: Exercise) => {
     const key = getStorageKey();
     if (!key) {
       console.error("No user logged in to update exercise");
       return;
     }
+    
+    const exerciseWithCorrectEmoji: Exercise = {
+        ...updatedExerciseData,
+        emoji: bodyPartEmojiMap.get(updatedExerciseData.bodyPart) || '💪',
+    };
 
     const updatedExercises = exercises.map(ex => 
-        (ex.id === updatedExercise.id ? updatedExercise : ex)
+        (ex.id === exerciseWithCorrectEmoji.id ? exerciseWithCorrectEmoji : ex)
     );
     updateStorageAndState(updatedExercises);
   };

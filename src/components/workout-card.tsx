@@ -27,7 +27,7 @@ export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetTog
     <Card className="overflow-hidden transition-all hover:shadow-md">
       <CardHeader className="flex flex-row items-start justify-between">
         <div>
-            <CardTitle className="font-headline text-xl">{t(exerciseDetails.name)}</CardTitle>
+            <CardTitle className="font-headline text-xl">{exerciseDetails.emoji} {t(exerciseDetails.name)}</CardTitle>
             <p className="text-sm text-muted-foreground">{t(exerciseDetails.bodyPart.toLowerCase())}</p>
         </div>
         <div className="flex items-center">

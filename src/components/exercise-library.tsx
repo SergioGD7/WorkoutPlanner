@@ -81,7 +81,7 @@ export default function ExerciseLibrary() {
                   <Card key={exercise.id} className="transition-all hover:shadow-lg">
                     <CardHeader className="flex flex-row items-start justify-between pb-2">
                       <div>
-                        <CardTitle className="font-headline text-lg">{t(exercise.name)}</CardTitle>
+                        <CardTitle className="font-headline text-lg">{exercise.emoji} {t(exercise.name)}</CardTitle>
                         <Badge variant="outline" className="mt-1 capitalize">{t(exercise.bodyPart.toLowerCase())}</Badge>
                       </div>
                       <div className="flex gap-1 -mr-2">
