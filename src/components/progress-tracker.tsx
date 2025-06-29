@@ -12,7 +12,6 @@ import { useExercises } from '@/context/exercise-context';
 import { useAuth } from '@/context/auth-context';
 import { Loader2 } from "lucide-react";
 import { bodyPartColorMap } from '@/lib/style-utils';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
 
@@ -121,22 +120,21 @@ export default function ProgressTracker() {
           </CardDescription>
           <div className="pt-4">
              <Tabs defaultValue="week" onValueChange={(value) => setTimeRange(value as any)}>
-                <ScrollArea className="w-full whitespace-nowrap">
-                  <TabsList className="inline-flex">
-                      <TabsTrigger value="day">{t('today')}</TabsTrigger>
-                      <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
-                      <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
-                      <TabsTrigger value="year">{t('thisYear')}</TabsTrigger>
-                      <TabsTrigger value="all">{t('allTime')}</TabsTrigger>
-                  </TabsList>
-                  <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+                <TabsList className="grid h-auto w-full grid-cols-3 sm:grid-cols-5">
+                    <TabsTrigger value="day">{t('today')}</TabsTrigger>
+                    <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
+                    <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
+                    <TabsTrigger value="year">{t('thisYear')}</TabsTrigger>
+                    <TabsTrigger value="all">{t('allTime')}</TabsTrigger>
+                </TabsList>
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent className="h-auto min-h-[450px] sm:min-h-[550px] flex flex-col items-center justify-center p-2 sm:p-6">
+        <CardContent className="h-auto min-h-[450px] sm:min-h-[550px] flex flex-col justify-center p-0 sm:p-6">
           {isLoading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex justify-center items-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
           ) : chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[400px] sm:h-[500px] w-full">
               <RadialBarChart 
@@ -190,7 +188,7 @@ export default function ProgressTracker() {
               </RadialBarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-[400px] flex-col items-center justify-center text-center text-muted-foreground">
+            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
               <p className="text-lg">{t('noWorkoutDataForVolume')}</p>
             </div>
           )}
