@@ -9,20 +9,22 @@ import type { DayPickerDayProps } from 'react-day-picker';
 import { useAuth } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
-import type { WorkoutLog, BodyPart } from '@/lib/types';
+import type { WorkoutLog, BodyPart, Set as WorkoutSet } from '@/lib/types';
 import { bodyPartColorMap } from '@/lib/style-utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Loader2, Check } from 'lucide-react';
 
 type DailyBodyPartsMap = Map<string, BodyPart[]>;
 
 type WorkoutForDay = {
   date: Date;
   exercises: {
-    exerciseId: string;
+    workoutExerciseId: string;
     exerciseName: string;
     totalVolume: number;
+    sets: WorkoutSet[];
   }[];
 } | null;
 
@@ -80,9 +82,10 @@ export default function CalendarView() {
         const exerciseDetail = allExercises.find(e => e.id === we.exerciseId);
         const totalVolume = we.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0);
         return {
-          exerciseId: we.id,
+          workoutExerciseId: we.id,
           exerciseName: exerciseDetail ? t(exerciseDetail.name) : 'Unknown Exercise',
-          totalVolume,
+          totalVolume: totalVolume,
+          sets: we.sets,
         };
       }),
     };
@@ -155,14 +158,26 @@ export default function CalendarView() {
           </CardHeader>
           <CardContent>
             {workoutForDay && workoutForDay.exercises.length > 0 ? (
-              <ul className="space-y-2">
+              <Accordion type="multiple" className="w-full space-y-2">
                 {workoutForDay.exercises.map(ex => (
-                  <li key={ex.exerciseId} className="flex justify-between items-center rounded-md bg-secondary/70 p-3">
-                    <span className="font-medium">{ex.exerciseName}</span>
-                    <span className="text-sm text-muted-foreground">{t('totalVolumeLifted', { volume: ex.totalVolume.toLocaleString() })}</span>
-                  </li>
+                  <AccordionItem key={ex.workoutExerciseId} value={ex.workoutExerciseId} className="rounded-md border-none bg-secondary/70">
+                    <AccordionTrigger className="flex w-full items-center justify-between rounded-md p-3 hover:no-underline">
+                        <span className="font-medium text-left">{ex.exerciseName}</span>
+                        <span className="text-sm text-muted-foreground pr-2">{t('totalVolumeLifted', { volume: ex.totalVolume.toLocaleString() })}</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-3 pt-0">
+                      <ul className="space-y-1 pt-2 text-sm text-muted-foreground">
+                        {ex.sets.map((set, index) => (
+                          <li key={index} className="flex justify-between items-center rounded-md bg-background/50 px-3 py-1">
+                            <span>{t('set')} {index + 1}: {set.reps} {t('reps')} @ {set.weight} kg</span>
+                            {set.completed && <Check className="h-4 w-4 text-green-500" />}
+                          </li>
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
                 ))}
-              </ul>
+              </Accordion>
             ) : (
               <p className="text-muted-foreground">{t('noWorkoutOnThisDay')}</p>
             )}
