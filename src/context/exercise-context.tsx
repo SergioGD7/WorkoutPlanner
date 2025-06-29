@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { initialExercises as initialExercisesData } from '@/lib/data';
-import type { Exercise } from '@/lib/types';
+import type { Exercise, BodyPart } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { v4 as uuidv4 } from 'uuid';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
@@ -28,15 +28,35 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     const key = getStorageKey();
     if (key) {
       try {
-        const storedExercises = localStorage.getItem(key);
-        if (storedExercises) {
-          setExercises(JSON.parse(storedExercises));
+        const storedExercisesJSON = localStorage.getItem(key);
+        let exercisesToLoad: Exercise[];
+
+        if (storedExercisesJSON) {
+          const storedExercises: (Exercise | Omit<Exercise, 'emoji'>)[] = JSON.parse(storedExercisesJSON);
+          // Data migration: ensure all exercises have an emoji
+          exercisesToLoad = storedExercises.map(ex => {
+            // Check if emoji property exists and is not empty
+            if ('emoji' in ex && ex.emoji) {
+              return ex as Exercise;
+            }
+            // If not, add it based on body part
+            return {
+              ...ex,
+              emoji: bodyPartEmojiMap.get(ex.bodyPart as BodyPart) || '💪',
+            } as Exercise;
+          });
+          // Persist the migrated data
+          localStorage.setItem(key, JSON.stringify(exercisesToLoad));
         } else {
-          localStorage.setItem(key, JSON.stringify(initialExercisesData));
-          setExercises(initialExercisesData);
+          // No stored data, use initial set
+          exercisesToLoad = initialExercisesData;
+          localStorage.setItem(key, JSON.stringify(exercisesToLoad));
         }
+        
+        setExercises(exercisesToLoad);
+
       } catch (error) {
-        console.error("Failed to load exercises from localStorage", error);
+        console.error("Failed to load/migrate exercises from localStorage", error);
         setExercises(initialExercisesData); // Fallback
       }
     } else {
