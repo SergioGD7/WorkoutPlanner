@@ -23,6 +23,4 @@ export interface Exercise {
   name: string;
   bodyPart: BodyPart;
   description: string;
-  image: string;
-  'data-ai-hint': string;
 }

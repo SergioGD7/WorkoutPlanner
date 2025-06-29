@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface ExerciseContextType {
   exercises: Exercise[];
-  addExercise: (exercise: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => Promise<void>;
+  addExercise: (exercise: Omit<Exercise, 'id'>) => Promise<void>;
   updateExercise: (exercise: Exercise) => Promise<void>;
   deleteExercise: (exerciseId: string) => Promise<void>;
 }
@@ -55,7 +55,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addExercise = async (exerciseData: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => {
+  const addExercise = async (exerciseData: Omit<Exercise, 'id'>) => {
     const key = getStorageKey();
     if (!key) {
       console.error("No user logged in to add exercise");
@@ -65,8 +65,6 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     const newExercise: Exercise = {
       id: uuidv4(),
       ...exerciseData,
-      image: 'https://placehold.co/600x400.png',
-      'data-ai-hint': 'custom exercise',
     };
 
     const updatedExercises = [...exercises, newExercise];

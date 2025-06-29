@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { useLanguage } from "@/context/language-context";
 import { bodyParts as allBodyParts } from "@/lib/data";
 import type { Exercise } from "@/lib/types";
 import DeleteExerciseDialog from "./delete-exercise-dialog";
+import { Badge } from "@/components/ui/badge";
 
 export default function ExerciseLibrary() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -78,32 +78,25 @@ export default function ExerciseLibrary() {
               {exercises
                 .filter((ex) => activeTab === 'all' || ex.bodyPart === activeTab)
                 .map((exercise) => (
-                  <Card key={exercise.id} className="overflow-hidden group transition-all hover:shadow-lg">
-                    <CardHeader className="p-0 relative">
-                       <div className="overflow-hidden h-48 w-full">
-                         <Image
-                           src={exercise.image}
-                           alt={t(exercise.name)}
-                           width={600}
-                           height={400}
-                           className="object-cover w-full h-full transition-transform group-hover:scale-105"
-                           data-ai-hint={exercise['data-ai-hint']}
-                         />
-                       </div>
-                       <div className="absolute top-2 right-2 z-10 flex gap-2">
-                         <Button variant="outline" size="icon" className="bg-background/70 hover:bg-background" onClick={() => handleEditClick(exercise)}>
-                           <Pencil className="h-4 w-4" />
-                           <span className="sr-only">{t('editExercise')}</span>
-                         </Button>
-                          <Button variant="destructive" size="icon" className="bg-destructive/80 hover:bg-destructive text-destructive-foreground" onClick={() => handleDeleteClick(exercise)}>
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">{t('deleteExercise')}</span>
-                          </Button>
-                       </div>
+                  <Card key={exercise.id} className="transition-all hover:shadow-lg">
+                    <CardHeader className="flex flex-row items-start justify-between pb-2">
+                      <div>
+                        <CardTitle className="font-headline text-lg">{t(exercise.name)}</CardTitle>
+                        <Badge variant="outline" className="mt-1 capitalize">{t(exercise.bodyPart.toLowerCase())}</Badge>
+                      </div>
+                      <div className="flex gap-1 -mr-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(exercise)}>
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">{t('editExercise')}</span>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteClick(exercise)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <span className="sr-only">{t('deleteExercise')}</span>
+                        </Button>
+                      </div>
                     </CardHeader>
-                    <CardContent className="p-4">
-                      <CardTitle className="font-headline text-lg">{t(exercise.name)}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{t(exercise.description)}</p>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground">{t(exercise.description)}</p>
                     </CardContent>
                   </Card>
                 ))}
