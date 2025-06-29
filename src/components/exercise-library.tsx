@@ -13,8 +13,8 @@ import { bodyParts as allBodyParts } from "@/lib/data";
 import type { Exercise } from "@/lib/types";
 
 export default function ExerciseLibrary() {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
   const { exercises } = useExercises();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -22,18 +22,18 @@ export default function ExerciseLibrary() {
   const bodyPartsWithAll = ["all", ...allBodyParts];
   
   const handleCreateClick = () => {
-    setEditingExercise(null);
-    setIsCreateDialogOpen(true);
+    setExerciseToEdit(null);
+    setIsDialogOpen(true);
   }
 
   const handleEditClick = (exercise: Exercise) => {
-    setIsCreateDialogOpen(false);
-    setEditingExercise(exercise);
+    setExerciseToEdit(exercise);
+    setIsDialogOpen(true);
   };
   
   const handleCloseDialog = () => {
-    setIsCreateDialogOpen(false);
-    setEditingExercise(null);
+    setIsDialogOpen(false);
+    setExerciseToEdit(null);
   };
 
   return (
@@ -93,7 +93,7 @@ export default function ExerciseLibrary() {
           </TabsContent>
         ))}
       </Tabs>
-      <CreateExerciseDialog isOpen={isCreateDialogOpen || !!editingExercise} onClose={handleCloseDialog} exerciseToEdit={editingExercise} />
+      <CreateExerciseDialog isOpen={isDialogOpen} onClose={handleCloseDialog} exerciseToEdit={exerciseToEdit} />
     </div>
   );
 }
