@@ -20,7 +20,7 @@ export const bodyPartEmojiMap = new Map<BodyPart, string>([
   ['Chest', '🏋️'],
   ['Back', '🧗'],
   ['Legs', '🏃'],
-  ['Shoulders', '💪'],
+  ['Shoulders', '🤷'],
   ['Arms', '💪'],
   ['Core', '🧘'],
 ]);

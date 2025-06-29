@@ -19,8 +19,8 @@ export const initialExercises: Exercise[] = [
   { id: 'ex9', name: 'lunges', bodyPart: 'Legs', description: 'lungesDescription', emoji: '🏃' },
 
   // Shoulders
-  { id: 'ex10', name: 'overheadPress', bodyPart: 'Shoulders', description: 'overheadPressDescription', emoji: '💪' },
-  { id: 'ex11', name: 'lateralRaises', bodyPart: 'Shoulders', description: 'lateralRaisesDescription', emoji: '💪' },
+  { id: 'ex10', name: 'overheadPress', bodyPart: 'Shoulders', description: 'overheadPressDescription', emoji: '🤷' },
+  { id: 'ex11', name: 'lateralRaises', bodyPart: 'Shoulders', description: 'lateralRaisesDescription', emoji: '🤷' },
 
   // Arms
   { id: 'ex12', name: 'bicepCurls', bodyPart: 'Arms', description: 'bicepCurlsDescription', emoji: '💪' },

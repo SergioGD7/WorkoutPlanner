@@ -33,13 +33,8 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
 
         if (storedExercisesJSON) {
           const storedExercises: (Exercise | Omit<Exercise, 'emoji'>)[] = JSON.parse(storedExercisesJSON);
-          // Data migration: ensure all exercises have an emoji
+          // Data migration: ensure all exercises have the correct emoji based on body part
           exercisesToLoad = storedExercises.map(ex => {
-            // Check if emoji property exists and is not empty
-            if ('emoji' in ex && ex.emoji) {
-              return ex as Exercise;
-            }
-            // If not, add it based on body part
             return {
               ...ex,
               emoji: bodyPartEmojiMap.get(ex.bodyPart as BodyPart) || '💪',
