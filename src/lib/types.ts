@@ -23,5 +23,4 @@ export interface Exercise {
   description: string;
   image: string;
   'data-ai-hint': string;
-  isCustom?: boolean;
 }

@@ -76,12 +76,10 @@ export default function ExerciseLibrary() {
                            data-ai-hint={exercise['data-ai-hint']}
                          />
                        </div>
-                       {exercise.isCustom && (
-                         <Button variant="outline" size="icon" className="absolute top-2 right-2 z-10 bg-background/70 hover:bg-background" onClick={() => handleEditClick(exercise)}>
-                           <Pencil className="h-4 w-4" />
-                           <span className="sr-only">{t('editExercise')}</span>
-                         </Button>
-                       )}
+                       <Button variant="outline" size="icon" className="absolute top-2 right-2 z-10 bg-background/70 hover:bg-background" onClick={() => handleEditClick(exercise)}>
+                         <Pencil className="h-4 w-4" />
+                         <span className="sr-only">{t('editExercise')}</span>
+                       </Button>
                     </CardHeader>
                     <CardContent className="p-4">
                       <CardTitle className="font-headline text-lg">{t(exercise.name)}</CardTitle>

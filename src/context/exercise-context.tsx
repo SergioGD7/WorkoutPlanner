@@ -8,38 +8,70 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface ExerciseContextType {
   exercises: Exercise[];
-  addExercise: (exercise: Omit<Exercise, 'id' | 'image' | 'data-ai-hint' | 'isCustom'>) => Promise<void>;
+  addExercise: (exercise: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => Promise<void>;
   updateExercise: (exercise: Exercise) => Promise<void>;
 }
 
 const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
 
 export function ExerciseProvider({ children }: { children: ReactNode }) {
-  const [initialExercises] = useState<Exercise[]>(initialExercisesData);
-  const [customExercises, setCustomExercises] = useState<Exercise[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>(initialExercisesData);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user && user.email) {
-      try {
-        const key = `custom_exercises_${user.email}`;
-        const storedExercises = localStorage.getItem(key);
-        if (storedExercises) {
-          setCustomExercises(JSON.parse(storedExercises));
-        } else {
-          setCustomExercises([]);
-        }
-      } catch (error) {
-        console.error("Failed to load custom exercises from localStorage", error);
-        setCustomExercises([]);
-      }
-    } else {
-      setCustomExercises([]);
-    }
+  const getStorageKey = useCallback(() => {
+    return user && user.email ? `exercises_${user.email}` : null;
   }, [user]);
 
-  const addExercise = useCallback(async (exerciseData: Omit<Exercise, 'id' | 'image' | 'data-ai-hint' | 'isCustom'>) => {
-    if (!user || !user.email) {
+  useEffect(() => {
+    const key = getStorageKey();
+    if (key) {
+      try {
+        const storedExercises = localStorage.getItem(key);
+        if (storedExercises) {
+          setExercises(JSON.parse(storedExercises));
+        } else {
+          // First time user for this feature, initialize their storage with the default exercises.
+          // This also handles migration from the old system.
+          const oldKey = `custom_exercises_${user.email}`;
+          const oldCustomExercisesRaw = localStorage.getItem(oldKey);
+          let combinedExercises = [...initialExercisesData];
+          if (oldCustomExercisesRaw) {
+            try {
+              const oldCustomExercises = JSON.parse(oldCustomExercisesRaw);
+              const uniqueCustom = oldCustomExercises.filter((customEx: Exercise) => !initialExercisesData.some(initEx => initEx.id === customEx.id));
+              combinedExercises = [...initialExercisesData, ...uniqueCustom];
+              localStorage.removeItem(oldKey); // Clean up old key
+            } catch {
+              // Ignore if old data is malformed
+            }
+          }
+          localStorage.setItem(key, JSON.stringify(combinedExercises));
+          setExercises(combinedExercises);
+        }
+      } catch (error) {
+        console.error("Failed to load exercises from localStorage", error);
+        setExercises(initialExercisesData); // Fallback
+      }
+    } else {
+      // No user, just use default exercises in memory
+      setExercises(initialExercisesData);
+    }
+  }, [user, getStorageKey]);
+
+  const updateStorageAndState = (updatedExercises: Exercise[]) => {
+    setExercises(updatedExercises);
+    const key = getStorageKey();
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(updatedExercises));
+    } catch (error) {
+      console.error("Failed to save exercises to localStorage", error);
+    }
+  };
+
+  const addExercise = async (exerciseData: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => {
+    const key = getStorageKey();
+    if (!key) {
       console.error("No user logged in to add exercise");
       return;
     }
@@ -49,39 +81,27 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       ...exerciseData,
       image: 'https://placehold.co/600x400.png',
       'data-ai-hint': 'custom exercise',
-      isCustom: true
     };
 
-    try {
-      const updatedExercises = [...customExercises, newExercise];
-      const key = `custom_exercises_${user.email}`;
-      localStorage.setItem(key, JSON.stringify(updatedExercises));
-      setCustomExercises(updatedExercises);
-    } catch (error) {
-      console.error("Failed to save custom exercises to localStorage", error);
-    }
-  }, [user, customExercises]);
+    const updatedExercises = [...exercises, newExercise];
+    updateStorageAndState(updatedExercises);
+  };
   
-  const updateExercise = useCallback(async (updatedExercise: Exercise) => {
-    if (!user || !user.email) {
+  const updateExercise = async (updatedExercise: Exercise) => {
+    const key = getStorageKey();
+    if (!key) {
       console.error("No user logged in to update exercise");
       return;
     }
 
-    try {
-      const updatedExercises = customExercises.map(ex => (ex.id === updatedExercise.id ? updatedExercise : ex));
-      const key = `custom_exercises_${user.email}`;
-      localStorage.setItem(key, JSON.stringify(updatedExercises));
-      setCustomExercises(updatedExercises);
-    } catch (error) {
-      console.error("Failed to update custom exercises in localStorage", error);
-    }
-  }, [customExercises, user]);
-
-  const allExercises = [...initialExercises, ...customExercises];
+    const updatedExercises = exercises.map(ex => 
+        (ex.id === updatedExercise.id ? updatedExercise : ex)
+    );
+    updateStorageAndState(updatedExercises);
+  };
 
   return (
-    <ExerciseContext.Provider value={{ exercises: allExercises, addExercise, updateExercise }}>
+    <ExerciseContext.Provider value={{ exercises, addExercise, updateExercise }}>
       {children}
     </ExerciseContext.Provider>
   );
