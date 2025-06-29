@@ -120,7 +120,7 @@ export default function ProgressTracker() {
           </CardDescription>
           <div className="pt-4">
              <Tabs defaultValue="week" onValueChange={(value) => setTimeRange(value as any)}>
-                <TabsList className="grid h-auto w-full grid-cols-3 sm:grid-cols-5">
+                <TabsList className="h-auto flex-wrap">
                     <TabsTrigger value="day">{t('today')}</TabsTrigger>
                     <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
                     <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
@@ -130,7 +130,7 @@ export default function ProgressTracker() {
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent className="h-auto min-h-[450px] sm:min-h-[550px] flex flex-col justify-center p-0 sm:p-6">
+        <CardContent className="h-auto min-h-[450px] sm:min-h-[550px] flex flex-col p-2 sm:p-6">
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
