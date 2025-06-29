@@ -34,7 +34,7 @@
   "progressTracker": "Progress Tracker",
   "volumeByBodyPart": "Volume by Body Part",
   "totalVolume": "Total Volume",
-  "noCompletedSets": "No completed workouts with weight recorded for this period yet.",
+  "noWorkoutData": "No workout data with weight recorded for this period yet.",
   "edit": "Edit",
   "done": "Done",
   "createCustomExercise": "Create Custom Exercise",

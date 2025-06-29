@@ -88,8 +88,6 @@ export default function ProgressTracker() {
 
       if (isInRange) {
         workoutExercises.forEach(workoutEx => {
-          if (!workoutEx.sets.some(s => s.completed)) return;
-          
           const exerciseDetails = exercises.find(ex => ex.id === workoutEx.exerciseId);
           if (!exerciseDetails) return;
 
@@ -104,7 +102,6 @@ export default function ProgressTracker() {
           }
 
           const exerciseVolume = workoutEx.sets
-            .filter(s => s.completed)
             .reduce((total, set) => total + (set.reps * set.weight), 0);
           
           data[bodyPart].volume += exerciseVolume;
@@ -204,7 +201,7 @@ export default function ProgressTracker() {
             </ChartContainer>
           ) : (
             <div className="flex h-[400px] flex-col items-center justify-center text-center text-muted-foreground">
-              <p className="text-lg">{t('noCompletedSets')}</p>
+              <p className="text-lg">{t('noWorkoutData')}</p>
             </div>
           )}
         </CardContent>
