@@ -10,12 +10,13 @@ interface ExerciseContextType {
   exercises: Exercise[];
   addExercise: (exercise: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => Promise<void>;
   updateExercise: (exercise: Exercise) => Promise<void>;
+  deleteExercise: (exerciseId: string) => Promise<void>;
 }
 
 const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
 
 export function ExerciseProvider({ children }: { children: ReactNode }) {
-  const [exercises, setExercises] = useState<Exercise[]>(initialExercisesData);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const { user } = useAuth();
 
   const getStorageKey = useCallback(() => {
@@ -30,23 +31,8 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
         if (storedExercises) {
           setExercises(JSON.parse(storedExercises));
         } else {
-          // First time user for this feature, initialize their storage with the default exercises.
-          // This also handles migration from the old system.
-          const oldKey = `custom_exercises_${user.email}`;
-          const oldCustomExercisesRaw = localStorage.getItem(oldKey);
-          let combinedExercises = [...initialExercisesData];
-          if (oldCustomExercisesRaw) {
-            try {
-              const oldCustomExercises = JSON.parse(oldCustomExercisesRaw);
-              const uniqueCustom = oldCustomExercises.filter((customEx: Exercise) => !initialExercisesData.some(initEx => initEx.id === customEx.id));
-              combinedExercises = [...initialExercisesData, ...uniqueCustom];
-              localStorage.removeItem(oldKey); // Clean up old key
-            } catch {
-              // Ignore if old data is malformed
-            }
-          }
-          localStorage.setItem(key, JSON.stringify(combinedExercises));
-          setExercises(combinedExercises);
+          localStorage.setItem(key, JSON.stringify(initialExercisesData));
+          setExercises(initialExercisesData);
         }
       } catch (error) {
         console.error("Failed to load exercises from localStorage", error);
@@ -100,8 +86,18 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     updateStorageAndState(updatedExercises);
   };
 
+  const deleteExercise = async (exerciseId: string) => {
+    const key = getStorageKey();
+    if (!key) {
+      console.error("No user logged in to delete exercise");
+      return;
+    }
+    const updatedExercises = exercises.filter(ex => ex.id !== exerciseId);
+    updateStorageAndState(updatedExercises);
+  };
+
   return (
-    <ExerciseContext.Provider value={{ exercises, addExercise, updateExercise }}>
+    <ExerciseContext.Provider value={{ exercises, addExercise, updateExercise, deleteExercise }}>
       {children}
     </ExerciseContext.Provider>
   );
