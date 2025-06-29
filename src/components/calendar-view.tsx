@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -14,7 +13,6 @@ import type { WorkoutLog, BodyPart } from '@/lib/types';
 import { bodyPartColorMap } from '@/lib/style-utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Loader2 } from 'lucide-react';
 
 type DailyBodyPartsMap = Map<string, BodyPart[]>;
@@ -90,10 +88,6 @@ export default function CalendarView() {
     };
   }, [selectedDate, workoutLog, allExercises, t]);
   
-  const handleDayClick = (day: Date) => {
-    setSelectedDate(day);
-  };
-
   const DayContentWithDots = useCallback((props: DayPickerDayProps) => {
     const dayKey = format(props.date, 'yyyy-MM-dd');
     const bodyPartsOnDay = dailyBodyParts.get(dayKey);
@@ -161,21 +155,14 @@ export default function CalendarView() {
           </CardHeader>
           <CardContent>
             {workoutForDay && workoutForDay.exercises.length > 0 ? (
-              <Accordion type="single" collapsible defaultValue="item-1" className="w-full">
-                <AccordionItem value="item-1">
-                  <AccordionTrigger>{t('showDetails')}</AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="space-y-2 pt-2">
-                      {workoutForDay.exercises.map(ex => (
-                        <li key={ex.exerciseId} className="flex justify-between items-center rounded-md bg-secondary/70 p-3">
-                          <span className="font-medium">{ex.exerciseName}</span>
-                          <span className="text-sm text-muted-foreground">{t('totalVolumeLifted', { volume: ex.totalVolume })}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+              <ul className="space-y-2">
+                {workoutForDay.exercises.map(ex => (
+                  <li key={ex.exerciseId} className="flex justify-between items-center rounded-md bg-secondary/70 p-3">
+                    <span className="font-medium">{ex.exerciseName}</span>
+                    <span className="text-sm text-muted-foreground">{t('totalVolumeLifted', { volume: ex.totalVolume.toLocaleString() })}</span>
+                  </li>
+                ))}
+              </ul>
             ) : (
               <p className="text-muted-foreground">{t('noWorkoutOnThisDay')}</p>
             )}
