@@ -156,7 +156,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
           <CardTitle className="font-headline text-2xl capitalize">
             {t('workoutFor', { date: getFormattedDate() })}
           </CardTitle>
-          <Button variant="ghost" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')}>
+          <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full">
             <Plus className="h-6 w-6" />
             <span className="sr-only">{t('addExercise')}</span>
           </Button>
