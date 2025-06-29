@@ -8,7 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface ExerciseContextType {
   exercises: Exercise[];
-  addExercise: (exercise: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => Promise<void>;
+  addExercise: (exercise: Omit<Exercise, 'id' | 'image' | 'data-ai-hint' | 'isCustom'>) => Promise<void>;
+  updateExercise: (exercise: Exercise) => Promise<void>;
 }
 
 const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
@@ -37,7 +38,7 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const addExercise = useCallback(async (exerciseData: Omit<Exercise, 'id' | 'image' | 'data-ai-hint'>) => {
+  const addExercise = useCallback(async (exerciseData: Omit<Exercise, 'id' | 'image' | 'data-ai-hint' | 'isCustom'>) => {
     if (!user || !user.email) {
       console.error("No user logged in to add exercise");
       return;
@@ -47,7 +48,8 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       id: uuidv4(),
       ...exerciseData,
       image: 'https://placehold.co/600x400.png',
-      'data-ai-hint': 'custom exercise'
+      'data-ai-hint': 'custom exercise',
+      isCustom: true
     };
 
     try {
@@ -59,11 +61,27 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       console.error("Failed to save custom exercises to localStorage", error);
     }
   }, [user, customExercises]);
+  
+  const updateExercise = useCallback(async (updatedExercise: Exercise) => {
+    if (!user || !user.email) {
+      console.error("No user logged in to update exercise");
+      return;
+    }
+
+    try {
+      const updatedExercises = customExercises.map(ex => (ex.id === updatedExercise.id ? updatedExercise : ex));
+      const key = `custom_exercises_${user.email}`;
+      localStorage.setItem(key, JSON.stringify(updatedExercises));
+      setCustomExercises(updatedExercises);
+    } catch (error) {
+      console.error("Failed to update custom exercises in localStorage", error);
+    }
+  }, [customExercises, user]);
 
   const allExercises = [...initialExercises, ...customExercises];
 
   return (
-    <ExerciseContext.Provider value={{ exercises: allExercises, addExercise }}>
+    <ExerciseContext.Provider value={{ exercises: allExercises, addExercise, updateExercise }}>
       {children}
     </ExerciseContext.Provider>
   );

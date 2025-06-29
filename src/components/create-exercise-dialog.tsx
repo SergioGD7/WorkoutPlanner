@@ -33,6 +33,7 @@ import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { bodyParts } from "@/lib/data";
 import type { Exercise } from "@/lib/types";
+import { useEffect } from "react";
 
 const formSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters."),
@@ -43,14 +44,18 @@ const formSchema = z.object({
 interface CreateExerciseDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  exerciseToEdit?: Exercise | null;
 }
 
 export default function CreateExerciseDialog({
   isOpen,
   onClose,
+  exerciseToEdit,
 }: CreateExerciseDialogProps) {
-  const { addExercise } = useExercises();
+  const { addExercise, updateExercise } = useExercises();
   const { t } = useLanguage();
+
+  const isEditing = !!exerciseToEdit;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,9 +66,33 @@ export default function CreateExerciseDialog({
     },
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditing && exerciseToEdit) {
+        form.reset({
+          name: exerciseToEdit.name,
+          description: exerciseToEdit.description,
+          bodyPart: exerciseToEdit.bodyPart,
+        });
+      } else {
+        form.reset({
+          name: "",
+          description: "",
+          bodyPart: "Chest",
+        });
+      }
+    }
+  }, [isOpen, isEditing, exerciseToEdit, form]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    await addExercise(values);
-    form.reset();
+    if (isEditing && exerciseToEdit) {
+      await updateExercise({
+        ...exerciseToEdit,
+        ...values,
+      });
+    } else {
+      await addExercise(values);
+    }
     onClose();
   };
 
@@ -71,7 +100,7 @@ export default function CreateExerciseDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{t("createCustomExercise")}</DialogTitle>
+          <DialogTitle>{isEditing ? t("editExercise") : t("createCustomExercise")}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -112,7 +141,7 @@ export default function CreateExerciseDialog({
                   <FormLabel>{t("bodyPart")}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -137,7 +166,7 @@ export default function CreateExerciseDialog({
                   {t("cancel")}
                 </Button>
               </DialogClose>
-              <Button type="submit">{t("createExercise")}</Button>
+              <Button type="submit">{isEditing ? t("saveChanges") : t("createExercise")}</Button>
             </DialogFooter>
           </form>
         </Form>
