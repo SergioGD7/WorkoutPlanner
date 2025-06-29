@@ -161,9 +161,9 @@ export default function CalendarView() {
               <Accordion type="multiple" className="w-full space-y-2">
                 {workoutForDay.exercises.map(ex => (
                   <AccordionItem key={ex.workoutExerciseId} value={ex.workoutExerciseId} className="rounded-md border-none bg-secondary/70">
-                    <AccordionTrigger className="flex w-full items-center justify-between rounded-md p-3 hover:no-underline">
+                    <AccordionTrigger className="flex w-full items-center rounded-md p-3 hover:no-underline">
                         <span className="font-medium text-left">{ex.exerciseName}</span>
-                        <span className="text-sm text-muted-foreground pr-2">{t('totalVolumeLifted', { volume: ex.totalVolume.toLocaleString() })}</span>
+                        <span className="ml-auto pr-2 text-sm text-muted-foreground">{t('totalVolumeLifted', { volume: ex.totalVolume.toLocaleString() })}</span>
                     </AccordionTrigger>
                     <AccordionContent className="p-3 pt-0">
                       <ul className="space-y-1 pt-2 text-sm text-muted-foreground">
