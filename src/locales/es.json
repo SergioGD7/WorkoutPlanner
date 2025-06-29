@@ -11,6 +11,7 @@
   "delete": "Eliminar",
   "deleteConfirmation": "¿Estás seguro de que quieres eliminar '{exerciseName}'?",
   "deleteWarning": "Esta acción no se puede deshacer y eliminará el ejercicio de todos los entrenamientos pasados y futuros.",
+  "deleteWorkoutExerciseConfirmation": "¿Estás seguro de que quieres eliminar '{exerciseName}' de este entrenamiento?",
   "addNewExercise": "Añadir Nuevo Ejercicio",
   "selectAnExercise": "Selecciona un ejercicio para añadir",
   "exercise": "Ejercicio",

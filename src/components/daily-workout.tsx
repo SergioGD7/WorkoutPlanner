@@ -16,6 +16,16 @@ import * as z from "zod";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const addExerciseSchema = z.object({
   exerciseId: z.string().min(1, "Please select an exercise."),
@@ -32,6 +42,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [dailyExercises, setDailyExercises] = useState<WorkoutExercise[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingWorkoutExercise, setEditingWorkoutExercise] = useState<WorkoutExercise | null>(null);
+  const [exerciseToConfirmDelete, setExerciseToConfirmDelete] = useState<WorkoutExercise | null>(null);
   const { exercises: allExercises } = useExercises();
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -97,10 +108,12 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     setEditingWorkoutExercise(workoutExercise);
   };
 
-  const handleDeleteWorkoutExercise = (workoutExerciseId: string) => {
-    const updatedDailyExercises = dailyExercises.filter(ex => ex.id !== workoutExerciseId);
+  const handleDeleteWorkoutExercise = () => {
+    if (!exerciseToConfirmDelete) return;
+    const updatedDailyExercises = dailyExercises.filter(ex => ex.id !== exerciseToConfirmDelete.id);
     setDailyExercises(updatedDailyExercises);
     updateWorkoutInStorage(updatedDailyExercises);
+    setExerciseToConfirmDelete(null);
   };
 
   const handleSaveNewExercise = (data: z.infer<typeof addExerciseSchema>) => {
@@ -160,7 +173,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                   exerciseDetails={exerciseDetails}
                   onSetToggle={handleSetCompletionChange}
                   onEdit={handleEditExerciseClick}
-                  onDelete={() => handleDeleteWorkoutExercise(workoutExercise.id)}
+                  onDelete={() => setExerciseToConfirmDelete(workoutExercise)}
                 />
               );
             })
@@ -191,6 +204,26 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         workoutExercise={editingWorkoutExercise}
         exerciseDetails={editingWorkoutExercise ? getExerciseDetails(editingWorkoutExercise.exerciseId) : undefined}
       />
+
+      <AlertDialog open={!!exerciseToConfirmDelete} onOpenChange={(isOpen) => !isOpen && setExerciseToConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteExercise')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('deleteWorkoutExerciseConfirmation', { exerciseName: exerciseToConfirmDelete ? t(getExerciseDetails(exerciseToConfirmDelete.exerciseId)?.name || '') : '' })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setExerciseToConfirmDelete(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteWorkoutExercise}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

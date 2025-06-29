@@ -11,6 +11,7 @@
   "delete": "Delete",
   "deleteConfirmation": "Are you sure you want to delete '{exerciseName}'?",
   "deleteWarning": "This action cannot be undone and will remove the exercise from all past and future workouts.",
+  "deleteWorkoutExerciseConfirmation": "Are you sure you want to remove '{exerciseName}' from this workout?",
   "addNewExercise": "Add New Exercise",
   "selectAnExercise": "Select an exercise to add",
   "exercise": "Exercise",
