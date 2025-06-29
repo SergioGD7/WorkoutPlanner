@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
@@ -12,6 +12,7 @@ import { useExercises } from '@/context/exercise-context';
 import { useAuth } from '@/context/auth-context';
 import { Loader2 } from "lucide-react";
 import { bodyPartColorMap } from '@/lib/style-utils';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
 
@@ -111,30 +112,33 @@ export default function ProgressTracker() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
+      <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">{t('volumeByBodyPart')}</CardTitle>
+          <CardTitle className="font-headline text-xl sm:text-2xl">{t('volumeByBodyPart')}</CardTitle>
           <CardDescription>
             {t('totalVolume')} ({getTimeRangeLabel()})
           </CardDescription>
           <div className="pt-4">
-             <Tabs defaultValue="week" onValueChange={(value) => setTimeRange(value as any)} className="w-full">
-                <TabsList>
-                    <TabsTrigger value="day">{t('today')}</TabsTrigger>
-                    <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
-                    <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
-                    <TabsTrigger value="year">{t('thisYear')}</TabsTrigger>
-                    <TabsTrigger value="all">{t('allTime')}</TabsTrigger>
-                </TabsList>
+             <Tabs defaultValue="week" onValueChange={(value) => setTimeRange(value as any)}>
+                <ScrollArea className="w-full whitespace-nowrap">
+                  <TabsList className="inline-flex">
+                      <TabsTrigger value="day">{t('today')}</TabsTrigger>
+                      <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
+                      <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
+                      <TabsTrigger value="year">{t('thisYear')}</TabsTrigger>
+                      <TabsTrigger value="all">{t('allTime')}</TabsTrigger>
+                  </TabsList>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent className="h-auto min-h-[550px] flex flex-col items-center justify-center p-4 sm:p-6">
+        <CardContent className="h-auto min-h-[450px] sm:min-h-[550px] flex flex-col items-center justify-center p-2 sm:p-6">
           {isLoading ? (
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           ) : chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[450px] sm:h-[550px] w-full max-w-2xl mx-auto">
+            <ChartContainer config={chartConfig} className="h-[400px] sm:h-[500px] w-full">
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
@@ -171,13 +175,13 @@ export default function ProgressTracker() {
                     display: "flex",
                     flexWrap: "wrap",
                     justifyContent: "center",
-                    gap: "16px",
+                    gap: "12px",
                     width: '100%',
                   }}
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <span className="p-1 text-sm sm:text-base align-middle">
+                      <span className="p-1 text-xs sm:text-sm align-middle">
                         {value} ({payload.volume.toLocaleString()} kg)
                       </span>
                     );
