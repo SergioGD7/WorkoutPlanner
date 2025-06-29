@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { WorkoutExercise, Exercise } from "@/lib/types";
 import { useLanguage } from "@/context/language-context";
 
@@ -14,9 +14,10 @@ interface WorkoutCardProps {
   exerciseDetails: Exercise;
   onSetToggle: (exerciseId: string, setIndex: number, checked: boolean) => void;
   onEdit: (workoutExercise: WorkoutExercise) => void;
+  onDelete: () => void;
 }
 
-export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetToggle, onEdit }: WorkoutCardProps) {
+export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetToggle, onEdit, onDelete }: WorkoutCardProps) {
   const { t } = useLanguage();
   
   const handleEdit = () => {
@@ -42,10 +43,16 @@ export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetTog
                 <CardTitle className="font-headline text-xl">{t(exerciseDetails.name)}</CardTitle>
                 <p className="text-sm text-muted-foreground">{t(exerciseDetails.bodyPart.toLowerCase())}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleEdit}>
-              <Pencil className="h-4 w-4" />
-              <span className="sr-only">{t('editExercise')}</span>
-            </Button>
+            <div className="flex items-center">
+                <Button variant="ghost" size="icon" onClick={handleEdit}>
+                  <Pencil className="h-4 w-4" />
+                  <span className="sr-only">{t('editExercise')}</span>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={onDelete}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <span className="sr-only">{t('deleteExercise')}</span>
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">

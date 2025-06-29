@@ -97,6 +97,12 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     setEditingWorkoutExercise(workoutExercise);
   };
 
+  const handleDeleteWorkoutExercise = (workoutExerciseId: string) => {
+    const updatedDailyExercises = dailyExercises.filter(ex => ex.id !== workoutExerciseId);
+    setDailyExercises(updatedDailyExercises);
+    updateWorkoutInStorage(updatedDailyExercises);
+  };
+
   const handleSaveNewExercise = (data: z.infer<typeof addExerciseSchema>) => {
     const newSets: Set[] = Array.from({ length: data.sets }, () => ({
       reps: data.reps,
@@ -154,6 +160,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                   exerciseDetails={exerciseDetails}
                   onSetToggle={handleSetCompletionChange}
                   onEdit={handleEditExerciseClick}
+                  onDelete={() => handleDeleteWorkoutExercise(workoutExercise.id)}
                 />
               );
             })
