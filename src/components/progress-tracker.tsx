@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
@@ -130,13 +131,13 @@ export default function ProgressTracker() {
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent className="h-auto min-h-[400px] px-0 pt-0 sm:p-6 sm:pt-0">
+        <CardContent className="relative h-[450px] sm:h-[550px]">
           {isLoading ? (
-            <div className="flex h-full min-h-[350px] items-center justify-center">
+            <div className="flex h-full items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[350px] sm:h-[500px] w-full">
+            <ChartContainer config={chartConfig} className="absolute inset-0">
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
@@ -188,7 +189,7 @@ export default function ProgressTracker() {
               </RadialBarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-full min-h-[350px] flex-col items-center justify-center text-center text-muted-foreground">
+            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
               <p className="text-lg">{t('noWorkoutDataForVolume')}</p>
             </div>
           )}
