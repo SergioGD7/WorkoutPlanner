@@ -113,14 +113,14 @@ export default function ProgressTracker() {
     <div>
       <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle className="font-headline text-xl sm:text-2xl">{t('volumeByBodyPart')}</CardTitle>
           <CardDescription>
             {t('totalVolume')} ({getTimeRangeLabel()})
           </CardDescription>
           <div className="pt-4">
              <Tabs defaultValue="week" onValueChange={(value) => setTimeRange(value as any)}>
-                <TabsList className="h-auto flex-wrap">
+                <TabsList className="grid h-auto w-full grid-cols-3 gap-1 sm:grid-cols-5">
                     <TabsTrigger value="day">{t('today')}</TabsTrigger>
                     <TabsTrigger value="week">{t('thisWeek')}</TabsTrigger>
                     <TabsTrigger value="month">{t('thisMonth')}</TabsTrigger>
@@ -130,13 +130,13 @@ export default function ProgressTracker() {
             </Tabs>
           </div>
         </CardHeader>
-        <CardContent className="h-auto min-h-[450px] sm:min-h-[550px] flex flex-col p-2 sm:p-6">
+        <CardContent className="h-auto min-h-[400px] p-2 pt-0 sm:p-6 sm:pt-0">
           {isLoading ? (
-            <div className="flex justify-center items-center h-full">
+            <div className="flex h-full min-h-[350px] items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : chartData.length > 0 ? (
-            <ChartContainer config={chartConfig} className="h-[400px] sm:h-[500px] w-full">
+            <ChartContainer config={chartConfig} className="h-[350px] sm:h-[500px] w-full">
               <RadialBarChart 
                 data={chartData} 
                 innerRadius="20%" 
@@ -173,13 +173,13 @@ export default function ProgressTracker() {
                     display: "flex",
                     flexWrap: "wrap",
                     justifyContent: "center",
-                    gap: "12px",
+                    gap: "8px",
                     width: '100%',
                   }}
                   formatter={(value, entry: any) => {
                     const { payload } = entry;
                     return (
-                      <span className="p-1 text-xs sm:text-sm align-middle">
+                      <span className="p-1 text-xs align-middle">
                         {value} ({payload.volume.toLocaleString()} kg)
                       </span>
                     );
@@ -188,7 +188,7 @@ export default function ProgressTracker() {
               </RadialBarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
+            <div className="flex h-full min-h-[350px] flex-col items-center justify-center text-center text-muted-foreground">
               <p className="text-lg">{t('noWorkoutDataForVolume')}</p>
             </div>
           )}
