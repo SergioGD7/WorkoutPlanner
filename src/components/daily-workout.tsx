@@ -5,8 +5,8 @@ import { format } from "date-fns";
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Plus, Loader2 } from "lucide-react";
 import type { WorkoutExercise, Exercise, Set, WorkoutLog } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
 import AddExerciseDialog from "@/components/add-exercise-dialog";
@@ -152,10 +152,14 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="font-headline text-2xl capitalize">
             {t('workoutFor', { date: getFormattedDate() })}
           </CardTitle>
+          <Button variant="ghost" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')}>
+            <Plus className="h-6 w-6" />
+            <span className="sr-only">{t('addExercise')}</span>
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading ? (
@@ -184,11 +188,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
             </div>
           )}
         </CardContent>
-        <CardFooter>
-          <Button variant="outline" className="w-full" onClick={handleAddExerciseClick}>
-              <PlusCircle className="mr-2 h-4 w-4" /> {t('addExercise')}
-          </Button>
-        </CardFooter>
       </Card>
 
       <AddExerciseDialog 
