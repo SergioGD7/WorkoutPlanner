@@ -102,5 +102,7 @@
   "pasteDay": "Paste Day",
   "pasteWorkout": "Paste Workout",
   "pasteWorkoutConfirmation": "This day already has a workout. Do you want to replace it with the copied workout?",
-  "pasteAndReplace": "Paste and Replace"
+  "pasteAndReplace": "Paste and Replace",
+  "exportToExcel": "Export to Excel",
+  "export": "Export"
 }

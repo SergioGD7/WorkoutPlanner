@@ -1,17 +1,22 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
+import type { DateRange } from 'react-day-picker';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid } from 'date-fns';
-import type { WorkoutLog } from '@/lib/types';
+import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid, format, eachDayOfInterval, isWithinInterval, startOfDay } from 'date-fns';
+import type { WorkoutLog, Exercise, BodyPart, Set } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
 import { useAuth } from '@/context/auth-context';
-import { Loader2 } from "lucide-react";
+import { Loader2, FileSpreadsheet } from "lucide-react";
 import { bodyPartColorMap } from '@/lib/style-utils';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import * as xlsx from 'xlsx';
 
 const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
 
@@ -19,6 +24,8 @@ export default function ProgressTracker() {
   const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('week');
+  const [exportDateRange, setExportDateRange] = useState<DateRange | undefined>();
+
   const { exercises } = useExercises();
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -109,9 +116,86 @@ export default function ProgressTracker() {
     }
   }
 
+  const handleExport = () => {
+    if (!exportDateRange || !exportDateRange.from || !exportDateRange.to) {
+        return;
+    }
+
+    const exportData: {
+        'Date': string;
+        'Exercise': string;
+        'Body Part': string;
+        'Set': number;
+        'Reps': number;
+        'Weight (kg)': number;
+        'Volume (kg)': number;
+    }[] = [];
+
+    const datesInRange = eachDayOfInterval({
+        start: startOfDay(exportDateRange.from),
+        end: startOfDay(exportDateRange.to),
+    });
+
+    datesInRange.forEach(date => {
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const dailyLog = workoutLog[dateKey];
+        if (dailyLog) {
+            dailyLog.forEach(workoutExercise => {
+                const exerciseDetails = exercises.find(ex => ex.id === workoutExercise.exerciseId);
+                if (exerciseDetails) {
+                    workoutExercise.sets.forEach((set, index) => {
+                        exportData.push({
+                            'Date': dateKey,
+                            'Exercise': t(exerciseDetails.name),
+                            'Body Part': t(exerciseDetails.bodyPart.toLowerCase()),
+                            'Set': index + 1,
+                            'Reps': set.reps,
+                            'Weight (kg)': set.weight,
+                            'Volume (kg)': set.reps * set.weight,
+                        });
+                    });
+                }
+            });
+        }
+    });
+
+    const worksheet = xlsx.utils.json_to_sheet(exportData);
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, 'Workout Logs');
+
+    const from = format(exportDateRange.from, 'yyyy-MM-dd');
+    const to = format(exportDateRange.to, 'yyyy-MM-dd');
+    xlsx.writeFile(workbook, `workout_logs_${from}_to_${to}.xlsx`);
+  };
+
   return (
     <div>
-      <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-4 font-headline">{t('progressTracker')}</h2>
+        <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">{t('progressTracker')}</h2>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon">
+                        <FileSpreadsheet className="h-5 w-5" />
+                        <span className="sr-only">{t('exportToExcel')}</span>
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={new Date()}
+                        selected={exportDateRange}
+                        onSelect={setExportDateRange}
+                        numberOfMonths={2}
+                    />
+                    <div className="p-4 pt-0 text-right">
+                       <Button onClick={handleExport} disabled={!exportDateRange || !exportDateRange.from || !exportDateRange.to}>
+                         {t('export')}
+                       </Button>
+                    </div>
+                </PopoverContent>
+            </Popover>
+        </div>
       <Card>
         <CardHeader className="p-4 sm:p-6">
           <CardTitle className="font-headline text-xl sm:text-2xl">{t('volumeByBodyPart')}</CardTitle>

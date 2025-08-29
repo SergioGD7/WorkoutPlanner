@@ -102,5 +102,7 @@
   "pasteDay": "Pegar Día",
   "pasteWorkout": "Pegar Entrenamiento",
   "pasteWorkoutConfirmation": "Este día ya tiene un entrenamiento. ¿Quieres reemplazarlo con el entrenamiento copiado?",
-  "pasteAndReplace": "Pegar y Reemplazar"
+  "pasteAndReplace": "Pegar y Reemplazar",
+  "exportToExcel": "Exportar a Excel",
+  "export": "Exportar"
 }
