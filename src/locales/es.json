@@ -97,5 +97,10 @@
   "workoutDetailsFor": "Detalles del Entrenamiento para el {date}",
   "totalVolumeLifted": "Volumen Total: {volume} kg",
   "showDetails": "Mostrar Detalles",
-  "noWorkoutOnThisDay": "No se registró entrenamiento para este día."
+  "noWorkoutOnThisDay": "No se registró entrenamiento para este día.",
+  "copyDay": "Copiar Día",
+  "pasteDay": "Pegar Día",
+  "pasteWorkout": "Pegar Entrenamiento",
+  "pasteWorkoutConfirmation": "Este día ya tiene un entrenamiento. ¿Quieres reemplazarlo con el entrenamiento copiado?",
+  "pasteAndReplace": "Pegar y Reemplazar"
 }

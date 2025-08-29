@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Copy, CopyCheck } from "lucide-react";
 import type { WorkoutExercise, Exercise, Set, WorkoutLog } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
 import AddExerciseDialog from "@/components/add-exercise-dialog";
@@ -16,6 +16,7 @@ import * as z from "zod";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
+import { useWorkout } from "@/context/workout-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,10 +44,13 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingWorkoutExercise, setEditingWorkoutExercise] = useState<WorkoutExercise | null>(null);
   const [exerciseToConfirmDelete, setExerciseToConfirmDelete] = useState<WorkoutExercise | null>(null);
+  const [showPasteConfirm, setShowPasteConfirm] = useState(false);
+
   const { exercises: allExercises } = useExercises();
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const { copiedWorkout, setCopiedWorkout } = useWorkout();
 
   const formattedDate = format(date, "yyyy-MM-dd");
   const WORKOUT_LOG_KEY = user && user.email ? `workout_logs_${user.email}` : null;
@@ -143,6 +147,31 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     updateWorkoutInStorage(updatedDailyExercises);
     setEditingWorkoutExercise(null);
   };
+
+  const handleCopyDay = () => {
+    // Reset completion status when copying
+    const workoutToCopy = dailyExercises.map(ex => ({
+      ...ex,
+      id: uuidv4(), // Generate new unique ID for the workout exercise itself
+      sets: ex.sets.map(set => ({ ...set, completed: false }))
+    }));
+    setCopiedWorkout(workoutToCopy);
+  }
+
+  const handlePasteDay = () => {
+    if (dailyExercises.length > 0) {
+      setShowPasteConfirm(true);
+    } else {
+      executePaste();
+    }
+  }
+
+  const executePaste = () => {
+    if (!copiedWorkout) return;
+    setDailyExercises(copiedWorkout);
+    updateWorkoutInStorage(copiedWorkout);
+    setShowPasteConfirm(false);
+  }
   
   const getFormattedDate = () => {
     const locale = language === 'es' ? es : enUS;
@@ -156,10 +185,22 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
           <CardTitle className="font-headline text-2xl capitalize">
             {t('workoutFor', { date: getFormattedDate() })}
           </CardTitle>
-          <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full">
-            <Plus className="h-6 w-6" />
-            <span className="sr-only">{t('addExercise')}</span>
-          </Button>
+          <div className="flex items-center gap-1">
+             {dailyExercises.length > 0 && (
+                <Button variant="outline" size="icon" onClick={handleCopyDay} aria-label={t('copyDay')}>
+                    <Copy className="h-5 w-5" />
+                </Button>
+             )}
+             {copiedWorkout && (
+                <Button variant="outline" size="icon" onClick={handlePasteDay} aria-label={t('pasteDay')}>
+                    <CopyCheck className="h-5 w-5" />
+                </Button>
+             )}
+            <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full">
+              <Plus className="h-6 w-6" />
+              <span className="sr-only">{t('addExercise')}</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading ? (
@@ -219,6 +260,23 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {t('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showPasteConfirm} onOpenChange={setShowPasteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('pasteWorkout')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('pasteWorkoutConfirmation')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowPasteConfirm(false)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={executePaste}>
+              {t('pasteAndReplace')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

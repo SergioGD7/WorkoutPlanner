@@ -5,6 +5,7 @@ import { LanguageProvider } from '@/context/language-context';
 import { ExerciseProvider } from '@/context/exercise-context';
 import { Providers } from '@/components/providers';
 import { AuthProvider } from '@/context/auth-context';
+import { WorkoutProvider } from '@/context/workout-context';
 
 export const metadata: Metadata = {
   title: 'Workout Planner',
@@ -28,8 +29,10 @@ export default function RootLayout({
           <AuthProvider>
             <LanguageProvider>
               <ExerciseProvider>
-                {children}
-                <Toaster />
+                <WorkoutProvider>
+                  {children}
+                  <Toaster />
+                </WorkoutProvider>
               </ExerciseProvider>
             </LanguageProvider>
           </AuthProvider>
