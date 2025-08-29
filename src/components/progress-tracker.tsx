@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ChartContainer } from "@/components/ui/chart";
 import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid, format, eachDayOfInterval, isWithinInterval, startOfDay } from 'date-fns';
-import type { WorkoutLog, Exercise, BodyPart, Set } from '@/lib/types';
+import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid, format, eachDayOfInterval, startOfDay } from 'date-fns';
+import type { WorkoutLog } from '@/lib/types';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
 import { useAuth } from '@/context/auth-context';
@@ -121,15 +121,17 @@ export default function ProgressTracker() {
         return;
     }
 
-    const exportData: {
-        'Date': string;
-        'Exercise': string;
-        'Body Part': string;
-        'Set': number;
-        'Reps': number;
-        'Weight (kg)': number;
-        'Volume (kg)': number;
-    }[] = [];
+    const exportData: { [key: string]: string | number }[] = [];
+    
+    const headers = {
+        date: t('date'),
+        exercise: t('exercise'),
+        bodyPart: t('bodyPart'),
+        set: t('set'),
+        reps: t('reps'),
+        weight: t('weightKg'),
+        volume: t('totalVolume'),
+    };
 
     const datesInRange = eachDayOfInterval({
         start: startOfDay(exportDateRange.from),
@@ -144,28 +146,33 @@ export default function ProgressTracker() {
                 const exerciseDetails = exercises.find(ex => ex.id === workoutExercise.exerciseId);
                 if (exerciseDetails) {
                     workoutExercise.sets.forEach((set, index) => {
-                        exportData.push({
-                            'Date': dateKey,
-                            'Exercise': t(exerciseDetails.name),
-                            'Body Part': t(exerciseDetails.bodyPart.toLowerCase()),
-                            'Set': index + 1,
-                            'Reps': set.reps,
-                            'Weight (kg)': set.weight,
-                            'Volume (kg)': set.reps * set.weight,
-                        });
+                        const row: { [key: string]: string | number } = {};
+                        row[headers.date] = dateKey;
+                        row[headers.exercise] = t(exerciseDetails.name);
+                        row[headers.bodyPart] = t(exerciseDetails.bodyPart.toLowerCase());
+                        row[headers.set] = index + 1;
+                        row[headers.reps] = set.reps;
+                        row[headers.weight] = set.weight;
+                        row[headers.volume] = set.reps * set.weight;
+                        exportData.push(row);
                     });
                 }
             });
         }
     });
+    
+    if (exportData.length === 0) {
+        alert(t('noDataToExport'));
+        return;
+    }
 
     const worksheet = xlsx.utils.json_to_sheet(exportData);
     const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, 'Workout Logs');
+    xlsx.utils.book_append_sheet(workbook, worksheet, t('workoutLogs'));
 
     const from = format(exportDateRange.from, 'yyyy-MM-dd');
     const to = format(exportDateRange.to, 'yyyy-MM-dd');
-    xlsx.writeFile(workbook, `workout_logs_${from}_to_${to}.xlsx`);
+    xlsx.writeFile(workbook, `${t('workoutLogs')}_${from}_${to}.xlsx`);
   };
 
   return (
@@ -186,7 +193,10 @@ export default function ProgressTracker() {
                         defaultMonth={new Date()}
                         selected={exportDateRange}
                         onSelect={setExportDateRange}
-                        numberOfMonths={2}
+                        numberOfMonths={1}
+                        classNames={{
+                          day_today: 'text-green-600 font-bold',
+                        }}
                     />
                     <div className="p-4 pt-0 text-right">
                        <Button onClick={handleExport} disabled={!exportDateRange || !exportDateRange.from || !exportDateRange.to}>

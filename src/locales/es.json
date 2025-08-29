@@ -104,5 +104,8 @@
   "pasteWorkoutConfirmation": "Este día ya tiene un entrenamiento. ¿Quieres reemplazarlo con el entrenamiento copiado?",
   "pasteAndReplace": "Pegar y Reemplazar",
   "exportToExcel": "Exportar a Excel",
-  "export": "Exportar"
+  "export": "Exportar",
+  "workoutLogs": "Registros de Entrenamiento",
+  "date": "Fecha",
+  "noDataToExport": "No se encontraron datos para el rango de fechas seleccionado."
 }
