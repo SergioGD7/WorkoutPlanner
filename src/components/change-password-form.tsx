@@ -12,13 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function ChangePasswordForm() {
   const { t } = useLanguage();
   const { changePassword } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const formSchema = z.object({
     currentPassword: z.string().min(1, { message: t('fieldRequired') }),
@@ -87,9 +88,15 @@ export default function ChangePasswordForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('currentPassword')}</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} disabled={isSubmitting} />
-                  </FormControl>
+                   <div className="relative">
+                      <FormControl>
+                        <Input type={showPassword ? "text" : "password"} {...field} disabled={isSubmitting} />
+                      </FormControl>
+                      <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full px-3" onClick={() => setShowPassword(!showPassword)} disabled={isSubmitting}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                      </Button>
+                    </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -100,9 +107,15 @@ export default function ChangePasswordForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('newPassword')}</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} disabled={isSubmitting} />
-                  </FormControl>
+                  <div className="relative">
+                      <FormControl>
+                        <Input type={showPassword ? "text" : "password"} {...field} disabled={isSubmitting} />
+                      </FormControl>
+                      <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full px-3" onClick={() => setShowPassword(!showPassword)} disabled={isSubmitting}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                      </Button>
+                    </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -113,9 +126,15 @@ export default function ChangePasswordForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('confirmNewPassword')}</FormLabel>
-                  <FormControl>
-                    <Input type="password" {...field} disabled={isSubmitting} />
-                  </FormControl>
+                  <div className="relative">
+                      <FormControl>
+                        <Input type={showPassword ? "text" : "password"} {...field} disabled={isSubmitting} />
+                      </FormControl>
+                      <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full px-3" onClick={() => setShowPassword(!showPassword)} disabled={isSubmitting}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                      </Button>
+                    </div>
                   <FormMessage />
                 </FormItem>
               )}
