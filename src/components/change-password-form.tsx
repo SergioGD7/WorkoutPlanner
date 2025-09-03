@@ -42,6 +42,7 @@ export default function ChangePasswordForm() {
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
+    form.clearErrors();
     const result = await changePassword(values.currentPassword, values.newPassword);
     
     if (result.success) {
@@ -51,11 +52,18 @@ export default function ChangePasswordForm() {
       });
       form.reset();
     } else {
-      toast({
-        variant: 'destructive',
-        title: t('errorChangingPassword'),
-        description: t(result.messageKey || 'unknownError'),
-      });
+      if (result.messageKey === 'incorrectCurrentPassword') {
+        form.setError('currentPassword', {
+          type: 'manual',
+          message: t('incorrectCurrentPassword'),
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: t('errorChangingPassword'),
+          description: t(result.messageKey || 'unknownError'),
+        });
+      }
     }
 
     setIsSubmitting(false);

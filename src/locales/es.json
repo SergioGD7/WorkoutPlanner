@@ -1,3 +1,4 @@
+
 {
   "dashboard": "Panel",
   "exerciseLibrary": "Biblioteca de Ejercicios",
@@ -107,6 +108,7 @@
   "loading": "Cargando...",
   "unknownError": "Ocurrió un error desconocido.",
   "userExistsPasswordIncorrect": "Correo electrónico o contraseña incorrectos. Por favor, inténtalo de nuevo.",
+  "incorrectCurrentPassword": "La contraseña actual es incorrecta.",
   "emailAlreadyInUse": "Ya existe una cuenta con este correo electrónico.",
   "workoutDetailsFor": "Detalles del Entrenamiento para el {date}",
   "totalVolumeLifted": "Volumen Total: {volume} kg",
@@ -115,7 +117,7 @@
   "copyDay": "Copiar Día",
   "pasteDay": "Pegar Día",
   "pasteWorkout": "Pegar Entrenamiento",
-  "pasteWorkoutConfirmation": "Este día ya tiene un entrenamiento. ¿Quieres reemplazarlo con el entrenamiento copiado?",
+  "pasteWorkoutConfirmation": "¿Este día ya tiene un entrenamiento. Quieres reemplazarlo con el entrenamiento copiado?",
   "pasteAndReplace": "Pegar y Reemplazar",
   "exportToExcel": "Exportar a Excel",
   "export": "Exportar",

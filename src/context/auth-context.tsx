@@ -1,3 +1,4 @@
+
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -33,13 +34,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const auth = getAuth(app);
 
-const formatFirebaseError = (errorCode: string): string => {
+const formatFirebaseError = (errorCode: string, context?: 'login' | 'changePassword'): string => {
   switch (errorCode) {
     case 'auth/invalid-email':
       return 'invalidEmail';
+    case 'auth/invalid-credential':
+        if (context === 'changePassword') {
+            return 'incorrectCurrentPassword';
+        }
+        return 'userExistsPasswordIncorrect';
     case 'auth/user-not-found':
     case 'auth/wrong-password':
-    case 'auth/invalid-credential':
       return 'userExistsPasswordIncorrect';
     case 'auth/email-already-in-use':
       return 'emailAlreadyInUse';
@@ -76,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithEmailAndPassword(auth, email, password);
       return { success: true };
     } catch (error: any) {
-      return { success: false, messageKey: formatFirebaseError(error.code) };
+      return { success: false, messageKey: formatFirebaseError(error.code, 'login') };
     }
   }, []);
 
@@ -110,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updatePassword(currentUser, newPass);
       return { success: true };
     } catch (error: any) {
-      return { success: false, messageKey: formatFirebaseError(error.code) };
+      return { success: false, messageKey: formatFirebaseError(error.code, 'changePassword') };
     }
   }, []);
 
