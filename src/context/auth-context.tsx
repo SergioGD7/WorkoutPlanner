@@ -7,6 +7,9 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   type User as FirebaseUser 
 } from 'firebase/auth';
 import { app } from '@/lib/firebase'; // Ensure firebase is initialized
@@ -23,6 +26,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; messageKey?: string }>;
   signUp: (email: string, password: string) => Promise<{ success: boolean; messageKey?: string }>;
   logout: () => void;
+  changePassword: (currentPass: string, newPass: string) => Promise<{ success: boolean, messageKey?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -93,7 +97,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = { user, loading, login, signUp, logout };
+  const changePassword = useCallback(async (currentPass: string, newPass: string): Promise<{ success: boolean, messageKey?: string }> => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      return { success: false, messageKey: 'unknownError' };
+    }
+
+    const credential = EmailAuthProvider.credential(currentUser.email, currentPass);
+
+    try {
+      await reauthenticateWithCredential(currentUser, credential);
+      await updatePassword(currentUser, newPass);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, messageKey: formatFirebaseError(error.code) };
+    }
+  }, []);
+
+  const value = { user, loading, login, signUp, logout, changePassword };
   
   if (loading) {
     return (
