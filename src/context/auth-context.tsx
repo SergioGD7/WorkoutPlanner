@@ -14,7 +14,7 @@ import {
   type User as FirebaseUser 
 } from 'firebase/auth';
 import { app, db } from '@/lib/firebase';
-import { doc, getDoc, writeBatch } from "firebase/firestore";
+import { doc, getDoc, setDoc, writeBatch, collection } from "firebase/firestore";
 import { Dumbbell } from 'lucide-react';
 import type { WorkoutLog, Exercise } from '@/lib/types';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
@@ -62,94 +62,65 @@ const formatFirebaseError = (errorCode: string, context?: 'login' | 'changePassw
 }
 
 async function migrateLocalDataToFirestore(userId: string, email: string) {
-  console.log(`Starting migration process for user ${email}...`);
+  console.log(`Checking for local data for user ${email}...`);
   const localExercisesKey = `exercises_${email}`;
   const localLogsKey = `workout_logs_${email}`;
   
   const storedExercisesJSON = localStorage.getItem(localExercisesKey);
   const storedLogsJSON = localStorage.getItem(localLogsKey);
-
-  // If there's no local data, we don't need to check Firestore.
-  // We can just populate with initial exercises if Firestore is also empty.
-  if (!storedExercisesJSON && !storedLogsJSON) {
-    const exercisesCollectionRef = doc(db, `users/${userId}/exercises`, initialExercisesData[0].id);
-    const exercisesDocSnap = await getDoc(exercisesCollectionRef);
-    if (!exercisesDocSnap.exists()) {
-        console.log("No local data and no Firestore data. Populating with initial exercises.");
-        const batch = writeBatch(db);
-        initialExercisesData.forEach(exercise => {
-            const docRef = doc(db, `users/${userId}/exercises`, exercise.id);
-            batch.set(docRef, exercise);
-        });
-        await batch.commit();
-        console.log("Initial exercises populated in Firestore.");
-    } else {
-        console.log("No local data, and Firestore data already exists. No action needed.")
-    }
-    return;
-  }
-  
-  console.log("Local data found. Proceeding with migration to Firestore.");
   const batch = writeBatch(db);
 
-  // Migrate exercises from local storage
-  if (storedExercisesJSON) {
-    const localExercises: (Exercise | Omit<Exercise, 'emoji'>)[] = JSON.parse(storedExercisesJSON);
-    const exercisesToSet = new Map<string, Exercise>();
+  let hasLocalData = false;
 
-    // Add local exercises, ensuring they have an emoji and a valid ID
+  // Migrate exercises from local storage if they exist
+  if (storedExercisesJSON) {
+    hasLocalData = true;
+    console.log("Local exercises found. Preparing for migration.");
+    const localExercises: (Exercise | Omit<Exercise, 'emoji'>)[] = JSON.parse(storedExercisesJSON);
+    
     localExercises.forEach(ex => {
-        const exerciseWithEmoji = {
-            ...ex,
-            emoji: bodyPartEmojiMap.get(ex.bodyPart) || '💪',
-        } as Exercise;
-        if (!exerciseWithEmoji.id || initialExercisesData.some(initEx => initEx.id === exerciseWithEmoji.id)) {
-            exerciseWithEmoji.id = uuidv4();
-        }
-        exercisesToSet.set(exerciseWithEmoji.id, exerciseWithEmoji);
+      const exerciseWithEmoji = {
+        ...ex,
+        id: ex.id || uuidv4(),
+        emoji: bodyPartEmojiMap.get(ex.bodyPart) || '💪',
+      } as Exercise;
+      const docRef = doc(db, `users/${userId}/exercises`, exerciseWithEmoji.id);
+      batch.set(docRef, exerciseWithEmoji);
     });
-    
-    // Ensure all initial exercises are present if they weren't in local data
-    initialExercisesData.forEach(initialEx => {
-        if (!Array.from(exercisesToSet.values()).some(localEx => localEx.name === initialEx.name)) {
-            exercisesToSet.set(initialEx.id, initialEx);
-        }
-    });
-    
-    console.log(`Migrating ${exercisesToSet.size} exercises.`);
-    exercisesToSet.forEach(ex => {
-      const docRef = doc(db, `users/${userId}/exercises`, ex.id);
-      batch.set(docRef, ex);
-    });
-  } else {
-      // If no local exercises, still populate with initial ones
-      console.log("No local exercises found. Populating with initial exercises.");
-      initialExercisesData.forEach(exercise => {
-          const docRef = doc(db, `users/${userId}/exercises`, exercise.id);
-          batch.set(docRef, exercise);
-      });
   }
 
-  // Migrate workout logs from local storage
+  // Migrate workout logs from local storage if they exist
   if (storedLogsJSON) {
-    console.log("Migrating workout logs.");
+    hasLocalData = true;
+    console.log("Local workout logs found. Preparing for migration.");
     const localLogs: WorkoutLog = JSON.parse(storedLogsJSON);
     const workoutLogDocRef = doc(db, `users/${userId}/workout_logs/all`);
     batch.set(workoutLogDocRef, localLogs);
   }
 
+  // If no local data was found, populate with initial exercises
+  if (!hasLocalData) {
+    console.log("No local data found. Populating with initial exercises for new user.");
+    initialExercisesData.forEach(exercise => {
+        const docRef = doc(db, `users/${userId}/exercises`, exercise.id);
+        batch.set(docRef, exercise);
+    });
+  }
+
   try {
     await batch.commit();
-    console.log("Migration from localStorage to Firestore completed successfully.");
-
-    // Clean up local storage after successful migration
-    localStorage.removeItem(localExercisesKey);
-    localStorage.removeItem(localLogsKey);
-    console.log("Local storage data cleaned up.");
+    if(hasLocalData) {
+      console.log("Migration from localStorage to Firestore completed successfully.");
+    } else {
+      console.log("Initial exercises populated in Firestore successfully.");
+    }
+    // IMPORTANT: Local storage data is NOT cleaned up automatically to prevent data loss.
+    // The user should verify data is synced before clearing browser data manually.
   } catch (error) {
-    console.error("Error committing migration batch to Firestore:", error);
+    console.error("Error committing batch to Firestore:", error);
   }
 }
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LoggedInUser | null>(null);
@@ -174,7 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await migrateLocalDataToFirestore(userCredential.user.uid, email);
+      // Check if user document/subcollections exist to prevent re-migration
+      const userDocRef = doc(db, `users/${userCredential.user.uid}/workout_logs/all`);
+      const docSnap = await getDoc(userDocRef);
+      if (!docSnap.exists()) {
+        await migrateLocalDataToFirestore(userCredential.user.uid, email);
+      }
       return { success: true };
     } catch (error: any) {
       return { success: false, messageKey: formatFirebaseError(error.code, 'login') };
