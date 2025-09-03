@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -77,28 +78,15 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         if (docSnap.exists()) {
             setWorkoutLog(docSnap.data() as WorkoutLog);
         } else {
-            console.log("No workout log found, checking localStorage for migration.");
-            // Migration logic
-            const localLogKey = `workout_logs_${user.email}`;
-            try {
-              const storedLogs = localStorage.getItem(localLogKey);
-              if (storedLogs) {
-                  const localLogs: WorkoutLog = JSON.parse(storedLogs);
-                  setDoc(docRef, localLogs); // Write local data to Firestore
-                  setWorkoutLog(localLogs);
-                  localStorage.removeItem(localLogKey); // Optional: remove local data after migration
-                  console.log("Workout logs migrated from localStorage to Firestore.");
-              } else {
-                setWorkoutLog({});
-              }
-            } catch (error) {
-              console.error("Error migrating workout logs from localStorage:", error);
-              setWorkoutLog({});
-            }
+            // Data migration is now handled by AuthContext upon login/signup.
+            // If no log exists after that, the user truly has no logs.
+            console.log("No workout log found in Firestore for this user.");
+            setWorkoutLog({});
         }
         setIsLoading(false);
     }, (error) => {
         console.error("Error fetching workout log from Firestore:", error);
+        setWorkoutLog({});
         setIsLoading(false);
     });
 

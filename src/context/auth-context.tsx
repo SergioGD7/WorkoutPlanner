@@ -13,8 +13,13 @@ import {
   reauthenticateWithCredential,
   type User as FirebaseUser 
 } from 'firebase/auth';
-import { app } from '@/lib/firebase'; // Ensure firebase is initialized
+import { app, db } from '@/lib/firebase';
+import { doc, getDoc, writeBatch } from "firebase/firestore";
 import { Dumbbell } from 'lucide-react';
+import type { WorkoutLog, Exercise } from '@/lib/types';
+import { bodyPartEmojiMap } from '@/lib/style-utils';
+import { v4 as uuidv4 } from 'uuid';
+import { initialExercises as initialExercisesData } from '@/lib/data';
 
 interface LoggedInUser {
   uid: string;
@@ -56,6 +61,95 @@ const formatFirebaseError = (errorCode: string, context?: 'login' | 'changePassw
   }
 }
 
+async function migrateLocalDataToFirestore(userId: string, email: string) {
+  console.log(`Starting migration check for user ${email}...`);
+
+  const exercisesCollectionRef = doc(db, `users/${userId}/exercises`, initialExercisesData[0].id);
+  const workoutLogDocRef = doc(db, `users/${userId}/workout_logs/all`);
+
+  try {
+    const exercisesDocSnap = await getDoc(exercisesCollectionRef);
+    if (exercisesDocSnap.exists()) {
+      console.log("Firestore data already exists. No migration needed.");
+      return;
+    }
+
+    console.log("Firestore is empty. Checking for local storage data.");
+
+    const localExercisesKey = `exercises_${email}`;
+    const localLogsKey = `workout_logs_${email}`;
+    
+    const storedExercisesJSON = localStorage.getItem(localExercisesKey);
+    const storedLogsJSON = localStorage.getItem(localLogsKey);
+
+    if (!storedExercisesJSON && !storedLogsJSON) {
+      console.log("No local data found. Populating with initial exercises.");
+       const batch = writeBatch(db);
+        initialExercisesData.forEach(exercise => {
+            const docRef = doc(db, `users/${userId}/exercises`, exercise.id);
+            batch.set(docRef, exercise);
+        });
+        await batch.commit();
+        console.log("Initial exercises populated in Firestore.");
+      return;
+    }
+    
+    console.log("Local data found. Starting migration to Firestore.");
+    const batch = writeBatch(db);
+
+    // Migrate exercises
+    if (storedExercisesJSON) {
+      const localExercises: (Exercise | Omit<Exercise, 'emoji'>)[] = JSON.parse(storedExercisesJSON);
+      const exercisesToSet = new Map<string, Exercise>();
+
+      localExercises.forEach(ex => {
+          const exerciseWithEmoji = {
+              ...ex,
+              emoji: bodyPartEmojiMap.get(ex.bodyPart) || '💪',
+          } as Exercise;
+
+          if (!exerciseWithEmoji.id || initialExercisesData.some(initEx => initEx.id === exerciseWithEmoji.id)) {
+                exerciseWithEmoji.id = uuidv4();
+          }
+          exercisesToSet.set(exerciseWithEmoji.id, exerciseWithEmoji);
+      });
+      
+      initialExercisesData.forEach(initialEx => {
+          if (!Array.from(exercisesToSet.values()).some(localEx => localEx.name === initialEx.name)) {
+              exercisesToSet.set(initialEx.id, initialEx);
+          }
+      });
+      
+      exercisesToSet.forEach(ex => {
+        const docRef = doc(db, `users/${userId}/exercises`, ex.id);
+        batch.set(docRef, ex);
+      });
+    } else {
+        initialExercisesData.forEach(exercise => {
+            const docRef = doc(db, `users/${userId}/exercises`, exercise.id);
+            batch.set(docRef, exercise);
+        });
+    }
+
+    // Migrate workout logs
+    if (storedLogsJSON) {
+      const localLogs: WorkoutLog = JSON.parse(storedLogsJSON);
+      batch.set(workoutLogDocRef, localLogs);
+    }
+
+    await batch.commit();
+    console.log("Migration from localStorage to Firestore completed successfully.");
+
+    // Clean up local storage after successful migration
+    localStorage.removeItem(localExercisesKey);
+    localStorage.removeItem(localLogsKey);
+    console.log("Local storage data cleaned up.");
+
+  } catch (error) {
+    console.error("Error during data migration:", error);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LoggedInUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await migrateLocalDataToFirestore(userCredential.user.uid, email);
       return { success: true };
     } catch (error: any) {
       return { success: false, messageKey: formatFirebaseError(error.code, 'login') };
@@ -87,7 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await migrateLocalDataToFirestore(userCredential.user.uid, email);
       return { success: true };
     } catch (error: any) {
       return { success: false, messageKey: formatFirebaseError(error.code) };

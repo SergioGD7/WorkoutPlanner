@@ -1,3 +1,4 @@
+
 "use client";
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
@@ -6,7 +7,7 @@ import type { Exercise, BodyPart } from '@/lib/types';
 import { useAuth } from './auth-context';
 import { v4 as uuidv4 } from 'uuid';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
-import { collection, doc, getDoc, setDoc, writeBatch, onSnapshot, query } from "firebase/firestore";
+import { collection, doc, setDoc, writeBatch, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface ExerciseContextType {
@@ -38,61 +39,10 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
 
     const unsubscribe = onSnapshot(query(collectionRef), async (querySnapshot) => {
         if (querySnapshot.empty) {
-            console.log("No custom exercises found in Firestore. Checking localStorage for migration.");
-            // Migration logic for one-time transfer from localStorage to Firestore
-            const localExercisesKey = `exercises_${user.email}`;
-            try {
-                const storedExercisesJSON = localStorage.getItem(localExercisesKey);
-                if (storedExercisesJSON) {
-                    const localExercises: (Exercise | Omit<Exercise, 'emoji'>)[] = JSON.parse(storedExercisesJSON);
-                    
-                    const batch = writeBatch(db);
-                    
-                    const exercisesToSet = localExercises.map(ex => {
-                        const exerciseWithEmoji = {
-                            ...ex,
-                            emoji: bodyPartEmojiMap.get(ex.bodyPart as BodyPart) || '💪',
-                        } as Exercise;
-
-                        // Ensure custom exercises have a unique ID if they don't
-                        if (!exerciseWithEmoji.id || initialExercisesData.some(initEx => initEx.id === exerciseWithEmoji.id)) {
-                             exerciseWithEmoji.id = uuidv4();
-                        }
-                        
-                        const docRef = doc(collectionRef, exerciseWithEmoji.id);
-                        batch.set(docRef, exerciseWithEmoji);
-                        return exerciseWithEmoji;
-                    });
-
-                    // Also add initial exercises if they are not already mixed in
-                    initialExercisesData.forEach(initialEx => {
-                        if (!localExercises.some(localEx => localEx.name === initialEx.name)) {
-                             const docRef = doc(collectionRef, initialEx.id);
-                             batch.set(docRef, initialEx);
-                             exercisesToSet.push(initialEx);
-                        }
-                    });
-
-                    await batch.commit();
-                    setExercises(exercisesToSet);
-                    console.log("Exercises migrated from localStorage to Firestore.");
-                    // Optional: remove local data after migration
-                    localStorage.removeItem(localExercisesKey);
-                } else {
-                    // No local data, so populate with initial exercises
-                    const batch = writeBatch(db);
-                    initialExercisesData.forEach(exercise => {
-                        const docRef = doc(collectionRef, exercise.id);
-                        batch.set(docRef, exercise);
-                    });
-                    await batch.commit();
-                    setExercises(initialExercisesData);
-                    console.log("Initial exercises populated in Firestore.");
-                }
-            } catch (error) {
-                console.error("Error migrating exercises:", error);
-                setExercises(initialExercisesData); // Fallback
-            }
+           console.log("No exercises found for user. This might be a new account or migration pending.");
+           // Migration is now handled by AuthContext, so we might see this state briefly.
+           // We can set initial exercises as a fallback display until Firestore syncs.
+           setExercises(initialExercisesData);
         } else {
             const firestoreExercises = querySnapshot.docs.map(doc => doc.data() as Exercise);
             setExercises(firestoreExercises);
