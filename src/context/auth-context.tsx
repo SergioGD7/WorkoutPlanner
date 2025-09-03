@@ -14,7 +14,7 @@ import {
   type User as FirebaseUser 
 } from 'firebase/auth';
 import { app, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, writeBatch } from "firebase/firestore";
+import { doc, getDoc, setDoc, writeBatch, collection } from "firebase/firestore";
 import { Dumbbell } from 'lucide-react';
 import type { WorkoutLog, Exercise } from '@/lib/types';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
