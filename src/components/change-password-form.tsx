@@ -27,6 +27,9 @@ export default function ChangePasswordForm() {
   }).refine(data => data.newPassword === data.confirmPassword, {
     message: t('passwordsDoNotMatch'),
     path: ['confirmPassword'],
+  }).refine(data => data.currentPassword !== data.newPassword, {
+    message: t('newPasswordCannotBeSame'),
+    path: ['newPassword'],
   });
   
   type FormValues = z.infer<typeof formSchema>;

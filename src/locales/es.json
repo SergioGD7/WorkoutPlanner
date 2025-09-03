@@ -123,5 +123,6 @@
   "export": "Exportar",
   "workoutLogs": "Registros de Entrenamiento",
   "date": "Fecha",
-  "noDataToExport": "No se encontraron datos para el rango de fechas seleccionado."
+  "noDataToExport": "No se encontraron datos para el rango de fechas seleccionado.",
+  "newPasswordCannotBeSame": "La nueva contraseña no puede ser igual a la actual."
 }
