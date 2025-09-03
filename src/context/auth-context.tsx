@@ -35,12 +35,14 @@ const formatFirebaseError = (errorCode: string): string => {
       return 'invalidEmail';
     case 'auth/user-not-found':
     case 'auth/wrong-password':
+    case 'auth/invalid-credential':
       return 'userExistsPasswordIncorrect';
     case 'auth/email-already-in-use':
       return 'emailAlreadyInUse';
     case 'auth/weak-password':
         return 'passwordTooShort';
     default:
+      console.error("Unhandled Firebase Auth Error:", errorCode);
       return 'unknownError';
   }
 }
