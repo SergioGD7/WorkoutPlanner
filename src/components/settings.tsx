@@ -3,6 +3,7 @@
 
 import { useLanguage } from '@/context/language-context';
 import ChangePasswordForm from './change-password-form';
+import ImportDataForm from './import-data-form';
 
 export default function Settings() {
   const { t } = useLanguage();
@@ -14,6 +15,10 @@ export default function Settings() {
             <section>
                 <h3 className="text-xl font-semibold mb-4 font-headline">{t('security')}</h3>
                 <ChangePasswordForm />
+            </section>
+            <section>
+                <h3 className="text-xl font-semibold mb-4 font-headline">{t('dataManagement')}</h3>
+                <ImportDataForm />
             </section>
        </div>
     </div>
