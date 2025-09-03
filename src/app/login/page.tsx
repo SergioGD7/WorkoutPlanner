@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dumbbell, Loader2 } from 'lucide-react';
+import { Dumbbell, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { user, loading, login, signUp } = useAuth();
   const { t } = useLanguage();
@@ -107,9 +108,15 @@ export default function LoginPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t('password')}</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
-                          </FormControl>
+                           <div className="relative">
+                            <FormControl>
+                              <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} disabled={isSubmitting} />
+                            </FormControl>
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full px-3" onClick={() => setShowPassword(!showPassword)} disabled={isSubmitting}>
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                            </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -142,9 +149,15 @@ export default function LoginPage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t('password')}</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
-                          </FormControl>
+                           <div className="relative">
+                            <FormControl>
+                              <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} disabled={isSubmitting} />
+                            </FormControl>
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full px-3" onClick={() => setShowPassword(!showPassword)} disabled={isSubmitting}>
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                            </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
