@@ -1,97 +1,106 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut,
+  type User as FirebaseUser 
+} from 'firebase/auth';
+import { app } from '@/lib/firebase'; // Ensure firebase is initialized
+import { Dumbbell } from 'lucide-react';
 
-// User object for the list of all users
-interface StoredUser {
-  email: string;
-  password_very_insecure: string; // This is not for production, but follows the local-only logic.
-}
-
-// User object for the currently authenticated user session
 interface LoggedInUser {
-  email: string;
+  uid: string;
+  email: string | null;
 }
 
 interface AuthContextType {
   user: LoggedInUser | null;
   loading: boolean;
-  loginOrSignUp: (email: string, password: string) => Promise<{ success: boolean; messageKey?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; messageKey?: string }>;
+  signUp: (email: string, password: string) => Promise<{ success: boolean; messageKey?: string }>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LOGGED_IN_USER_STORAGE_KEY = 'workout_planner_logged_in_user';
-const ALL_USERS_STORAGE_KEY = 'workout_planner_all_users';
+const auth = getAuth(app);
+
+const formatFirebaseError = (errorCode: string): string => {
+  switch (errorCode) {
+    case 'auth/invalid-email':
+      return 'invalidEmail';
+    case 'auth/user-not-found':
+    case 'auth/wrong-password':
+      return 'userExistsPasswordIncorrect';
+    case 'auth/email-already-in-use':
+      return 'emailAlreadyInUse';
+    case 'auth/weak-password':
+        return 'passwordTooShort';
+    default:
+      return 'unknownError';
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LoggedInUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Effect to load the logged-in user from session storage on startup
   useEffect(() => {
-    try {
-      // Use sessionStorage for the session, which clears when the browser/tab is closed.
-      const storedUser = sessionStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (error) {
-      console.error("Failed to load user from sessionStorage", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loginOrSignUp = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
-    try {
-      const storedUsersRaw = localStorage.getItem(ALL_USERS_STORAGE_KEY);
-      const allUsers: StoredUser[] = storedUsersRaw ? JSON.parse(storedUsersRaw) : [];
-      
-      const existingUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-      if (existingUser) {
-        // User exists, check password
-        if (existingUser.password_very_insecure === password) {
-          // Password matches, log in
-          const loggedInUser: LoggedInUser = { email: existingUser.email };
-          sessionStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, JSON.stringify(loggedInUser));
-          setUser(loggedInUser);
-          return { success: true };
-        } else {
-          // Password does not match
-          return { success: false, messageKey: 'userExistsPasswordIncorrect' };
-        }
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+        });
       } else {
-        // User does not exist, create new user
-        const newUser: StoredUser = { email, password_very_insecure: password };
-        const updatedUsers = [...allUsers, newUser];
-        localStorage.setItem(ALL_USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
-        
-        // Log in the new user
-        const loggedInUser: LoggedInUser = { email: newUser.email };
-        sessionStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, JSON.stringify(loggedInUser));
-        setUser(loggedInUser);
-        return { success: true };
-      }
-    } catch (error) {
-      console.error("Authentication error", error);
-      return { success: false, messageKey: 'unknownError' };
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    try {
-        sessionStorage.removeItem(LOGGED_IN_USER_STORAGE_KEY);
         setUser(null);
-    } catch (error) {
-        console.error("Failed to remove user from sessionStorage", error);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, messageKey: formatFirebaseError(error.code) };
     }
   }, []);
 
-  const value = { user, loading, loginOrSignUp, logout };
+  const signUp = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, messageKey: formatFirebaseError(error.code) };
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Failed to log out", error);
+    }
+  }, []);
+
+  const value = { user, loading, login, signUp, logout };
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Dumbbell className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

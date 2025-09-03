@@ -6,6 +6,7 @@ import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dumbbell, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { user, loading, loginOrSignUp } = useAuth();
+  const { user, loading, login, signUp } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
 
@@ -32,22 +33,27 @@ export default function LoginPage() {
     password: z.string().min(6, { message: t('passwordTooShort', { min: 6 }) }),
   }), [t]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  type FormValues = z.infer<typeof formSchema>;
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { email: '', password: '' },
+  });
+  
+  const signUpForm = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { email: '', password: '' },
   });
 
-  const handleLogin = async (values: z.infer<typeof formSchema>) => {
+
+  const handleAction = async (values: FormValues, action: 'login' | 'signup') => {
     setIsSubmitting(true);
-    const result = await loginOrSignUp(values.email, values.password);
+    const result = await (action === 'login' ? login(values.email, values.password) : signUp(values.email, values.password));
     
     if (!result.success && result.messageKey) {
         toast({
             variant: "destructive",
-            title: t('loginError'),
+            title: t(action === 'login' ? 'loginError' : 'signUpError'),
             description: t(result.messageKey),
         });
     }
@@ -74,39 +80,82 @@ export default function LoginPage() {
           <CardDescription>{t('loginToContinue')}</CardDescription>
         </CardHeader>
         <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('email')}</FormLabel>
-                      <FormControl>
-                        <Input placeholder={t('emailPlaceholder')} {...field} disabled={isSubmitting} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('password')}</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  {isSubmitting ? <Loader2 className="animate-spin" /> : t('loginOrSignUp')}
-                </Button>
-              </form>
-            </Form>
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">{t('login')}</TabsTrigger>
+                <TabsTrigger value="signup">{t('signUp')}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="login">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit((v) => handleAction(v, 'login'))} className="space-y-4 pt-4">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('email')}</FormLabel>
+                          <FormControl>
+                            <Input placeholder={t('emailPlaceholder')} {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('password')}</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={isSubmitting} className="w-full">
+                      {isSubmitting ? <Loader2 className="animate-spin" /> : t('login')}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+              <TabsContent value="signup">
+                 <Form {...signUpForm}>
+                  <form onSubmit={signUpForm.handleSubmit((v) => handleAction(v, 'signup'))} className="space-y-4 pt-4">
+                    <FormField
+                      control={signUpForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('email')}</FormLabel>
+                          <FormControl>
+                            <Input placeholder={t('emailPlaceholder')} {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={signUpForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('password')}</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} disabled={isSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" disabled={isSubmitting} className="w-full">
+                      {isSubmitting ? <Loader2 className="animate-spin" /> : t('signUp')}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+            </Tabs>
         </CardContent>
       </Card>
     </div>
