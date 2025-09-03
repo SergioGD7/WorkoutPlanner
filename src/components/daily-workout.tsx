@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
@@ -27,6 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const addExerciseSchema = z.object({
   exerciseId: z.string().min(1, "Please select an exercise."),
@@ -41,6 +43,7 @@ interface DailyWorkoutProps {
 
 export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [dailyExercises, setDailyExercises] = useState<WorkoutExercise[]>([]);
+  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingWorkoutExercise, setEditingWorkoutExercise] = useState<WorkoutExercise | null>(null);
   const [exerciseToConfirmDelete, setExerciseToConfirmDelete] = useState<WorkoutExercise | null>(null);
@@ -53,37 +56,76 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const { copiedWorkout, setCopiedWorkout } = useWorkout();
 
   const formattedDate = format(date, "yyyy-MM-dd");
-  const WORKOUT_LOG_KEY = user && user.email ? `workout_logs_${user.email}` : null;
+
+  const getWorkoutLogDocRef = useCallback(() => {
+    if (!user) return null;
+    return doc(db, `users/${user.uid}/workout_logs/all`);
+  }, [user]);
 
   useEffect(() => {
     setIsLoading(true);
-    if (WORKOUT_LOG_KEY) {
-      try {
-        const allLogs: WorkoutLog = JSON.parse(localStorage.getItem(WORKOUT_LOG_KEY) || '{}');
-        setDailyExercises(allLogs[formattedDate] || []);
-      } catch (error) {
-        console.error("Failed to load workout logs from localStorage", error);
-        setDailyExercises([]);
-      }
-    } else {
-      setDailyExercises([]);
+    if (!user) {
+      setWorkoutLog({});
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
-  }, [date, user, formattedDate, WORKOUT_LOG_KEY]);
 
+    const docRef = getWorkoutLogDocRef();
+    if (!docRef) return;
 
-  const updateWorkoutInStorage = (updatedDailyExercises: WorkoutExercise[]) => {
-    if (!WORKOUT_LOG_KEY) return;
-    try {
-        const allLogs: WorkoutLog = JSON.parse(localStorage.getItem(WORKOUT_LOG_KEY) || '{}');
-        if (updatedDailyExercises.length > 0) {
-            allLogs[formattedDate] = updatedDailyExercises;
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setWorkoutLog(docSnap.data() as WorkoutLog);
         } else {
-            delete allLogs[formattedDate]; // Clean up if no exercises for the day
+            console.log("No workout log found, checking localStorage for migration.");
+            // Migration logic
+            const localLogKey = `workout_logs_${user.email}`;
+            try {
+              const storedLogs = localStorage.getItem(localLogKey);
+              if (storedLogs) {
+                  const localLogs: WorkoutLog = JSON.parse(storedLogs);
+                  setDoc(docRef, localLogs); // Write local data to Firestore
+                  setWorkoutLog(localLogs);
+                  localStorage.removeItem(localLogKey); // Optional: remove local data after migration
+                  console.log("Workout logs migrated from localStorage to Firestore.");
+              } else {
+                setWorkoutLog({});
+              }
+            } catch (error) {
+              console.error("Error migrating workout logs from localStorage:", error);
+              setWorkoutLog({});
+            }
         }
-        localStorage.setItem(WORKOUT_LOG_KEY, JSON.stringify(allLogs));
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Error fetching workout log from Firestore:", error);
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, getWorkoutLogDocRef]);
+
+  useEffect(() => {
+    setDailyExercises(workoutLog[formattedDate] || []);
+  }, [date, workoutLog, formattedDate]);
+
+
+  const updateWorkoutInStorage = async (updatedDailyExercises: WorkoutExercise[]) => {
+    const docRef = getWorkoutLogDocRef();
+    if (!docRef) return;
+    
+    const updatedLog = { ...workoutLog };
+     if (updatedDailyExercises.length > 0) {
+        updatedLog[formattedDate] = updatedDailyExercises;
+    } else {
+        delete updatedLog[formattedDate];
+    }
+
+    try {
+        await setDoc(docRef, updatedLog);
+        // The onSnapshot listener will update the state, no need for setWorkoutLog here.
     } catch (error) {
-        console.error("Failed to save workout logs to localStorage", error);
+        console.error("Failed to save workout log to Firestore:", error);
     }
   };
 
@@ -96,7 +138,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         }
         return ex;
     });
-    setDailyExercises(updatedDailyExercises);
+    // setDailyExercises(updatedDailyExercises); // State will be updated by the listener
     updateWorkoutInStorage(updatedDailyExercises);
   };
 
@@ -115,7 +157,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const handleDeleteWorkoutExercise = () => {
     if (!exerciseToConfirmDelete) return;
     const updatedDailyExercises = dailyExercises.filter(ex => ex.id !== exerciseToConfirmDelete.id);
-    setDailyExercises(updatedDailyExercises);
     updateWorkoutInStorage(updatedDailyExercises);
     setExerciseToConfirmDelete(null);
   };
@@ -134,7 +175,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     };
     
     const updatedDailyExercises = [...dailyExercises, newWorkoutExercise];
-    setDailyExercises(updatedDailyExercises);
     updateWorkoutInStorage(updatedDailyExercises);
     setIsAddDialogOpen(false);
   };
@@ -143,7 +183,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     const updatedDailyExercises = dailyExercises.map(ex => 
         ex.id === updatedWorkoutExercise.id ? updatedWorkoutExercise : ex
     );
-    setDailyExercises(updatedDailyExercises);
     updateWorkoutInStorage(updatedDailyExercises);
     setEditingWorkoutExercise(null);
   };
@@ -168,7 +207,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
 
   const executePaste = () => {
     if (!copiedWorkout) return;
-    setDailyExercises(copiedWorkout);
     updateWorkoutInStorage(copiedWorkout);
     setShowPasteConfirm(false);
   }

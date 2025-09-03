@@ -15,6 +15,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Loader2, Check } from 'lucide-react';
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 type DailyBodyPartsMap = Map<string, BodyPart[]>;
 
@@ -39,19 +41,25 @@ export default function CalendarView() {
 
   useEffect(() => {
     setIsLoading(true);
-    if (user && user.email) {
-      try {
-        const key = `workout_logs_${user.email}`;
-        const storedLogs = localStorage.getItem(key);
-        setWorkoutLog(storedLogs ? JSON.parse(storedLogs) : {});
-      } catch (error) {
-        console.error("Failed to load workout logs from localStorage", error);
-        setWorkoutLog({});
-      }
+    if (user) {
+        const docRef = doc(db, `users/${user.uid}/workout_logs/all`);
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setWorkoutLog(docSnap.data() as WorkoutLog);
+            } else {
+                setWorkoutLog({});
+            }
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Failed to load workout logs from Firestore:", error);
+            setWorkoutLog({});
+            setIsLoading(false);
+        });
+        return () => unsubscribe();
     } else {
-      setWorkoutLog({});
+        setWorkoutLog({});
+        setIsLoading(false);
     }
-    setIsLoading(false);
   }, [user]);
 
   const dailyBodyParts = useMemo((): DailyBodyPartsMap => {

@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import * as xlsx from 'xlsx';
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const chartConfig = {} satisfies import("@/components/ui/chart").ChartConfig;
 
@@ -32,23 +34,25 @@ export default function ProgressTracker() {
 
   useEffect(() => {
     setIsLoading(true);
-    if (user && user.email) {
-        try {
-            const key = `workout_logs_${user.email}`;
-            const storedLogs = localStorage.getItem(key);
-            if (storedLogs) {
-                setWorkoutLog(JSON.parse(storedLogs));
+    if (user) {
+        const docRef = doc(db, `users/${user.uid}/workout_logs/all`);
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setWorkoutLog(docSnap.data() as WorkoutLog);
             } else {
                 setWorkoutLog({});
             }
-        } catch (error) {
-            console.error("Failed to load workout logs from localStorage", error);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Failed to load workout logs from Firestore:", error);
             setWorkoutLog({});
-        }
+            setIsLoading(false);
+        });
+        return () => unsubscribe();
     } else {
         setWorkoutLog({});
+        setIsLoading(false);
     }
-    setIsLoading(false);
   }, [user]);
 
   const chartData = useMemo(() => {
