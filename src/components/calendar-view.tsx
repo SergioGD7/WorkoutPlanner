@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -168,7 +169,7 @@ export default function CalendarView() {
             {workoutForDay && workoutForDay.exercises.length > 0 ? (
               <Accordion type="multiple" className="w-full space-y-2">
                 {workoutForDay.exercises.map(ex => (
-                  <AccordionItem key={ex.workoutExerciseId} value={ex.workoutExerciseId} className="rounded-md border-none bg-secondary/70">
+                  <AccordionItem key={ex.workoutExerciseId} value={ex.workoutExerciseId} className="rounded-md border-none bg-muted">
                     <AccordionTrigger className="flex w-full items-center rounded-md p-3 hover:no-underline">
                         <span className="font-medium text-left">{ex.exerciseName}</span>
                         <span className="ml-auto pr-2 text-sm text-muted-foreground">{t('totalVolumeLifted', { volume: ex.totalVolume.toLocaleString() })}</span>
