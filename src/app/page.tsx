@@ -133,7 +133,7 @@ export default function HomePage() {
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="flex flex-col p-0">
+            <SheetContent side="left" className="flex flex-col p-0 glass-effect">
                <SheetHeader className="flex h-16 flex-row items-center border-b px-6 space-y-0">
                  <Dumbbell className="h-8 w-8 text-primary" />
                  <SheetTitle className="ml-2 text-xl font-bold font-headline">Workout Planner</SheetTitle>
