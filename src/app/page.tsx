@@ -66,7 +66,7 @@ export default function HomePage() {
         <Button
           variant={view === "dashboard" ? "secondary" : "ghost"}
           onClick={() => handleViewChange("dashboard")}
-          className="justify-start"
+          className="justify-start rounded-full"
         >
           <HomeIcon className="mr-2 h-5 w-5" />
           {t('dashboard')}
@@ -74,7 +74,7 @@ export default function HomePage() {
         <Button
           variant={view === "library" ? "secondary" : "ghost"}
           onClick={() => handleViewChange("library")}
-          className="justify-start"
+          className="justify-start rounded-full"
         >
           <BookOpen className="mr-2 h-5 w-5" />
           {t('library')}
@@ -82,7 +82,7 @@ export default function HomePage() {
         <Button
           variant={view === "progress" ? "secondary" : "ghost"}
           onClick={() => handleViewChange("progress")}
-          className="justify-start"
+          className="justify-start rounded-full"
         >
           <BarChart3 className="mr-2 h-5 w-5" />
           {t('progress')}
@@ -90,7 +90,7 @@ export default function HomePage() {
         <Button
           variant={view === "calendar" ? "secondary" : "ghost"}
           onClick={() => handleViewChange("calendar")}
-          className="justify-start"
+          className="justify-start rounded-full"
         >
           <CalendarDays className="mr-2 h-5 w-5" />
           {t('calendar')}
@@ -98,7 +98,7 @@ export default function HomePage() {
         <Button
           variant={view === "settings" ? "secondary" : "ghost"}
           onClick={() => handleViewChange("settings")}
-          className="justify-start"
+          className="justify-start rounded-full"
         >
           <SettingsIcon className="mr-2 h-5 w-5" />
           {t('settings')}
@@ -148,7 +148,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             <ThemeSwitcher />
-            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout" className="rounded-full">
               <LogOut className="h-5 w-5" />
               <span className="sr-only">Logout</span>
             </Button>

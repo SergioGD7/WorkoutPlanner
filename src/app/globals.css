@@ -91,3 +91,9 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .glass-effect {
+    @apply bg-[hsl(var(--background)/0.5)] backdrop-blur-sm transition-colors duration-300;
+  }
+}

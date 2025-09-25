@@ -42,10 +42,10 @@ export default function Dashboard() {
           <CardTitle className="flex items-center justify-between font-headline text-2xl capitalize">
             <span>{format(weekStart, 'MMMM yyyy', { locale: getLocale() })}</span>
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" onClick={handlePrevWeek}>
+                <Button variant="outline" size="icon" onClick={handlePrevWeek} className="rounded-full">
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="icon" onClick={handleNextWeek}>
+                <Button variant="outline" size="icon" onClick={handleNextWeek} className="rounded-full">
                     <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>
@@ -56,8 +56,8 @@ export default function Dashboard() {
             {weekDays.map(day => (
                 <Button 
                     key={day.toString()}
-                    variant={isSameDay(day, selectedDate) ? 'default' : 'ghost'}
-                    className={`flex h-auto flex-col gap-1 p-2 rounded-lg transition-all duration-200 capitalize ${isToday(day) && !isSameDay(day, selectedDate) ? 'border-2 border-primary/50' : ''}`}
+                    variant={isSameDay(day, selectedDate) ? 'secondary' : 'ghost'}
+                    className={`flex h-auto flex-col gap-1 p-2 rounded-full transition-all duration-200 capitalize ${isToday(day) && !isSameDay(day, selectedDate) ? 'border-2 border-primary/50' : ''}`}
                     onClick={() => setSelectedDate(day)}
                 >
                     <span className="text-sm font-medium">{format(day, 'E', { locale: getLocale() })}</span>
