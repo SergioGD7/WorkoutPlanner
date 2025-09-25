@@ -143,5 +143,6 @@
   "logsImportedSuccess": "Workout logs imported successfully!",
   "exercisesImportedSuccess": "Custom exercises imported successfully!",
   "importFailed": "The data import failed. Please check the console for more details.",
-  "notLoggedIn": "You must be logged in to import data."
+  "notLoggedIn": "You must be logged in to import data.",
+  "library": "Library"
 }

@@ -143,5 +143,6 @@
   "logsImportedSuccess": "¡Registros de entrenamiento importados con éxito!",
   "exercisesImportedSuccess": "¡Ejercicios personalizados importados con éxito!",
   "importFailed": "La importación de datos falló. Por favor, revisa la consola para más detalles.",
-  "notLoggedIn": "Debes iniciar sesión para importar datos."
+  "notLoggedIn": "Debes iniciar sesión para importar datos.",
+  "library": "Biblioteca"
 }

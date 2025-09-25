@@ -77,7 +77,7 @@ export default function HomePage() {
           className="justify-start"
         >
           <BookOpen className="mr-2 h-5 w-5" />
-          {t('exerciseLibrary')}
+          {t('library')}
         </Button>
         <Button
           variant={view === "progress" ? "secondary" : "ghost"}
