@@ -44,7 +44,7 @@ export default function WorkoutCard({ workoutExercise, exerciseDetails, onSetTog
       <CardContent>
         <div className="space-y-3">
           {workoutExercise.sets.map((set, index) => (
-            <div key={index} className="flex items-center justify-between rounded-md bg-secondary/70 p-3">
+            <div key={index} className="flex items-center justify-between rounded-md bg-muted p-3">
               <div className="font-mono text-sm md:text-base">
                 {t('set')} {index + 1}: <span className="font-semibold">{set.reps} {t('reps')}</span> @ <span className="font-semibold">{set.weight} kg</span>
               </div>
