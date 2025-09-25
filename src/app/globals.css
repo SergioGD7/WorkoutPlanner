@@ -94,7 +94,6 @@ body {
 
 @layer components {
   .glass-effect {
-    @apply bg-[hsl(var(--background)/0.5)] backdrop-blur-sm transition-colors duration-300 hover:bg-secondary;
+    @apply bg-background/50 backdrop-blur-sm transition-colors duration-300;
   }
 }
-
