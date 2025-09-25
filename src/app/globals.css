@@ -54,8 +54,8 @@ body {
     --popover-foreground: 0 0% 95%;
     --primary: 28 80% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 28 20% 20%;
-    --secondary-foreground: 28 80% 85%;
+    --secondary: 28 80% 92%;
+    --secondary-foreground: 28 80% 42%;
     --muted: 20 5% 15%;
     --muted-foreground: 0 0% 63.9%;
     --accent: 282 34% 53%;
@@ -97,3 +97,4 @@ body {
     @apply bg-[hsl(var(--background)/0.5)] backdrop-blur-sm transition-colors duration-300 hover:bg-secondary;
   }
 }
+
