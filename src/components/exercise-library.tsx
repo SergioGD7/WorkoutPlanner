@@ -61,7 +61,7 @@ export default function ExerciseLibrary() {
       </div>
 
       <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 sm:grid-cols-4 lg:grid-cols-7">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
           {bodyPartsWithAll.map((part) => (
             <TabsTrigger 
               key={part} 
