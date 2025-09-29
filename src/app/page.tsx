@@ -15,6 +15,7 @@ import Settings from "@/components/settings";
 import { useLanguage } from "@/context/language-context";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type View = "dashboard" | "library" | "progress" | "calendar" | "settings";
 
@@ -138,15 +139,19 @@ export default function HomePage() {
                <SheetHeader className="flex h-16 flex-row items-center justify-between border-b px-6 space-y-0">
                   <div className="flex items-center">
                     <Dumbbell className="h-8 w-8 text-primary" />
-                    <SheetTitle className="ml-2 text-xl font-bold font-headline">Workout Planner</SheetTitle>
+                    <SheetTitle className="ml-2 text-xl font-bold font-headline whitespace-nowrap">Workout Planner</SheetTitle>
                   </div>
                  <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
-                  <SheetClose className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-                    <X className="h-5 w-5" />
-                    <span className="sr-only">Close</span>
+                  <SheetClose asChild>
+                    <button className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                        <X className="h-5 w-5" />
+                        <span className="sr-only">Close</span>
+                    </button>
                   </SheetClose>
                </SheetHeader>
-              <NavLinks inSheet={true} />
+              <ScrollArea className="flex-1">
+                <NavLinks inSheet={true} />
+              </ScrollArea>
             </SheetContent>
           </Sheet>
           <div className="flex-1">
