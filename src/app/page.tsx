@@ -120,7 +120,7 @@ export default function HomePage() {
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-16 items-center border-b px-6">
           <Dumbbell className="h-8 w-8 text-primary" />
-          <h1 className="ml-2 text-2xl font-bold font-headline">Workout Planner</h1>
+          <h1 className="ml-2 text-2xl font-bold font-headline whitespace-nowrap">Workout Planner</h1>
         </div>
         <NavLinks />
       </aside>
