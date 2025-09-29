@@ -182,7 +182,7 @@ export default function ProgressTracker() {
   return (
     <div>
         <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">{t('progressTracker')}</h2>
+            <h2 className="text-xl md:text-2xl font-bold tracking-tight font-headline">{t('progressTracker')}</h2>
             <Popover>
                 <PopoverTrigger asChild>
                     <Button variant="outline" size="icon">

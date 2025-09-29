@@ -12,7 +12,7 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-       <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">{t('settings')}</h2>
+       <h2 className="text-xl md:text-2xl font-bold tracking-tight font-headline">{t('settings')}</h2>
        <div className="space-y-8">
             <section>
                 <h3 className="text-xl font-semibold mb-4 font-headline">{t('security')}</h3>

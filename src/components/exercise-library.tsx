@@ -53,7 +53,7 @@ export default function ExerciseLibrary() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight font-headline">{t('exerciseLibrary')}</h2>
+        <h2 className="text-xl md:text-2xl font-bold tracking-tight font-headline">{t('exerciseLibrary')}</h2>
         <Button onClick={handleCreateClick}>
           <PlusCircle className="mr-2 h-4 w-4" />
           {t('createCustomExercise')}
