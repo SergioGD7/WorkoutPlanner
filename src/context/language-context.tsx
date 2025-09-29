@@ -21,8 +21,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>('en');
 
   useEffect(() => {
-    const browserLang = navigator.language.split('-')[0];
-    if (browserLang === 'es') {
+    // navigator.languages returns an array of preferred languages, sorted by preference.
+    // We check if any of the user's preferred languages is Spanish.
+    const hasSpanish = navigator.languages.some(lang => lang.toLowerCase().startsWith('es'));
+    
+    if (hasSpanish) {
       setLanguage('es');
     } else {
       setLanguage('en');
