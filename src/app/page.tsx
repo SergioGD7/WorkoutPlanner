@@ -1,11 +1,12 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Dumbbell, HomeIcon, BookOpen, BarChart3, Menu, LogOut, CalendarDays, SettingsIcon } from "lucide-react";
+import { Dumbbell, HomeIcon, BookOpen, BarChart3, Menu, LogOut, CalendarDays, SettingsIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
 import ProgressTracker from "@/components/progress-tracker";
@@ -134,10 +135,16 @@ export default function HomePage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0 glass-effect">
-               <SheetHeader className="flex h-16 flex-row items-center border-b px-6 space-y-0">
-                 <Dumbbell className="h-8 w-8 text-primary" />
-                 <SheetTitle className="ml-2 text-xl font-bold font-headline">Workout Planner</SheetTitle>
+               <SheetHeader className="flex h-16 flex-row items-center justify-between border-b px-6 space-y-0">
+                  <div className="flex items-center">
+                    <Dumbbell className="h-8 w-8 text-primary" />
+                    <SheetTitle className="ml-2 text-xl font-bold font-headline">Workout Planner</SheetTitle>
+                  </div>
                  <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+                  <SheetClose className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Close</span>
+                  </SheetClose>
                </SheetHeader>
               <NavLinks inSheet={true} />
             </SheetContent>
