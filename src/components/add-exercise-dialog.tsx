@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import type { Exercise } from "@/lib/types";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
@@ -39,6 +40,18 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
     },
   });
 
+  const exercisesByBodyPart = useMemo(() => {
+    const grouped: Record<string, Exercise[]> = {};
+    exercises.forEach(ex => {
+      if (!grouped[ex.bodyPart]) grouped[ex.bodyPart] = [];
+      grouped[ex.bodyPart].push(ex);
+    });
+    Object.keys(grouped).forEach(key => {
+      grouped[key].sort((a, b) => t(a.name).localeCompare(t(b.name)));
+    });
+    return grouped;
+  }, [exercises, t]);
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     onAddExercise(values);
     form.reset();
@@ -66,10 +79,15 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {exercises.map((exercise: Exercise) => (
-                        <SelectItem key={exercise.id} value={exercise.id}>
-                          {exercise.emoji} {t(exercise.name)}
-                        </SelectItem>
+                      {Object.entries(exercisesByBodyPart).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).map(([bodyPart, groupExercises]) => (
+                        <SelectGroup key={bodyPart}>
+                          <SelectLabel className="capitalize text-primary/80 font-bold bg-muted/50">{t(bodyPart.toLowerCase())}</SelectLabel>
+                          {groupExercises.map((exercise: Exercise) => (
+                            <SelectItem key={exercise.id} value={exercise.id}>
+                              {exercise.emoji} {t(exercise.name)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>

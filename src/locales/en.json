@@ -144,5 +144,15 @@
   "exercisesImportedSuccess": "Custom exercises imported successfully!",
   "importFailed": "The data import failed. Please check the console for more details.",
   "notLoggedIn": "You must be logged in to import data.",
-  "library": "Library"
+  "library": "Library",
+  "totalWorkouts": "Total Workouts",
+  "estimated1RMExplanation": "1RM is estimated using the Epley formula: Weight × (1 + Reps/30). Only shown if you have performed this exercise previously with weight.",
+  "last7Days": "Last 7 days",
+  "last30Days": "Last 30 days",
+  "timeRange": "Time Range",
+  "muscleFatigue": "Muscle Fatigue",
+  "volumeDetails": "Volume:",
+  "days": "days",
+  "currentStreak": "Current Streak",
+  "heatmapExplanation": "Colors indicate muscle fatigue based on total volume lifted (kg)."
 }

@@ -144,5 +144,15 @@
   "exercisesImportedSuccess": "¡Ejercicios personalizados importados con éxito!",
   "importFailed": "La importación de datos falló. Por favor, revisa la consola para más detalles.",
   "notLoggedIn": "Debes iniciar sesión para importar datos.",
-  "library": "Biblioteca"
+  "library": "Biblioteca",
+  "totalWorkouts": "Entrenamientos Totales",
+  "estimated1RMExplanation": "El RM se estima usando la fórmula de Epley: Peso × (1 + Reps/30). Solo se muestra si has realizado este ejercicio previamente con peso.",
+  "last7Days": "Últimos 7 días",
+  "last30Days": "Últimos 30 días",
+  "timeRange": "Rango de Tiempo",
+  "muscleFatigue": "Fatiga Muscular",
+  "volumeDetails": "Volumen:",
+  "days": "días",
+  "currentStreak": "Racha Actual",
+  "heatmapExplanation": "Los colores indican la fatiga muscular basada en el volumen levantado (kg)."
 }

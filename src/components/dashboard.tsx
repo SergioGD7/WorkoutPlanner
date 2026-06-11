@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, addDays, subDays, isSameDay, isToday, startOfWeek, eachDayOfInterval } from "date-fns";
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
@@ -9,19 +9,40 @@ import DailyWorkout from "@/components/daily-workout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/context/language-context";
+import { useAuth } from "@/context/auth-context";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import type { WorkoutLog } from '@/lib/types';
+
+import GamificationBadges from "./gamification-badges";
+import MuscleHeatmap from "./muscle-heatmap";
 
 export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
   const { language } = useLanguage();
+  const { user } = useAuth();
 
   const weekStartsOn = language === 'es' ? 1 : 0; // Monday for ES, Sunday for EN
   const weekStart = startOfWeek(currentDate, { weekStartsOn });
   const weekDays = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
   
-  const getLocale = () => {
-    return language === 'es' ? es : enUS;
-  }
+  const getLocale = () => language === 'es' ? es : enUS;
+
+  useEffect(() => {
+    if (user) {
+        const docRef = doc(db, `users/${user.uid}/workout_logs/all`);
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setWorkoutLog(docSnap.data() as WorkoutLog);
+            } else {
+                setWorkoutLog({});
+            }
+        });
+        return () => unsubscribe();
+    }
+  }, [user]);
 
   const handlePrevWeek = () => {
     const newDate = subDays(currentDate, 7);
@@ -37,7 +58,9 @@ export default function Dashboard() {
   
   return (
     <div className="space-y-6">
-      <Card>
+      <GamificationBadges workoutLog={workoutLog} />
+
+      <Card className="glass-effect">
         <CardHeader>
           <CardTitle className="flex items-center justify-between font-headline text-2xl capitalize">
             <span>{format(weekStart, 'MMMM yyyy', { locale: getLocale() })}</span>
@@ -69,6 +92,10 @@ export default function Dashboard() {
       </Card>
 
       <DailyWorkout date={selectedDate} />
+
+      <div className="grid grid-cols-1 gap-6">
+        <MuscleHeatmap workoutLog={workoutLog} />
+      </div>
     </div>
   );
 }
