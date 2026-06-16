@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Dumbbell, HomeIcon, BookOpen, BarChart3, LogOut, CalendarDays, SettingsIcon } from "lucide-react";
+import { Dumbbell, HomeIcon, BookOpen, BarChart3, LogOut, CalendarDays, SettingsIcon, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
@@ -70,7 +70,7 @@ export default function HomePage() {
     { id: "library", icon: BookOpen, label: t('library') },
     { id: "progress", icon: BarChart3, label: t('progress') },
     { id: "calendar", icon: CalendarDays, label: t('calendar') },
-    { id: "settings", icon: SettingsIcon, label: t('settings') }
+    { id: "settings", icon: User, label: t('profile') || 'Profile' }
   ] as const;
 
   if (loading || !user) {

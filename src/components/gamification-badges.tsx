@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLanguage } from "@/context/language-context";
 import type { WorkoutLog } from '@/lib/types';
 import { parseISO, isValid, isToday, isYesterday, differenceInDays } from 'date-fns';
 import { Flame, Trophy } from "lucide-react";
+import confetti from "canvas-confetti";
 
 interface GamificationBadgesProps {
   workoutLog: WorkoutLog;
@@ -42,6 +43,25 @@ export default function GamificationBadges({ workoutLog }: GamificationBadgesPro
 
     return currentStreak;
   }, [workoutLog]);
+
+  useEffect(() => {
+    if (streak > 0) {
+      const lastConfettiStreak = sessionStorage.getItem('lastConfettiStreak');
+      
+      // If there's a previous streak recorded in this session, and the new one is higher, celebrate
+      if (lastConfettiStreak !== null && streak > Number(lastConfettiStreak)) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#f97316', '#a855f7'] // orange and purple
+        });
+      }
+      
+      // Always update the session storage with the current streak
+      sessionStorage.setItem('lastConfettiStreak', streak.toString());
+    }
+  }, [streak]);
 
   return (
     <div className="grid grid-cols-2 gap-4">

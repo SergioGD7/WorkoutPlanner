@@ -14,6 +14,9 @@ import type { Exercise, WorkoutLog } from "@/lib/types";
 import DeleteExerciseDialog from "./delete-exercise-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Search } from "lucide-react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -27,6 +30,7 @@ export default function ExerciseLibrary() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const bodyPartsWithAll = ["all", ...allBodyParts];
   
@@ -100,19 +104,41 @@ export default function ExerciseLibrary() {
         </Button>
       </div>
 
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <Input 
+          placeholder={t('searchExercises') || "Search exercises..."} 
+          className="pl-10 h-12 bg-muted/50 border-transparent focus-visible:ring-primary rounded-xl text-base"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
       <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          {bodyPartsWithAll.map((part) => (
-            <TabsTrigger key={part} value={part}>
-              {t(part.toLowerCase())}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <ScrollArea className="w-full whitespace-nowrap mb-6">
+          <TabsList className="inline-flex h-12 items-center justify-start rounded-none bg-transparent p-1 text-muted-foreground gap-2 w-full">
+            {bodyPartsWithAll.map((part) => (
+              <TabsTrigger 
+                key={part} 
+                value={part}
+                className="rounded-full border border-border bg-card data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary px-5 py-2 shadow-sm transition-all"
+              >
+                {t(part.toLowerCase())}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <ScrollBar orientation="horizontal" className="invisible" />
+        </ScrollArea>
         {bodyPartsWithAll.map((part) => (
-          <TabsContent key={part} value={part} className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <TabsContent key={part} value={part} className="mt-0 outline-none">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-10">
               {exercises
                 .filter((ex) => activeTab === 'all' || ex.bodyPart === activeTab)
+                .filter((ex) => 
+                  ex.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                  t(ex.name).toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  t(ex.bodyPart.toLowerCase()).toLowerCase().includes(searchTerm.toLowerCase())
+                )
                 .map((exercise) => {
                   const estimated1RM = getEstimated1RM(exercise.id);
                   return (
@@ -131,7 +157,7 @@ export default function ExerciseLibrary() {
                       <CardHeader className="flex flex-col items-start justify-between pb-2">
                         <CardTitle className="font-headline text-lg w-full pr-12">{exercise.emoji} {t(exercise.name)}</CardTitle>
                         <div className="flex gap-2 items-center mt-2 w-full justify-between">
-                          <Badge variant="outline" className="capitalize">{t(exercise.bodyPart.toLowerCase())}</Badge>
+                          <Badge className="capitalize bg-accent/20 text-accent hover:bg-accent/30 border-transparent">{t(exercise.bodyPart.toLowerCase())}</Badge>
                           {estimated1RM !== null && estimated1RM > 0 && (
                             <TooltipProvider>
                               <Tooltip>

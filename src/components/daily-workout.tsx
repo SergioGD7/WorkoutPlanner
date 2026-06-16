@@ -12,6 +12,7 @@ import type { WorkoutExercise, Exercise, Set, WorkoutLog } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
 import AddExerciseDialog from "@/components/add-exercise-dialog";
 import EditWorkoutDialog from "@/components/edit-workout-dialog";
+import RestTimer from "@/components/rest-timer";
 import { v4 as uuidv4 } from 'uuid';
 import * as z from "zod";
 import { useExercises } from "@/context/exercise-context";
@@ -49,6 +50,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [editingWorkoutExercise, setEditingWorkoutExercise] = useState<WorkoutExercise | null>(null);
   const [exerciseToConfirmDelete, setExerciseToConfirmDelete] = useState<WorkoutExercise | null>(null);
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
+  const [isTimerActive, setIsTimerActive] = useState(false);
 
   const { exercises: allExercises } = useExercises();
   const { t, language } = useLanguage();
@@ -128,6 +130,10 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     });
     // setDailyExercises(updatedDailyExercises); // State will be updated by the listener
     updateWorkoutInStorage(updatedDailyExercises);
+    
+    if (completed) {
+      setIsTimerActive(true);
+    }
   };
 
   const getExerciseDetails = (exerciseId: string): Exercise | undefined => {
@@ -307,6 +313,12 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RestTimer 
+        isActive={isTimerActive} 
+        onClose={() => setIsTimerActive(false)} 
+        initialSeconds={90} 
+      />
     </>
   );
 }

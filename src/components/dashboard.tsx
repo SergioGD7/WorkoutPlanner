@@ -7,7 +7,8 @@ import { enUS } from 'date-fns/locale/en-US';
 import { Button } from "@/components/ui/button";
 import DailyWorkout from "@/components/daily-workout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Activity } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -21,7 +22,7 @@ export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { user } = useAuth();
 
   const weekStartsOn = language === 'es' ? 1 : 0; // Monday for ES, Sunday for EN
@@ -76,26 +77,39 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-2">
-            {weekDays.map(day => (
-                <Button 
-                    key={day.toString()}
-                    variant={isSameDay(day, selectedDate) ? 'secondary' : 'ghost'}
-                    className={`flex h-auto flex-col gap-1 p-2 rounded-full transition-all duration-200 capitalize ${isToday(day) && !isSameDay(day, selectedDate) ? 'border-2 border-primary/50' : ''}`}
-                    onClick={() => setSelectedDate(day)}
-                >
-                    <span className="text-sm font-medium">{format(day, 'E', { locale: getLocale() })}</span>
-                    <span className="text-2xl font-bold">{format(day, 'd')}</span>
-                </Button>
-            ))}
+            {weekDays.map(day => {
+                const dayKey = format(day, 'yyyy-MM-dd');
+                const hasWorkout = !!workoutLog[dayKey];
+                return (
+                    <Button 
+                        key={day.toString()}
+                        variant={isSameDay(day, selectedDate) ? 'secondary' : 'ghost'}
+                        className={`flex h-auto flex-col gap-1 p-2 rounded-full transition-all duration-200 capitalize ${isToday(day) && !isSameDay(day, selectedDate) ? 'border-2 border-primary/50' : ''}`}
+                        onClick={() => setSelectedDate(day)}
+                    >
+                        <span className="text-sm font-medium">{format(day, 'E', { locale: getLocale() })}</span>
+                        <span className="text-2xl font-bold">{format(day, 'd')}</span>
+                        {hasWorkout && <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1" />}
+                    </Button>
+                );
+            })}
           </div>
         </CardContent>
       </Card>
 
       <DailyWorkout date={selectedDate} />
 
-      <div className="grid grid-cols-1 gap-6">
-        <MuscleHeatmap workoutLog={workoutLog} />
-      </div>
+      <Collapsible className="grid grid-cols-1 gap-6">
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            <span>{t('muscleHeatmap') || 'Muscle Heatmap'}</span>
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+            <MuscleHeatmap workoutLog={workoutLog} />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

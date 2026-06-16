@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
-import { RadialBarChart, RadialBar, Legend, Tooltip } from "recharts";
+import { RadialBarChart, RadialBar, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid, format, eachDayOfInterval, startOfDay } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
@@ -16,6 +16,7 @@ import { bodyPartColorMap } from '@/lib/style-utils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import * as xlsx from 'xlsx';
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -27,6 +28,7 @@ export default function ProgressTracker() {
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('week');
   const [exportDateRange, setExportDateRange] = useState<DateRange | undefined>();
+  const [selectedExerciseFor1RM, setSelectedExerciseFor1RM] = useState<string>("all");
 
   const { exercises } = useExercises();
   const { t, language } = useLanguage();
@@ -108,6 +110,35 @@ export default function ProgressTracker() {
 
     return Object.values(data).filter(d => d.volume > 0).sort((a, b) => b.volume - a.volume);
   }, [workoutLog, timeRange, exercises, language, t]);
+
+  const lineChartData = useMemo(() => {
+    if (!selectedExerciseFor1RM || selectedExerciseFor1RM === "all") return [];
+    
+    const data: { date: string; max1RM: number }[] = [];
+    
+    Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
+      const exerciseLogs = workoutExercises.filter(ex => ex.exerciseId === selectedExerciseFor1RM);
+      if (exerciseLogs.length > 0) {
+        let dailyMax1RM = 0;
+        exerciseLogs.forEach(log => {
+          log.sets.forEach(set => {
+            if (set.weight > 0 && set.reps > 0) {
+              const current1RM = set.weight * (1 + set.reps / 30);
+              if (current1RM > dailyMax1RM) dailyMax1RM = current1RM;
+            }
+          });
+        });
+        if (dailyMax1RM > 0) {
+          data.push({
+            date: dateStr,
+            max1RM: Math.round(dailyMax1RM)
+          });
+        }
+      }
+    });
+
+    return data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [workoutLog, selectedExerciseFor1RM]);
   
   const getTimeRangeLabel = () => {
     switch (timeRange) {
@@ -210,6 +241,66 @@ export default function ProgressTracker() {
                 </PopoverContent>
             </Popover>
         </div>
+
+      <Card className="mb-6 glass-effect border-primary/20">
+        <CardHeader className="p-4 sm:p-6 pb-2">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <div>
+              <CardTitle className="font-headline text-xl sm:text-2xl text-primary">{t('1rmProgression')}</CardTitle>
+              <CardDescription>{t('trackYour1RM')}</CardDescription>
+            </div>
+            <Select value={selectedExerciseFor1RM} onValueChange={setSelectedExerciseFor1RM}>
+              <SelectTrigger className="w-[200px] bg-background">
+                <SelectValue placeholder={t('selectExercise')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">-- {t('selectExercise')} --</SelectItem>
+                {exercises.map(ex => (
+                  <SelectItem key={ex.id} value={ex.id}>{t(ex.name)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 h-[350px]">
+          {selectedExerciseFor1RM === "all" ? (
+             <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+               <p>{t('selectExerciseToView')}</p>
+             </div>
+          ) : lineChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={lineChartData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" vertical={false} />
+                <XAxis 
+                    dataKey="date" 
+                    stroke="hsl(var(--muted-foreground))" 
+                    tickFormatter={(val) => format(parseISO(val), 'MMM d')}
+                    tick={{ fontSize: 12 }}
+                />
+                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
+                <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    labelFormatter={(label) => format(parseISO(label as string), 'MMM d, yyyy')}
+                />
+                <Line 
+                    type="monotone" 
+                    dataKey="max1RM" 
+                    name="1RM (kg)" 
+                    stroke="#f97316" 
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: "#f97316", strokeWidth: 2, stroke: "#1c1c1c" }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+              <p>{t('no1RMData')}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="p-4 sm:p-6">
           <CardTitle className="font-headline text-xl sm:text-2xl">{t('volumeByBodyPart')}</CardTitle>
