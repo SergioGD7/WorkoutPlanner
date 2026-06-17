@@ -150,7 +150,7 @@ export default function Settings() {
             <CardTitle className="font-headline text-2xl uppercase tracking-wider">{user?.email?.split('@')[0] || 'Athlete'}</CardTitle>
             <p className="text-primary font-medium mt-1">{t('level12Lifter') || 'Level 12 Lifter'}</p>
             <div className="w-64 h-2 bg-muted rounded-full mx-auto mt-3 overflow-hidden">
-            <div className="h-full bg-primary w-[70%]" />
+            <div className="h-full bg-primary w-[70%] rounded-full" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">XP: 45,670 / 50,000</p>
         </div>
@@ -229,7 +229,7 @@ export default function Settings() {
               return (
                  <Card key={ex.id} className="glass-effect hover:border-primary/50 transition-colors">
                     <CardContent className="p-4">
-                       <p className="text-sm text-muted-foreground uppercase tracking-wider font-bold truncate" title={t(ex.name)}>{t(ex.name)}</p>
+                       <p className="text-sm text-muted-foreground uppercase tracking-wider font-bold line-clamp-2 min-h-[2.5rem]" title={t(ex.name)}>{t(ex.name)}</p>
                        <p className="text-2xl font-bold mt-1">{pr.weight > 0 ? pr.weight : '--'} <span className="text-sm font-normal">kg</span></p>
                        <p className="text-xs text-muted-foreground mt-2">{pr.date || '--'}</p>
                     </CardContent>

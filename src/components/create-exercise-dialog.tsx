@@ -98,7 +98,7 @@ export default function CreateExerciseDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? t("editExercise") : t("createCustomExercise")}</DialogTitle>
         </DialogHeader>

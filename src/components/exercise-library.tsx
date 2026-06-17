@@ -121,7 +121,7 @@ export default function ExerciseLibrary() {
               <TabsTrigger 
                 key={part} 
                 value={part}
-                className="rounded-full border border-border bg-card data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary px-5 py-2 shadow-sm transition-all"
+                className="rounded-full border-transparent bg-secondary/50 hover:bg-secondary/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md px-5 py-2.5 text-sm font-medium transition-all"
               >
                 {t(part.toLowerCase())}
               </TabsTrigger>

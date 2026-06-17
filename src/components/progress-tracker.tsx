@@ -250,7 +250,7 @@ export default function ProgressTracker() {
               <CardDescription>{t('trackYour1RM')}</CardDescription>
             </div>
             <Select value={selectedExerciseFor1RM} onValueChange={setSelectedExerciseFor1RM}>
-              <SelectTrigger className="w-[200px] bg-background">
+              <SelectTrigger className="w-full sm:w-[250px] bg-background">
                 <SelectValue placeholder={t('selectExercise')} />
               </SelectTrigger>
               <SelectContent>

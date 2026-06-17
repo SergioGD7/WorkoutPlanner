@@ -54,6 +54,7 @@
   "done": "Hecho",
   "createCustomExercise": "Crear Ejercicio Personalizado",
   "createExercise": "Crear Ejercicio",
+  "create": "Crear",
   "exerciseName": "Nombre del Ejercicio",
   "exerciseDescription": "Descripción del Ejercicio",
   "namePlaceholder": "ej. Sentadilla con barra",

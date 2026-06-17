@@ -52,7 +52,7 @@ export default function EditWorkoutDialog({ isOpen, onClose, onSave, workoutExer
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('edit')}: {exerciseDetails ? t(exerciseDetails.name) : ''}</DialogTitle>
         </DialogHeader>

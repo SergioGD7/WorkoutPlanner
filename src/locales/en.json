@@ -54,6 +54,7 @@
   "done": "Done",
   "createCustomExercise": "Create Custom Exercise",
   "createExercise": "Create Exercise",
+  "create": "Create",
   "exerciseName": "Exercise Name",
   "exerciseDescription": "Exercise Description",
   "namePlaceholder": "e.g., Barbell Squat",

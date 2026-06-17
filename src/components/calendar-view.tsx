@@ -208,7 +208,7 @@ export default function CalendarView() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                       {ex.sets.map((set, setIndex) => (
                         <div key={setIndex} className={`flex justify-between items-center rounded-lg px-3 py-2 text-sm ${set.completed ? 'bg-primary/10 border border-primary/20' : 'bg-background/50'}`}>
                           <span className="font-medium text-muted-foreground">{t('set')} {setIndex + 1}</span>

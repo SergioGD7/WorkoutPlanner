@@ -60,7 +60,7 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('addNewExercise')}</DialogTitle>
         </DialogHeader>
