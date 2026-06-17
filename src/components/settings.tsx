@@ -120,7 +120,7 @@ export default function Settings() {
               <SettingsIcon className="h-5 w-5" />
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{t('settings')}</DialogTitle>
             </DialogHeader>

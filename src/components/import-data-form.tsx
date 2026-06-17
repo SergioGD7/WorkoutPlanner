@@ -125,9 +125,10 @@ export default function ImportDataForm() {
              <Button 
                 onClick={() => handleImport(logsFile, importWorkoutLogs, setIsImportingLogs, 'logsImportedSuccess')}
                 disabled={isImportingLogs || !logsFile}
+                className="w-full whitespace-normal h-auto py-2"
              >
-                {isImportingLogs ? <Loader2 className="animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
-                {t('importWorkoutLogsButton')}
+                {isImportingLogs ? <Loader2 className="animate-spin mr-2" /> : <FileUp className="mr-2 h-4 w-4 shrink-0" />}
+                <span className="text-left">{t('importWorkoutLogsButton')}</span>
             </Button>
         </div>
 
@@ -152,9 +153,10 @@ export default function ImportDataForm() {
              <Button 
                 onClick={() => handleImport(exercisesFile, importExercises, setIsImportingExercises, 'exercisesImportedSuccess')}
                 disabled={isImportingExercises || !exercisesFile}
+                className="w-full whitespace-normal h-auto py-2"
              >
-                {isImportingExercises ? <Loader2 className="animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
-                {t('importExercisesButton')}
+                {isImportingExercises ? <Loader2 className="animate-spin mr-2" /> : <FileUp className="mr-2 h-4 w-4 shrink-0" />}
+                <span className="text-left">{t('importExercisesButton')}</span>
             </Button>
         </div>
       </CardContent>

@@ -121,7 +121,7 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="weight"
               render={({ field }) => (
@@ -135,10 +135,10 @@ export default function AddExerciseDialog({ isOpen, onClose, onAddExercise }: Ad
               )}
             />
             <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="ghost">{t('cancel')}</Button>
-                </DialogClose>
-                <Button type="submit">{t('addExercise')}</Button>
+              <DialogClose asChild>
+                <Button type="button" variant="ghost">{t('cancel')}</Button>
+              </DialogClose>
+              <Button type="submit">{t('addExercise')}</Button>
             </DialogFooter>
           </form>
         </Form>

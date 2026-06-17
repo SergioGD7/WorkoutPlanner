@@ -139,8 +139,9 @@ export default function ChangePasswordForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin" /> : t('updatePassword')}
+            <Button type="submit" disabled={isSubmitting} className="w-full whitespace-normal h-auto py-2">
+              {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+              {t('updatePassword')}
             </Button>
           </form>
         </Form>
