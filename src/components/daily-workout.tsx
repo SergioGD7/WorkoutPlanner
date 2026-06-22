@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -10,15 +9,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Plus, Loader2, Copy, CopyCheck } from "lucide-react";
 import type { WorkoutExercise, Exercise, Set, WorkoutLog } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
-import AddExerciseDialog from "@/components/add-exercise-dialog";
-import EditWorkoutDialog from "@/components/edit-workout-dialog";
+import AddExerciseSheet from "@/components/add-exercise-sheet";
 import RestTimer from "@/components/rest-timer";
 import { v4 as uuidv4 } from 'uuid';
-import * as z from "zod";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
 import { useWorkout } from "@/context/workout-context";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,15 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-
-const addExerciseSchema = z.object({
-  exerciseId: z.string().min(1, "Please select an exercise."),
-  sets: z.coerce.number().min(1, "At least one set is required.").max(10, "Maximum 10 sets."),
-  reps: z.coerce.number().min(1, "At least one rep is required.").max(100),
-  weight: z.coerce.number().min(0, "Weight must be positive.").max(1000),
-});
 
 interface DailyWorkoutProps {
   date: Date;
@@ -46,8 +37,7 @@ interface DailyWorkoutProps {
 export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [dailyExercises, setDailyExercises] = useState<WorkoutExercise[]>([]);
   const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingWorkoutExercise, setEditingWorkoutExercise] = useState<WorkoutExercise | null>(null);
+  const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [exerciseToConfirmDelete, setExerciseToConfirmDelete] = useState<WorkoutExercise | null>(null);
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [isTimerActive, setIsTimerActive] = useState(false);
@@ -55,6 +45,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const { exercises: allExercises } = useExercises();
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const { copiedWorkout, setCopiedWorkout } = useWorkout();
 
@@ -80,8 +71,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         if (docSnap.exists()) {
             setWorkoutLog(docSnap.data() as WorkoutLog);
         } else {
-            // Data migration is now handled by AuthContext upon login/signup.
-            // If no log exists after that, the user truly has no logs.
             console.log("No workout log found in Firestore for this user.");
             setWorkoutLog({});
         }
@@ -113,7 +102,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
 
     try {
         await setDoc(docRef, updatedLog);
-        // The onSnapshot listener will update the state, no need for setWorkoutLog here.
     } catch (error) {
         console.error("Failed to save workout log to Firestore:", error);
     }
@@ -128,7 +116,6 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         }
         return ex;
     });
-    // setDailyExercises(updatedDailyExercises); // State will be updated by the listener
     updateWorkoutInStorage(updatedDailyExercises);
     
     if (completed) {
@@ -136,17 +123,52 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     }
   };
 
+  const handleSetUpdate = (exerciseId: string, setIndex: number, field: "reps" | "weight", value: number) => {
+    const updatedDailyExercises = dailyExercises.map(ex => {
+      if (ex.id === exerciseId) {
+        const newSets = [...ex.sets];
+        newSets[setIndex] = { ...newSets[setIndex], [field]: value };
+        return { ...ex, sets: newSets };
+      }
+      return ex;
+    });
+    updateWorkoutInStorage(updatedDailyExercises);
+  };
+
+  const handleAddSet = (exerciseId: string) => {
+    const updatedDailyExercises = dailyExercises.map(ex => {
+      if (ex.id === exerciseId) {
+        // Copy the last set's weight and reps, or use defaults
+        const lastSet = ex.sets[ex.sets.length - 1];
+        const newSet: Set = lastSet 
+          ? { reps: lastSet.reps, weight: lastSet.weight, completed: false }
+          : { reps: 10, weight: 0, completed: false };
+          
+        return { ...ex, sets: [...ex.sets, newSet] };
+      }
+      return ex;
+    });
+    updateWorkoutInStorage(updatedDailyExercises);
+  };
+
+  const handleRemoveSet = (exerciseId: string, setIndex: number) => {
+    const updatedDailyExercises = dailyExercises.map(ex => {
+      if (ex.id === exerciseId) {
+        const newSets = ex.sets.filter((_, idx) => idx !== setIndex);
+        return { ...ex, sets: newSets };
+      }
+      return ex;
+    });
+    updateWorkoutInStorage(updatedDailyExercises);
+  };
+
   const getExerciseDetails = (exerciseId: string): Exercise | undefined => {
     return allExercises.find(ex => ex.id === exerciseId);
   };
   
   const handleAddExerciseClick = () => {
-    setIsAddDialogOpen(true);
+    setIsAddSheetOpen(true);
   }
-
-  const handleEditExerciseClick = (workoutExercise: WorkoutExercise) => {
-    setEditingWorkoutExercise(workoutExercise);
-  };
 
   const handleDeleteWorkoutExercise = () => {
     if (!exerciseToConfirmDelete) return;
@@ -155,37 +177,37 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     setExerciseToConfirmDelete(null);
   };
 
-  const handleSaveNewExercise = (data: z.infer<typeof addExerciseSchema>) => {
-    const newSets: Set[] = Array.from({ length: data.sets }, () => ({
-      reps: data.reps,
-      weight: data.weight,
+  const handleSaveNewExercise = (exerciseId: string) => {
+    if (dailyExercises.some(ex => ex.exerciseId === exerciseId)) {
+      toast({
+        title: t('error'),
+        description: t('exerciseAlreadyAdded') || "Este ejercicio ya está en tu rutina de hoy.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newSets: Set[] = Array.from({ length: 3 }, () => ({
+      reps: 10,
+      weight: 0,
       completed: false,
     }));
 
     const newWorkoutExercise: WorkoutExercise = {
       id: uuidv4(),
-      exerciseId: data.exerciseId,
+      exerciseId: exerciseId,
       sets: newSets,
     };
     
     const updatedDailyExercises = [...dailyExercises, newWorkoutExercise];
     updateWorkoutInStorage(updatedDailyExercises);
-    setIsAddDialogOpen(false);
-  };
-
-  const handleSaveEditedExercise = (updatedWorkoutExercise: WorkoutExercise) => {
-    const updatedDailyExercises = dailyExercises.map(ex => 
-        ex.id === updatedWorkoutExercise.id ? updatedWorkoutExercise : ex
-    );
-    updateWorkoutInStorage(updatedDailyExercises);
-    setEditingWorkoutExercise(null);
+    setIsAddSheetOpen(false); // Close the sheet automatically
   };
 
   const handleCopyDay = () => {
-    // Reset completion status when copying
     const workoutToCopy = dailyExercises.map(ex => ({
       ...ex,
-      id: uuidv4(), // Generate new unique ID for the workout exercise itself
+      id: uuidv4(),
       sets: ex.sets.map(set => ({ ...set, completed: false }))
     }));
     setCopiedWorkout(workoutToCopy);
@@ -210,31 +232,33 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     return format(date, "EEEE, d", { locale });
   }
 
+  const existingExerciseIds = dailyExercises.map(ex => ex.exerciseId);
+
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+      <Card className="border-0 shadow-none bg-transparent sm:border sm:shadow-sm sm:bg-card">
+        <CardHeader className="flex flex-row items-center justify-between px-2 sm:px-6">
           <CardTitle className="font-headline text-2xl capitalize">
             {t('workoutFor', { date: getFormattedDate() })}
           </CardTitle>
           <div className="flex items-center gap-1">
              {dailyExercises.length > 0 && (
-                <Button variant="outline" size="icon" onClick={handleCopyDay} aria-label={t('copyDay')}>
+                <Button variant="outline" size="icon" onClick={handleCopyDay} aria-label={t('copyDay')} className="rounded-full">
                     <Copy className="h-5 w-5" />
                 </Button>
              )}
              {copiedWorkout && (
-                <Button variant="outline" size="icon" onClick={handlePasteDay} aria-label={t('pasteDay')}>
+                <Button variant="outline" size="icon" onClick={handlePasteDay} aria-label={t('pasteDay')} className="rounded-full">
                     <CopyCheck className="h-5 w-5" />
                 </Button>
              )}
-            <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full">
+            <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full shadow-md">
               <Plus className="h-6 w-6" />
               <span className="sr-only">{t('addExercise')}</span>
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-2 sm:px-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -249,32 +273,31 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                   workoutExercise={workoutExercise}
                   exerciseDetails={exerciseDetails}
                   onSetToggle={handleSetCompletionChange}
-                  onEdit={handleEditExerciseClick}
+                  onSetUpdate={handleSetUpdate}
+                  onAddSet={handleAddSet}
+                  onRemoveSet={handleRemoveSet}
                   onDelete={() => setExerciseToConfirmDelete(workoutExercise)}
                 />
               );
             })
           ) : (
-            <div className="text-center py-10 text-muted-foreground">
-              <p className="text-lg">{t('noWorkoutPlanned')}</p>
-              <p>{t('enjoyRestDay')}</p>
+            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-border bg-secondary/10">
+              <p className="text-lg font-medium text-foreground mb-1">{t('noWorkoutPlanned')}</p>
+              <p className="text-muted-foreground mb-4">{t('enjoyRestDay')}</p>
+              <Button onClick={handleAddExerciseClick} className="rounded-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Empezar a entrenar
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <AddExerciseDialog 
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
+      <AddExerciseSheet 
+        isOpen={isAddSheetOpen}
+        onClose={() => setIsAddSheetOpen(false)}
         onAddExercise={handleSaveNewExercise}
-      />
-
-      <EditWorkoutDialog 
-        isOpen={!!editingWorkoutExercise}
-        onClose={() => setEditingWorkoutExercise(null)}
-        onSave={handleSaveEditedExercise}
-        workoutExercise={editingWorkoutExercise}
-        exerciseDetails={editingWorkoutExercise ? getExerciseDetails(editingWorkoutExercise.exerciseId) : undefined}
+        existingExerciseIds={existingExerciseIds}
       />
 
       <AlertDialog open={!!exerciseToConfirmDelete} onOpenChange={(isOpen) => !isOpen && setExerciseToConfirmDelete(null)}>
