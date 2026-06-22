@@ -24,6 +24,7 @@ import { initialExercises as initialExercisesData } from '@/lib/data';
 interface LoggedInUser {
   uid: string;
   email: string | null;
+  displayName?: string | null;
 }
 
 interface AuthContextType {
@@ -152,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
         });
       } else {
         setUser(null);

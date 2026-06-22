@@ -11,7 +11,10 @@ import type { WorkoutExercise, Exercise, Set, WorkoutLog } from "@/lib/types";
 import WorkoutCard from "@/components/workout-card";
 import AddExerciseSheet from "@/components/add-exercise-sheet";
 import RestTimer from "@/components/rest-timer";
+import ShareWorkoutTicket from "@/components/share-workout-ticket";
 import { v4 as uuidv4 } from 'uuid';
+import { useRef } from 'react';
+import { toBlob } from 'html-to-image';
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
@@ -41,6 +44,8 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [exerciseToConfirmDelete, setExerciseToConfirmDelete] = useState<WorkoutExercise | null>(null);
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [isTimerActive, setIsTimerActive] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const ticketRef = useRef<HTMLDivElement>(null);
 
   const { exercises: allExercises } = useExercises();
   const { t, language } = useLanguage();
@@ -232,6 +237,78 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     return format(date, "EEEE, d", { locale });
   }
 
+  const handleShare = async () => {
+    if (!ticketRef.current || dailyExercises.length === 0) {
+      toast({
+        title: "Error",
+        description: t('noWorkoutPlanned') || "No hay entrenamiento para compartir hoy.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsSharing(true);
+      
+      // We need to wait a tiny bit to ensure fonts/layout are ready if needed
+      await new Promise(r => setTimeout(r, 100));
+
+      const blob = await toBlob(ticketRef.current, { 
+        quality: 0.95,
+        cacheBust: true,
+        pixelRatio: 2, // High res for stories
+        skipFonts: true, // Bypass entirely to prevent the CORS cssRules error
+        fontEmbedCSS: '',
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left'
+        }
+      });
+
+      if (!blob) throw new Error("Failed to generate image");
+
+      const file = new File([blob], `workout-${formattedDate}.png`, { type: 'image/png' });
+      const text = `🔥 ¡Entrenamiento completado!\n📅 ${getFormattedDate()}\n💪 ${dailyExercises.length} ejercicios realizados.\n¡Sigue tu progreso en Workout Planner!`;
+
+      // Try native share first
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: 'Mi Entrenamiento',
+          text: text,
+          files: [file]
+        });
+        toast({
+          title: "¡Compartido!",
+          description: "Has compartido tu entrenamiento con éxito.",
+        });
+      } else {
+        // Fallback for desktop or browsers that don't support file sharing
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `workout-${formattedDate}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Imagen descargada",
+          description: "Tu dispositivo no soporta compartir imágenes directamente, así que la hemos descargado.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error sharing:", error);
+      if (error.name !== 'AbortError') { // User cancelling native share throws AbortError
+        toast({
+          title: "Error al compartir",
+          description: "Hubo un problema al generar la imagen. Inténtalo de nuevo.",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   const existingExerciseIds = dailyExercises.map(ex => ex.exerciseId);
 
   return (
@@ -252,6 +329,21 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                     <CopyCheck className="h-5 w-5" />
                 </Button>
              )}
+            {dailyExercises.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleShare} 
+                disabled={isSharing}
+                className="rounded-full relative overflow-hidden"
+              >
+                {isSharing ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+                )}
+              </Button>
+            )}
             <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full shadow-md">
               <Plus className="h-6 w-6" />
               <span className="sr-only">{t('addExercise')}</span>
@@ -341,6 +433,14 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         isActive={isTimerActive} 
         onClose={() => setIsTimerActive(false)} 
         initialSeconds={90} 
+      />
+
+      <ShareWorkoutTicket 
+        ref={ticketRef}
+        dateStr={getFormattedDate()}
+        userName={user?.displayName || user?.email?.split('@')[0] || "Atleta"}
+        dailyExercises={dailyExercises}
+        getExerciseDetails={getExerciseDetails}
       />
     </>
   );
