@@ -178,5 +178,12 @@
   "exercises": "Exercises",
   "volume": "Volume",
   "searchExercises": "Search exercises...",
-  "muscleHeatmap": "Muscle Heatmap"
+  "muscleHeatmap": "Muscle Heatmap",
+  "templatePush": "Push (Chest, Shoulders, Triceps)",
+  "templatePull": "Pull (Back, Biceps)",
+  "templateLegs": "Legs (Quads, Hamstrings, Calves)",
+  "templateFullBody": "Full Body",
+  "loadTemplate": "Load Template",
+  "loadTemplateConfirmation": "This will add the template exercises to your workout today. Continue?",
+  "weeklyVolume": "Weekly Volume (Sets)"
 }

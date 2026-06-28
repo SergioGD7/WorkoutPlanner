@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2, Dumbbell } from "lucide-react";
-import CreateExerciseDialog from "./create-exercise-dialog";
+import CreateExerciseSheet from "./create-exercise-sheet";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
@@ -185,7 +185,7 @@ export default function ExerciseLibrary() {
           </TabsContent>
         ))}
       </Tabs>
-      <CreateExerciseDialog isOpen={isDialogOpen} onClose={handleCloseDialog} exerciseToEdit={exerciseToEdit} />
+      <CreateExerciseSheet isOpen={isDialogOpen} onClose={handleCloseDialog} exerciseToEdit={exerciseToEdit} />
       <DeleteExerciseDialog 
         isOpen={!!exerciseToDelete}
         onClose={() => setExerciseToDelete(null)}

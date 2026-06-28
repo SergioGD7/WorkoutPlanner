@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
-import { RadialBarChart, RadialBar, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { RadialBarChart, RadialBar, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { isToday, isThisWeek, isThisMonth, isThisYear, parseISO, isValid, format, eachDayOfInterval, startOfDay } from 'date-fns';
 import type { WorkoutLog } from '@/lib/types';
@@ -139,6 +139,38 @@ export default function ProgressTracker() {
 
     return data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [workoutLog, selectedExerciseFor1RM]);
+  
+  const weeklySetsData = useMemo(() => {
+    const weekStartsOn = language === 'es' ? 1 : 0;
+    const data: { [bodyPart: string]: { name: string, sets: number, fill: string } } = {};
+
+    Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
+      const date = parseISO(dateStr);
+      if (!isValid(date)) return;
+
+      if (isThisWeek(date, { weekStartsOn })) {
+        workoutExercises.forEach(workoutEx => {
+          const exerciseDetails = exercises.find(ex => ex.id === workoutEx.exerciseId);
+          if (!exerciseDetails) return;
+
+          const bodyPart = exerciseDetails.bodyPart;
+
+          if (!data[bodyPart]) {
+            data[bodyPart] = {
+              name: t(bodyPart.toLowerCase()),
+              sets: 0,
+              fill: bodyPartColorMap.get(bodyPart) || "hsl(var(--primary))",
+            };
+          }
+
+          const validSets = workoutEx.sets.filter(s => s.reps > 0).length;
+          data[bodyPart].sets += validSets;
+        });
+      }
+    });
+
+    return Object.values(data).filter(d => d.sets > 0).sort((a, b) => b.sets - a.sets);
+  }, [workoutLog, exercises, language, t]);
   
   const getTimeRangeLabel = () => {
     switch (timeRange) {
@@ -296,6 +328,41 @@ export default function ProgressTracker() {
           ) : (
             <div className="flex h-full items-center justify-center text-center text-muted-foreground">
               <p>{t('no1RMData')}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6 glass-effect">
+        <CardHeader className="p-4 sm:p-6 pb-2">
+          <CardTitle className="font-headline text-xl sm:text-2xl text-accent">{t('weeklyVolume') || 'Weekly Volume (Sets)'}</CardTitle>
+          <CardDescription>Series totales por músculo en la semana actual. Objetivo: 10-20 series.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 h-[350px]">
+          {weeklySetsData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklySetsData} margin={{ top: 20, right: 20, left: -20, bottom: 20 }} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" horizontal={true} vertical={false} />
+                <XAxis type="number" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: 12 }} width={80} />
+                <Tooltip 
+                    cursor={{ fill: 'hsl(var(--secondary)/0.1)' }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
+                />
+                <Bar dataKey="sets" name={t('sets') || 'Series'} radius={[0, 4, 4, 0]}>
+                  {
+                    weeklySetsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))
+                  }
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
+              <p className="text-lg">No hay series registradas esta semana.</p>
             </div>
           )}
         </CardContent>

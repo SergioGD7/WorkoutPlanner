@@ -25,3 +25,9 @@ export interface Exercise {
   description: string;
   emoji: string;
 }
+
+export interface WorkoutTemplate {
+  id: string;
+  nameKey: string;
+  exercises: string[]; // Array of exercise IDs
+}

@@ -178,5 +178,12 @@
   "exercises": "Ejercicios",
   "volume": "Volumen",
   "searchExercises": "Buscar ejercicios...",
-  "muscleHeatmap": "Mapa de Calor Muscular"
+  "muscleHeatmap": "Mapa de Calor Muscular",
+  "templatePush": "Empuje (Pecho, Hombro, Tríceps)",
+  "templatePull": "Tirón (Espalda, Bíceps)",
+  "templateLegs": "Piernas (Cuádriceps, Femorales, Gemelos)",
+  "templateFullBody": "Cuerpo Completo",
+  "loadTemplate": "Cargar Plantilla",
+  "loadTemplateConfirmation": "Esto añadirá los ejercicios de la plantilla a tu entrenamiento de hoy. ¿Continuar?",
+  "weeklyVolume": "Volumen Semanal (Series)"
 }

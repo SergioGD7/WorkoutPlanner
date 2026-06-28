@@ -12,6 +12,7 @@ import WorkoutCard from "@/components/workout-card";
 import AddExerciseSheet from "@/components/add-exercise-sheet";
 import RestTimer from "@/components/rest-timer";
 import ShareWorkoutTicket from "@/components/share-workout-ticket";
+import LoadTemplateSheet from "@/components/load-template-sheet";
 import { v4 as uuidv4 } from 'uuid';
 import { useRef } from 'react';
 import { toBlob } from 'html-to-image';
@@ -45,6 +46,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
   const ticketRef = useRef<HTMLDivElement>(null);
 
   const { exercises: allExercises } = useExercises();
@@ -209,6 +211,21 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     setIsAddSheetOpen(false); // Close the sheet automatically
   };
 
+  const handleLoadTemplate = (exerciseIds: string[]) => {
+    const currentExerciseIds = dailyExercises.map(ex => ex.exerciseId);
+    const newExercisesToAdd = exerciseIds.filter(id => !currentExerciseIds.includes(id));
+    
+    if (newExercisesToAdd.length > 0) {
+      const newWorkoutExercises = newExercisesToAdd.map(exerciseId => ({
+        id: uuidv4(),
+        exerciseId: exerciseId,
+        sets: Array.from({ length: 3 }, () => ({ reps: 10, weight: 0, completed: false })),
+      }));
+      updateWorkoutInStorage([...dailyExercises, ...newWorkoutExercises]);
+    }
+    setIsTemplateSheetOpen(false);
+  };
+
   const handleCopyDay = () => {
     const workoutToCopy = dailyExercises.map(ex => ({
       ...ex,
@@ -344,6 +361,9 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                 )}
               </Button>
             )}
+            <Button variant="outline" size="icon" onClick={() => setIsTemplateSheetOpen(true)} aria-label={t('loadTemplate')} className="rounded-full shadow-sm text-primary border-primary/20 bg-primary/5">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+            </Button>
             <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full shadow-md">
               <Plus className="h-6 w-6" />
               <span className="sr-only">{t('addExercise')}</span>
@@ -390,6 +410,12 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         onClose={() => setIsAddSheetOpen(false)}
         onAddExercise={handleSaveNewExercise}
         existingExerciseIds={existingExerciseIds}
+      />
+
+      <LoadTemplateSheet 
+        isOpen={isTemplateSheetOpen}
+        onClose={() => setIsTemplateSheetOpen(false)}
+        onLoadTemplate={handleLoadTemplate}
       />
 
       <AlertDialog open={!!exerciseToConfirmDelete} onOpenChange={(isOpen) => !isOpen && setExerciseToConfirmDelete(null)}>

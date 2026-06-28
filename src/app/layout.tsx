@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { LanguageProvider } from '@/context/language-context';
 import { ExerciseProvider } from '@/context/exercise-context';
+import { TemplateProvider } from '@/context/template-context';
 import { Providers } from '@/components/providers';
 import { AuthProvider } from '@/context/auth-context';
 import { WorkoutProvider } from '@/context/workout-context';
@@ -29,10 +30,12 @@ export default function RootLayout({
           <AuthProvider>
             <LanguageProvider>
               <ExerciseProvider>
-                <WorkoutProvider>
-                  {children}
-                  <Toaster />
-                </WorkoutProvider>
+                <TemplateProvider>
+                  <WorkoutProvider>
+                    {children}
+                    <Toaster />
+                  </WorkoutProvider>
+                </TemplateProvider>
               </ExerciseProvider>
             </LanguageProvider>
           </AuthProvider>

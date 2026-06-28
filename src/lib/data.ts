@@ -30,3 +30,26 @@ export const initialExercises: Exercise[] = [
   { id: 'ex14', name: 'plank', bodyPart: 'Core', description: 'plankDescription', emoji: '🧘' },
   { id: 'ex15', name: 'crunches', bodyPart: 'Core', description: 'crunchesDescription', emoji: '🧘' },
 ];
+
+export const workoutTemplates = [
+  {
+    id: 'tpl1',
+    nameKey: 'templatePush',
+    exercises: ['ex1', 'ex2', 'ex10', 'ex11', 'ex13']
+  },
+  {
+    id: 'tpl2',
+    nameKey: 'templatePull',
+    exercises: ['ex4', 'ex5', 'ex6', 'ex12']
+  },
+  {
+    id: 'tpl3',
+    nameKey: 'templateLegs',
+    exercises: ['ex7', 'ex8', 'ex9', 'ex14', 'ex15']
+  },
+  {
+    id: 'tpl4',
+    nameKey: 'templateFullBody',
+    exercises: ['ex1', 'ex4', 'ex7', 'ex10', 'ex12']
+  }
+];
