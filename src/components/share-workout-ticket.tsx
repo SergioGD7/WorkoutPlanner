@@ -20,8 +20,23 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
       return acc + curr.sets.filter(s => s.completed).reduce((setAcc, set) => setAcc + (set.weight * set.reps), 0);
     }, 0);
     
-    const displayExercises = dailyExercises.slice(0, 5); // Show max 5 to fit in ticket
-    const hasMore = dailyExercises.length > 5;
+    // Find max weight for each exercise
+    const getExerciseMaxWeight = (ex: WorkoutExercise) => {
+      const completedSets = ex.sets.filter(s => s.completed);
+      if (completedSets.length === 0) return 0;
+      return Math.max(...completedSets.map(s => s.weight || 0));
+    };
+
+    // Calculate muscles worked today for heatmap
+    const musclesWorked = new Set<string>();
+    dailyExercises.forEach(ex => {
+      const details = getExerciseDetails(ex.exerciseId);
+      if (details && ex.sets.some(s => s.completed)) {
+        musclesWorked.add(details.bodyPart.toLowerCase());
+      }
+    });
+
+    const getMuscleColor = (muscle: string) => musclesWorked.has(muscle) ? '#f97316' : '#333535';
 
     return (
       <div 
@@ -31,7 +46,7 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
         <div 
           ref={ref}
           id="share-workout-ticket"
-          className="w-[1080px] h-[1920px] bg-gradient-to-br from-neutral-900 via-neutral-950 to-black text-white p-20 flex flex-col items-center justify-between font-sans relative overflow-hidden"
+          className="w-[1080px] min-h-[1920px] h-fit bg-gradient-to-br from-neutral-900 via-neutral-950 to-black text-white p-20 pb-24 flex flex-col items-center justify-between font-sans relative overflow-hidden"
           style={{ 
             fontFamily: "'Inter', 'PT Sans', sans-serif"
           }}
@@ -95,10 +110,12 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                 </h3>
                 
                 <div className="space-y-8">
-                  {displayExercises.map((ex) => {
+                  {dailyExercises.map((ex) => {
                     const details = getExerciseDetails(ex.exerciseId);
                     if (!details) return null;
-                    const setsDone = ex.sets.filter(s => s.completed).length;
+                    const completedSets = ex.sets.filter(s => s.completed);
+                    const setsDone = completedSets.length;
+                    const maxWeight = getExerciseMaxWeight(ex);
                     
                     return (
                       <div key={ex.id} className="flex items-center justify-between border-b border-white/10 pb-8 last:border-0 last:pb-0">
@@ -110,21 +127,59 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="text-5xl font-black text-primary">{setsDone}</span>
-                          <span className="text-2xl text-neutral-400 ml-3">{t('set').toLowerCase()}s</span>
+                          <div className="flex items-baseline justify-end gap-2 mb-2">
+                            <span className="text-5xl font-black text-primary">{setsDone}</span>
+                            <span className="text-2xl text-neutral-400">{t('set').toLowerCase()}s</span>
+                          </div>
+                          {maxWeight > 0 && (
+                            <p className="text-2xl text-orange-400 font-bold uppercase tracking-wider">
+                              Max: {maxWeight} kg
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                   
-                  {hasMore && (
-                    <div className="text-center pt-8">
-                      <p className="text-3xl font-medium text-neutral-400">
-                        {language === 'es' ? `...y ${dailyExercises.length - 5} más` : `...and ${dailyExercises.length - 5} more`}
-                      </p>
-                    </div>
-                  )}
+
                 </div>
+              </div>
+            </div>
+
+            {/* Muscle Heatmap */}
+            <div className="w-full flex-1 flex flex-col justify-center items-center mt-16 mb-8">
+              <h3 className="text-3xl font-bold text-neutral-300 mb-8 uppercase tracking-widest">
+                {language === 'es' ? 'Músculos Trabajados' : 'Muscles Worked'}
+              </h3>
+              <div className="relative w-[400px] h-[400px]">
+                <svg viewBox="0 0 100 200" className="w-full h-full drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                  {/* Torso */}
+                  <path d="M30 40 L70 40 L75 100 L25 100 Z" fill="#222323" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+                  
+                  {/* Back (Simplified as lats) */}
+                  <path d="M25 60 Q20 80 25 100 L35 100 Q30 80 35 60 Z" fill={getMuscleColor('back')} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+                  <path d="M75 60 Q80 80 75 100 L65 100 Q70 80 65 60 Z" fill={getMuscleColor('back')} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
+
+                  {/* Shoulders */}
+                  <path d="M30 40 Q50 30 70 40 L85 55 L78 65 Q70 50 65 45 Q50 50 35 45 Q30 50 22 65 L15 55 Z" fill={getMuscleColor('shoulders')} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                  
+                  {/* Chest */}
+                  <path d="M35 45 Q50 50 65 45 L62 70 Q50 75 38 70 Z" fill={getMuscleColor('chest')} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+
+                  {/* Core */}
+                  <path d="M38 70 Q50 75 62 70 L58 100 Q50 105 42 100 Z" fill={getMuscleColor('core')} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+
+                  {/* Arms */}
+                  <path d="M15 55 L22 65 L18 110 L10 105 Z" fill={getMuscleColor('arms')} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                  <path d="M85 55 L78 65 L82 110 L90 105 Z" fill={getMuscleColor('arms')} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+
+                  {/* Legs */}
+                  <path d="M42 100 Q45 103 50 105 L48 180 L35 180 L38 100 Z" fill={getMuscleColor('legs')} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                  <path d="M58 100 Q55 103 50 105 L52 180 L65 180 L62 100 Z" fill={getMuscleColor('legs')} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+
+                  {/* Head (Neutral) */}
+                  <circle cx="50" cy="20" r="12" fill="#333535" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                </svg>
               </div>
             </div>
 
