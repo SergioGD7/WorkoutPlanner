@@ -143,7 +143,7 @@ function SetRow({ set, index, workoutExerciseId, onSetToggle, onSetUpdate, onRem
                 className="w-16 h-8 text-center bg-secondary/30 hover:bg-secondary/50 focus:bg-secondary/70 border border-transparent focus:border-primary/50 rounded-md outline-none transition-colors text-foreground font-semibold"
                 placeholder="0"
                 min="0"
-                step="0.5"
+                step="0.01"
               />
               <span className="text-xs text-muted-foreground ml-1.5 font-medium">kg</span>
             </div>

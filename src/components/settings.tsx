@@ -168,6 +168,7 @@ export default function Settings() {
                      <>
                         <Input 
                            type="number" 
+                           step="0.01"
                            value={weightInput} 
                            onChange={(e) => setWeightInput(e.target.value)} 
                            className="w-24 text-xl font-bold h-10" 
