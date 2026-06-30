@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,21 @@ function SetRow({ set, index, workoutExerciseId, onSetToggle, onSetUpdate, onRem
   const { t } = useLanguage();
   const controls = useAnimation();
   const [isDeleting, setIsDeleting] = useState(false);
-  
+  const [localWeight, setLocalWeight] = useState(set.weight ? String(set.weight) : "");
+  const [localReps, setLocalReps] = useState(set.reps ? String(set.reps) : "");
+
+  useEffect(() => {
+    // Sync local state if external state changes, comparing numerically
+    const parsedWeight = Number(localWeight.replace(',', '.'));
+    if (set.weight !== parsedWeight && !(set.weight === undefined && parsedWeight === 0)) {
+      setLocalWeight(set.weight ? String(set.weight) : "");
+    }
+    const parsedReps = Number(localReps);
+    if (set.reps !== parsedReps && !(set.reps === undefined && parsedReps === 0)) {
+      setLocalReps(set.reps ? String(set.reps) : "");
+    }
+  }, [set.weight, set.reps]);
+
   // Handlers for swipe-to-delete
   const handleDragEnd = async (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = -80; // Swipe left by 80px to delete
@@ -105,8 +119,22 @@ function SetRow({ set, index, workoutExerciseId, onSetToggle, onSetUpdate, onRem
   };
 
   const handleInputChange = (field: "reps" | "weight", value: string) => {
-    const numValue = value === "" ? 0 : Number(value);
-    onSetUpdate(workoutExerciseId, index, field, numValue);
+    // allow empty string, or numbers with optional dot or comma
+    if (!/^[0-9.,]*$/.test(value)) return;
+    
+    if (field === "weight") {
+      setLocalWeight(value);
+      const parsed = value === "" ? 0 : Number(value.replace(',', '.'));
+      if (!isNaN(parsed)) {
+        onSetUpdate(workoutExerciseId, index, field, parsed);
+      }
+    } else {
+      setLocalReps(value);
+      const parsed = value === "" ? 0 : Number(value);
+      if (!isNaN(parsed)) {
+        onSetUpdate(workoutExerciseId, index, field, parsed);
+      }
+    }
   };
 
   return (
@@ -137,13 +165,12 @@ function SetRow({ set, index, workoutExerciseId, onSetToggle, onSetUpdate, onRem
           <div className="flex items-center gap-2">
             <div className="relative flex items-center">
               <input
-                type="number"
-                value={set.weight || ""}
+                type="text"
+                inputMode="decimal"
+                value={localWeight}
                 onChange={(e) => handleInputChange("weight", e.target.value)}
                 className="w-16 h-8 text-center bg-secondary/30 hover:bg-secondary/50 focus:bg-secondary/70 border border-transparent focus:border-primary/50 rounded-md outline-none transition-colors text-foreground font-semibold"
                 placeholder="0"
-                min="0"
-                step="0.01"
               />
               <span className="text-xs text-muted-foreground ml-1.5 font-medium">kg</span>
             </div>
@@ -152,13 +179,12 @@ function SetRow({ set, index, workoutExerciseId, onSetToggle, onSetUpdate, onRem
             
             <div className="relative flex items-center">
               <input
-                type="number"
-                value={set.reps || ""}
+                type="text"
+                inputMode="numeric"
+                value={localReps}
                 onChange={(e) => handleInputChange("reps", e.target.value)}
                 className="w-14 h-8 text-center bg-secondary/30 hover:bg-secondary/50 focus:bg-secondary/70 border border-transparent focus:border-primary/50 rounded-md outline-none transition-colors text-foreground font-semibold"
                 placeholder="0"
-                min="0"
-                step="1"
               />
               <span className="text-xs text-muted-foreground ml-1.5 font-medium">reps</span>
             </div>
