@@ -276,6 +276,10 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         pixelRatio: 2, // High res for stories
         skipFonts: true, // Bypass entirely to prevent the CORS cssRules error
         fontEmbedCSS: '',
+        canvasWidth: 1080 * 2,
+        canvasHeight: ticketRef.current.scrollHeight * 2,
+        width: 1080,
+        height: ticketRef.current.scrollHeight,
         style: {
           transform: 'scale(1)',
           transformOrigin: 'top left'

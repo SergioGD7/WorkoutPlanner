@@ -62,10 +62,10 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                 <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center rotate-3 shadow-lg shadow-primary/30">
                   <Dumbbell className="w-10 h-10 text-primary-foreground" />
                 </div>
-                <h1 className="text-4xl font-bold tracking-tight whitespace-nowrap">Workout Planner</h1>
+                <h1 className="text-4xl font-bold tracking-tight whitespace-nowrap">{'Workout\u00A0Planner'}</h1>
               </div>
               <div className="bg-white/10 backdrop-blur-md px-8 py-4 rounded-full border border-white/10 shrink-0">
-                <p className="text-3xl font-medium tracking-wide text-primary-foreground/90 whitespace-nowrap">{dateStr}</p>
+                <p className="text-3xl font-medium tracking-wide text-primary-foreground/90 whitespace-nowrap">{dateStr.replace(/ /g, '\u00A0')}</p>
               </div>
             </div>
 
@@ -122,8 +122,8 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                         <div className="flex items-center gap-6 overflow-hidden">
                           <span className="text-6xl bg-white/10 p-4 rounded-2xl shrink-0">{details.emoji}</span>
                           <div className="min-w-0">
-                            <p className="text-4xl font-bold text-white mb-2 whitespace-nowrap truncate">{t(details.name)}</p>
-                            <p className="text-2xl text-neutral-400 uppercase tracking-wider whitespace-nowrap">{t(details.bodyPart.toLowerCase())}</p>
+                            <p className="text-4xl font-bold text-white mb-2 whitespace-nowrap truncate">{t(details.name).replace(/ /g, '\u00A0')}</p>
+                            <p className="text-2xl text-neutral-400 uppercase tracking-wider whitespace-nowrap">{t(details.bodyPart.toLowerCase()).replace(/ /g, '\u00A0')}</p>
                           </div>
                         </div>
                         <div className="text-right shrink-0 ml-4">
