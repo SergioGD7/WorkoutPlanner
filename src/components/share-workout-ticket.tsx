@@ -119,11 +119,11 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                     
                     return (
                       <div key={ex.id} className="flex items-center justify-between border-b border-white/10 pb-8 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-6 overflow-hidden">
+                        <div className="flex items-center gap-6">
                           <span className="text-6xl bg-white/10 p-4 rounded-2xl shrink-0">{details.emoji}</span>
-                          <div className="min-w-0">
-                            <p className="text-4xl font-bold text-white mb-2 whitespace-nowrap truncate">{t(details.name).replace(/ /g, '\u00A0')}</p>
-                            <p className="text-2xl text-neutral-400 uppercase tracking-wider whitespace-nowrap">{t(details.bodyPart.toLowerCase()).replace(/ /g, '\u00A0')}</p>
+                          <div className="flex flex-col gap-2">
+                            <p className="text-4xl font-bold text-white leading-[1.2]">{t(details.name)}</p>
+                            <p className="text-2xl text-neutral-400 uppercase tracking-wider">{t(details.bodyPart.toLowerCase())}</p>
                           </div>
                         </div>
                         <div className="text-right shrink-0 ml-4">
