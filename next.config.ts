@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   output: 'export',
+  // Set basePath for GitHub Pages if running in GitHub Actions
+  ...(process.env.GITHUB_ACTIONS && { basePath: '/WorkoutPlanner' }),
 };
 
 export default nextConfig;
