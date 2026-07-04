@@ -7,9 +7,9 @@ import ImportDataForm from './import-data-form';
 import { useAuth } from '@/context/auth-context';
 import { useExercises } from '@/context/exercise-context';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Settings as SettingsIcon, Trophy, Target, TrendingUp, Edit2, Check } from "lucide-react";
+import { User, Settings as SettingsIcon, Trophy, Target, TrendingUp, Edit2, Check, ChevronLeft } from "lucide-react";
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -21,8 +21,8 @@ import { enUS } from 'date-fns/locale/en-US';
 export default function Settings() {
   const { t, language } = useLanguage();
   const { user } = useAuth();
-  
   const { exercises } = useExercises();
+  const router = useRouter();
   
   const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
   const [isEditingWeight, setIsEditingWeight] = useState(false);
@@ -111,33 +111,17 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl md:text-2xl font-bold tracking-tight font-headline">{t('profile') || 'Profile'}</h2>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="rounded-full">
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight font-headline">{t('profile') || 'Profile'}</h2>
+        </div>
         
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="icon" className="rounded-full">
-              <SettingsIcon className="h-5 w-5" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{t('settings')}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 pt-4">
-              <section>
-                  <h3 className="text-lg font-semibold mb-3 font-headline">{t('security')}</h3>
-                  <ChangePasswordForm />
-              </section>
-              {user?.email === 'sergio.g.d7@gmail.com' && (
-                <section>
-                    <h3 className="text-lg font-semibold mb-3 font-headline">{t('dataManagement')}</h3>
-                    <ImportDataForm />
-                </section>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="outline" size="icon" className="rounded-full" onClick={() => router.push('/settings/advanced')}>
+          <SettingsIcon className="h-5 w-5" />
+        </Button>
       </div>
 
       <Card className="glass-effect border-primary/20 text-center py-8 relative overflow-hidden">

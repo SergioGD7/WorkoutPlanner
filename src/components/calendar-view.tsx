@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { format, parseISO, isValid, addDays, subDays, startOfWeek, endOfWeek, isSameDay, eachDayOfInterval } from 'date-fns';
+import { format, parseISO, isValid, addDays, subDays, startOfWeek, endOfWeek, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
 
@@ -12,10 +12,11 @@ import type { WorkoutLog, BodyPart, Set as WorkoutSet } from '@/lib/types';
 import { bodyPartColorMap } from '@/lib/style-utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, Circle, ChevronDown, ChevronUp } from 'lucide-react';
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type DailyBodyPartsMap = Map<string, BodyPart[]>;
 
@@ -36,6 +37,8 @@ export default function CalendarView() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
+  const [isMonthView, setIsMonthView] = useState(true);
 
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -108,65 +111,163 @@ export default function CalendarView() {
   const nextWeek = () => setCurrentWeekStart(addDays(currentWeekStart, 7));
   const prevWeek = () => setCurrentWeekStart(subDays(currentWeekStart, 7));
 
-  const weekDays = eachDayOfInterval({
+  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+
+  const weekDays = useMemo(() => eachDayOfInterval({
     start: currentWeekStart,
     end: addDays(currentWeekStart, 6)
-  });
+  }), [currentWeekStart]);
+
+  const monthDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: startDate, end: endDate });
+  }, [currentMonth]);
+
+  const handleDayClick = (day: Date) => {
+    setSelectedDate(day);
+    setCurrentWeekStart(startOfWeek(day, { weekStartsOn: 1 }));
+    setIsMonthView(false);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Horizontal Swipeable Week Calendar */}
-      <Card className="glass-effect border-primary/10 overflow-hidden">
-        <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={prevWeek} className="h-8 w-8">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <CardTitle className="font-headline text-lg uppercase tracking-wider">
-            {format(currentWeekStart, 'MMMM yyyy', { locale: getLocale() })}
-          </CardTitle>
-          <Button variant="ghost" size="icon" onClick={nextWeek} className="h-8 w-8">
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          {isLoading ? (
-            <div className="flex h-[80px] items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="flex justify-between items-center w-full mt-2">
-              {weekDays.map((day) => {
-                const isSelected = isSameDay(day, selectedDate);
-                const isTodayDate = isSameDay(day, new Date());
-                const dayKey = format(day, 'yyyy-MM-dd');
-                const bodyPartsOnDay = dailyBodyParts.get(dayKey) || [];
+      {/* Horizontal Swipeable Week Calendar / Full Month Calendar */}
+      <motion.div layout className="overflow-hidden">
+        <Card className="glass-effect border-primary/10 overflow-hidden">
+          <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={isMonthView ? prevMonth : prevWeek} className="h-8 w-8">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            
+            <button 
+              onClick={() => {
+                if (!isMonthView) setCurrentMonth(startOfMonth(selectedDate));
+                setIsMonthView(!isMonthView);
+              }}
+              className="flex items-center gap-2 hover:bg-muted/50 px-3 py-1.5 rounded-lg transition-colors group"
+            >
+              <CardTitle className="font-headline text-lg uppercase tracking-wider flex items-center gap-2">
+                {format(isMonthView ? currentMonth : currentWeekStart, 'MMMM yyyy', { locale: getLocale() })}
+              </CardTitle>
+              {isMonthView ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+              )}
+            </button>
 
-                return (
-                  <button
-                    key={day.toISOString()}
-                    onClick={() => setSelectedDate(day)}
-                    className={`flex flex-col items-center justify-center w-10 h-14 rounded-xl transition-all duration-300 relative ${isSelected ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]' : 'hover:bg-muted'
-                      }`}
-                  >
-                    <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-                      {format(day, 'EEE', { locale: getLocale() }).substring(0, 1)}
-                    </span>
-                    <span className={`text-base font-bold font-headline ${isTodayDate && !isSelected ? 'text-primary' : ''}`}>
-                      {format(day, 'd')}
-                    </span>
-                    {/* Dots for workouts */}
-                    <div className="flex space-x-[2px] mt-1">
-                      {bodyPartsOnDay.slice(0, 3).map((part, i) => (
-                        <div key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }} />
-                      ))}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <Button variant="ghost" size="icon" onClick={isMonthView ? nextMonth : nextWeek} className="h-8 w-8">
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            {isLoading ? (
+              <div className="flex h-[80px] items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <motion.div layout>
+                <AnimatePresence mode="popLayout">
+                  {isMonthView ? (
+                    <motion.div
+                      key="month-view"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-2"
+                    >
+                      {/* Weekday headers */}
+                      <div className="grid grid-cols-7 mb-2">
+                        {weekDays.map(day => (
+                          <div key={day.toISOString()} className="text-center text-[10px] uppercase font-bold text-muted-foreground">
+                            {format(day, 'EEE', { locale: getLocale() }).substring(0, 1)}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Month Grid */}
+                      <div className="grid grid-cols-7 gap-y-2">
+                        {monthDays.map((day) => {
+                          const isSelected = isSameDay(day, selectedDate);
+                          const isTodayDate = isSameDay(day, new Date());
+                          const isCurrentMonth = isSameMonth(day, currentMonth);
+                          const dayKey = format(day, 'yyyy-MM-dd');
+                          const bodyPartsOnDay = dailyBodyParts.get(dayKey) || [];
+
+                          return (
+                            <div key={day.toISOString()} className="flex justify-center">
+                              <button
+                                onClick={() => handleDayClick(day)}
+                                className={`flex flex-col items-center justify-center w-10 h-12 rounded-xl transition-all duration-300 relative ${
+                                  isSelected ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]' : 
+                                  (!isCurrentMonth ? 'opacity-30 hover:opacity-100 hover:bg-muted' : 'hover:bg-muted')
+                                }`}
+                              >
+                                <span className={`text-base font-bold font-headline leading-none ${isTodayDate && !isSelected ? 'text-primary' : ''}`}>
+                                  {format(day, 'd')}
+                                </span>
+                                {/* Dots for workouts */}
+                                <div className="flex space-x-[2px] mt-1.5 h-1">
+                                  {bodyPartsOnDay.slice(0, 3).map((part, i) => (
+                                    <div key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }} />
+                                  ))}
+                                </div>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="week-view"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex justify-between items-center w-full mt-2"
+                    >
+                      {weekDays.map((day) => {
+                        const isSelected = isSameDay(day, selectedDate);
+                        const isTodayDate = isSameDay(day, new Date());
+                        const dayKey = format(day, 'yyyy-MM-dd');
+                        const bodyPartsOnDay = dailyBodyParts.get(dayKey) || [];
+
+                        return (
+                          <button
+                            key={day.toISOString()}
+                            onClick={() => handleDayClick(day)}
+                            className={`flex flex-col items-center justify-center w-10 h-14 rounded-xl transition-all duration-300 relative ${isSelected ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]' : 'hover:bg-muted'
+                              }`}
+                          >
+                            <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
+                              {format(day, 'EEE', { locale: getLocale() }).substring(0, 1)}
+                            </span>
+                            <span className={`text-base font-bold font-headline ${isTodayDate && !isSelected ? 'text-primary' : ''}`}>
+                              {format(day, 'd')}
+                            </span>
+                            {/* Dots for workouts */}
+                            <div className="flex space-x-[2px] mt-1">
+                              {bodyPartsOnDay.slice(0, 3).map((part, i) => (
+                                <div key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }} />
+                              ))}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Timeline View */}
       <Card className="glass-effect bg-card/50">
