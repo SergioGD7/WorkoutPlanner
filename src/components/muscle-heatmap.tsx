@@ -90,8 +90,8 @@ export default function MuscleHeatmap({ workoutLog }: MuscleHeatmapProps) {
           <p className="font-semibold capitalize text-center mb-1">{t(part)}</p>
           <p className="text-xs text-muted-foreground">
             {stat.daysAgo === null 
-              ? '100% Recovered (No recent logs)' 
-              : `${stat.percent}% Recovered (${stat.daysAgo} days ago)`}
+              ? t('fullyRecoveredNoLogs') 
+              : t('percentRecovered', { percent: stat.percent, days: stat.daysAgo })}
           </p>
         </TooltipContent>
       </Tooltip>
@@ -107,7 +107,7 @@ export default function MuscleHeatmap({ workoutLog }: MuscleHeatmapProps) {
             {t('muscleRecovery') || 'Muscle Recovery'}
           </CardTitle>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Track muscle readiness based on rest days.</p>
+        <p className="text-xs text-muted-foreground mt-2">{t('trackMuscleReadiness')}</p>
       </CardHeader>
       <CardContent className="flex flex-col md:flex-row items-center justify-between gap-6 pt-4">
         
@@ -180,7 +180,7 @@ export default function MuscleHeatmap({ workoutLog }: MuscleHeatmapProps) {
                 </TooltipTrigger>
                 <TooltipContent side="left" className="bg-background border-border">
                    <p className="text-xs">
-                     {stat.daysAgo === null ? 'Fully recovered' : `Last trained ${stat.daysAgo} days ago`}
+                     {stat.daysAgo === null ? t('fullyRecovered') : t('lastTrained', { days: stat.daysAgo })}
                    </p>
                 </TooltipContent>
               </Tooltip>

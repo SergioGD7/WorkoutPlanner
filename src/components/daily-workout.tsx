@@ -258,7 +258,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     if (!ticketRef.current || dailyExercises.length === 0) {
       toast({
         title: "Error",
-        description: t('noWorkoutPlanned') || "No hay entrenamiento para compartir hoy.",
+        description: t('noWorkoutToShare'),
         variant: "destructive"
       });
       return;
@@ -287,18 +287,18 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
       if (!blob) throw new Error("Failed to generate image");
 
       const file = new File([blob], `workout-${formattedDate}.png`, { type: 'image/png' });
-      const text = `🔥 ¡Entrenamiento completado!\n📅 ${getFormattedDate()}\n💪 ${dailyExercises.length} ejercicios realizados.\n¡Sigue tu progreso en Workout Planner!`;
+      const text = t('workoutCompleted', { date: getFormattedDate(), count: dailyExercises.length });
 
       // Try native share first
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: 'Mi Entrenamiento',
+          title: t('myWorkout'),
           text: text,
           files: [file]
         });
         toast({
-          title: "¡Compartido!",
-          description: "Has compartido tu entrenamiento con éxito.",
+          title: t('shared'),
+          description: t('sharedSuccess'),
         });
       } else {
         // Fallback for desktop or browsers that don't support file sharing
@@ -310,16 +310,16 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         URL.revokeObjectURL(url);
         
         toast({
-          title: "Imagen descargada",
-          description: "Tu dispositivo no soporta compartir imágenes directamente, así que la hemos descargado.",
+          title: t('imageDownloaded'),
+          description: t('shareNotSupported'),
         });
       }
     } catch (error: any) {
       console.error("Error sharing:", error);
       if (error.name !== 'AbortError') { // User cancelling native share throws AbortError
         toast({
-          title: "Error al compartir",
-          description: "Hubo un problema al generar la imagen. Inténtalo de nuevo.",
+          title: t('shareError'),
+          description: t('shareErrorDescription'),
           variant: "destructive"
         });
       }
@@ -400,7 +400,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
               <p className="text-muted-foreground mb-4">{t('enjoyRestDay')}</p>
               <Button onClick={handleAddExerciseClick} className="rounded-full">
                 <Plus className="h-4 w-4 mr-2" />
-                Empezar a entrenar
+                {t('startWorkout')}
               </Button>
             </div>
           )}
@@ -466,7 +466,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
       <ShareWorkoutTicket 
         ref={ticketRef}
         dateStr={getFormattedDate()}
-        userName={user?.displayName || user?.email?.split('@')[0] || "Atleta"}
+        userName={user?.displayName || user?.email?.split('@')[0] || t('athlete')}
         dailyExercises={dailyExercises}
         getExerciseDetails={getExerciseDetails}
       />

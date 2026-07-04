@@ -11,6 +11,19 @@ import { WorkoutProvider } from '@/context/workout-context';
 export const metadata: Metadata = {
   title: 'Workout Planner',
   description: 'Track your gym progress with Workout Planner.',
+  appleWebApp: {
+    capable: true,
+    title: 'Workout Planner',
+    statusBarStyle: 'default',
+  },
+};
+
+export const viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

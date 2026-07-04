@@ -73,11 +73,11 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
             <div className="text-center mt-12 mb-32">
               <h2 className="text-8xl font-black tracking-tighter mb-6 bg-gradient-to-r from-primary to-orange-300 bg-clip-text text-transparent">
                 {userName 
-                  ? (language === 'es' ? `Entrenamiento de ${userName.split(' ')[0]}` : `${userName.split(' ')[0]}'s Workout`) 
+                  ? t('userWorkout', { name: userName.split(' ')[0] })
                   : (t('myWorkout') || 'My Workout')}
               </h2>
               <p className="text-4xl text-neutral-400 font-medium tracking-wide">
-                {language === 'es' ? '¡Entrenamiento superado! 🔥' : 'Crushed it today! 🔥'}
+                {t('workoutCrushed')}
               </p>
             </div>
 
@@ -88,7 +88,7 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                 <Flame className="w-20 h-20 text-primary mb-6 relative z-10" />
                 <p className="text-7xl font-bold text-white relative z-10">{totalSets}</p>
                 <p className="text-2xl text-neutral-400 uppercase tracking-widest mt-4 font-semibold relative z-10">
-                  {language === 'es' ? 'Series' : 'Sets'}
+                  {t('setsLabel')}
                 </p>
               </div>
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-[3rem] p-12 w-[400px] flex flex-col items-center justify-center relative overflow-hidden group">
@@ -106,7 +106,7 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
               <div className="bg-white/5 backdrop-blur-md rounded-[4rem] border border-white/10 p-16 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent"></div>
                 <h3 className="text-4xl font-bold text-white mb-12 flex items-center gap-4">
-                  💪 {language === 'es' ? 'Ejercicios Realizados' : 'Exercises Performed'}
+                  💪 {t('exercisesPerformed')}
                 </h3>
                 
                 <div className="space-y-8">
@@ -145,7 +145,7 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
             {/* Muscle Heatmap */}
             <div className="w-full flex-1 flex flex-col justify-center items-center mt-16 mb-8">
               <h3 className="text-3xl font-bold text-neutral-300 mb-8 uppercase tracking-widest">
-                {language === 'es' ? 'Músculos Trabajados' : 'Muscles Worked'}
+                {t('musclesWorked')}
               </h3>
               <div className="relative w-[400px] h-[400px]">
                 <svg viewBox="0 0 100 200" className="w-full h-full drop-shadow-[0_0_15px_rgba(249,115,22,0.3)]">

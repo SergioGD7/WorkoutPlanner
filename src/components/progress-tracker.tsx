@@ -336,7 +336,7 @@ export default function ProgressTracker() {
       <Card className="mb-6 glass-effect">
         <CardHeader className="p-4 sm:p-6 pb-2">
           <CardTitle className="font-headline text-xl sm:text-2xl text-accent">{t('weeklyVolume') || 'Weekly Volume (Sets)'}</CardTitle>
-          <CardDescription>Series totales por músculo en la semana actual. Objetivo: 10-20 series.</CardDescription>
+          <CardDescription>{t('weeklyVolumeDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="p-4 h-[350px]">
           {weeklySetsData.length > 0 ? (
