@@ -1,45 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Timer, X, Plus, Minus } from "lucide-react";
-import { triggerHaptic } from "@/utils/haptics";
-import { Button } from "./ui/button";
+import { AnimatePresence, motion } from 'framer-motion';
+import { Minus, Plus, Timer, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/context/language-context';
+import { useRestTimer } from '@/context/rest-timer-context';
+import { triggerHaptic } from '@/utils/haptics';
 
-export default function RestTimer({ initialSeconds = 90, isActive, onClose }: { initialSeconds?: number, isActive: boolean, onClose: () => void }) {
-  const [timeLeft, setTimeLeft] = useState(initialSeconds);
+/**
+ * Rendered once at the app shell level so the countdown keeps running while the
+ * user browses the library, the calendar or their progress.
+ */
+export default function RestTimer() {
+  const { isActive, remaining, total, label, stop, addSeconds } = useRestTimer();
+  const { t } = useLanguage();
 
-  useEffect(() => {
-    if (isActive) {
-      setTimeLeft(initialSeconds);
-    }
-  }, [isActive, initialSeconds]);
-
-  useEffect(() => {
-    if (!isActive) return;
-
-    if (timeLeft <= 0) {
-      triggerHaptic("heavy");
-      setTimeout(() => triggerHaptic("success"), 500);
-      onClose();
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft, onClose]);
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  };
-
-  const addTime = () => setTimeLeft(prev => prev + 30);
-  const subTime = () => setTimeLeft(prev => Math.max(0, prev - 30));
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+  const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
 
   return (
     <AnimatePresence>
@@ -48,25 +26,71 @@ export default function RestTimer({ initialSeconds = 90, isActive, onClose }: { 
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 50, scale: 0.9 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/90 backdrop-blur-xl border border-primary/20 shadow-2xl shadow-primary/10 rounded-full px-4 py-2 flex items-center gap-3"
+          role="timer"
+          aria-live="off"
+          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 md:bottom-6"
         >
-          <Timer className="h-5 w-5 text-primary animate-pulse" />
-          
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-white/10" onClick={subTime}>
-             <Minus className="h-3 w-3" />
-          </Button>
-          
-          <span className="font-mono text-xl font-bold w-16 text-center">{formatTime(timeLeft)}</span>
-          
-          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full hover:bg-white/10" onClick={addTime}>
-             <Plus className="h-3 w-3" />
-          </Button>
+          <div className="relative overflow-hidden rounded-full border border-primary/20 bg-background/90 px-4 py-2 shadow-2xl shadow-primary/10 backdrop-blur-xl">
+            {/* Depleting progress track behind the controls. */}
+            <div
+              className="absolute inset-y-0 left-0 bg-primary/10 transition-[width] duration-300 ease-linear"
+              style={{ width: `${progress * 100}%` }}
+              aria-hidden="true"
+            />
 
-          <div className="w-px h-6 bg-border mx-1" />
-          
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/20 hover:text-destructive" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+            <div className="relative flex items-center gap-3">
+              <Timer className="h-5 w-5 shrink-0 animate-pulse text-primary" />
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full"
+                aria-label={t('subtractFifteenSeconds')}
+                onClick={() => {
+                  triggerHaptic('light');
+                  addSeconds(-15);
+                }}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+
+              <div className="min-w-[4.5rem] text-center">
+                <span className="font-mono text-xl font-bold tabular-nums">
+                  {minutes}:{String(seconds).padStart(2, '0')}
+                </span>
+                {label && (
+                  <p className="max-w-[8rem] truncate text-[10px] leading-none text-muted-foreground">
+                    {label}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full"
+                aria-label={t('addFifteenSeconds')}
+                onClick={() => {
+                  triggerHaptic('light');
+                  addSeconds(15);
+                }}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+
+              <div className="mx-1 h-6 w-px bg-border" />
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-destructive/20 hover:text-destructive"
+                aria-label={t('skipRest')}
+                onClick={stop}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

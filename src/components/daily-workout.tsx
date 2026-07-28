@@ -1,26 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { format } from "date-fns";
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Plus, Loader2, Copy, CopyCheck } from "lucide-react";
-import type { WorkoutExercise, Exercise, Set, WorkoutLog } from "@/lib/types";
-import WorkoutCard from "@/components/workout-card";
-import AddExerciseSheet from "@/components/add-exercise-sheet";
-import RestTimer from "@/components/rest-timer";
-import ShareWorkoutTicket from "@/components/share-workout-ticket";
-import LoadTemplateSheet from "@/components/load-template-sheet";
-import { v4 as uuidv4 } from 'uuid';
-import { useRef } from 'react';
+import { Reorder, useDragControls } from 'framer-motion';
+import { Copy, CopyCheck, FileText, Loader2, Plus, Share2 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { toBlob } from 'html-to-image';
-import { useExercises } from "@/context/exercise-context";
-import { useLanguage } from "@/context/language-context";
-import { useAuth } from "@/context/auth-context";
-import { useWorkout } from "@/context/workout-context";
-import { useToast } from "@/hooks/use-toast";
+import { v4 as uuidv4 } from 'uuid';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,406 +20,513 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+} from '@/components/ui/alert-dialog';
+import WorkoutCard from '@/components/workout-card';
+import AddExerciseSheet from '@/components/add-exercise-sheet';
+import LoadTemplateSheet from '@/components/load-template-sheet';
+import ShareWorkoutTicket from '@/components/share-workout-ticket';
+import PlateCalculator from '@/components/plate-calculator';
+import ExerciseHistorySheet from '@/components/exercise-history-sheet';
+import { useExercises } from '@/context/exercise-context';
+import { useLanguage } from '@/context/language-context';
+import { useAuth } from '@/context/auth-context';
+import { useWorkout } from '@/context/workout-context';
+import { useProfile } from '@/context/profile-context';
+import { useRestTimer } from '@/context/rest-timer-context';
+import { useToast } from '@/hooks/use-toast';
+import { triggerHaptic } from '@/utils/haptics';
+import type { Set as WorkoutSet, TemplateExercise, WorkoutExercise } from '@/lib/types';
+import {
+  detectPR,
+  fromKg,
+  getExercisePR,
+  getLastSession,
+  isCountedSet,
+  resolveBodyPart,
+  resolveExerciseName,
+  resolveTracking,
+  suggestProgression,
+  trimZeros,
+} from '@/lib/workout-utils';
 
 interface DailyWorkoutProps {
   date: Date;
 }
 
 export default function DailyWorkout({ date }: DailyWorkoutProps) {
-  const [dailyExercises, setDailyExercises] = useState<WorkoutExercise[]>([]);
-  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+  const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
   const [exerciseToConfirmDelete, setExerciseToConfirmDelete] = useState<WorkoutExercise | null>(null);
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
-  const [isTimerActive, setIsTimerActive] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
+  const [plateTarget, setPlateTarget] = useState<number | null>(null);
+  const [historyExerciseId, setHistoryExerciseId] = useState<string | null>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
 
   const { exercises: allExercises } = useExercises();
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const { copiedWorkout, setCopiedWorkout } = useWorkout();
+  const { settings } = useProfile();
+  const { start: startRest } = useRestTimer();
+  const { workoutLog, isLoading, saveDay, copiedWorkout, setCopiedWorkout } = useWorkout();
 
-  const formattedDate = format(date, "yyyy-MM-dd");
+  const unit = settings.weightUnit;
+  const formattedDate = format(date, 'yyyy-MM-dd');
+  const dailyExercises = useMemo(() => workoutLog[formattedDate] ?? [], [workoutLog, formattedDate]);
 
-  const getWorkoutLogDocRef = useCallback(() => {
-    if (!user) return null;
-    return doc(db, `users/${user.uid}/workout_logs/all`);
-  }, [user]);
+  const locale = language === 'es' ? es : enUS;
+  const getFormattedDate = useCallback(() => format(date, 'EEEE, d', { locale }), [date, locale]);
 
-  useEffect(() => {
-    setIsLoading(true);
-    if (!user) {
-      setWorkoutLog({});
-      setIsLoading(false);
-      return;
-    }
-
-    const docRef = getWorkoutLogDocRef();
-    if (!docRef) return;
-
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-            setWorkoutLog(docSnap.data() as WorkoutLog);
-        } else {
-            console.log("No workout log found in Firestore for this user.");
-            setWorkoutLog({});
-        }
-        setIsLoading(false);
-    }, (error) => {
-        console.error("Error fetching workout log from Firestore:", error);
-        setWorkoutLog({});
-        setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [user, getWorkoutLogDocRef]);
-
-  useEffect(() => {
-    setDailyExercises(workoutLog[formattedDate] || []);
-  }, [date, workoutLog, formattedDate]);
-
-
-  const updateWorkoutInStorage = async (updatedDailyExercises: WorkoutExercise[]) => {
-    const docRef = getWorkoutLogDocRef();
-    if (!docRef) return;
-    
-    const updatedLog = { ...workoutLog };
-     if (updatedDailyExercises.length > 0) {
-        updatedLog[formattedDate] = updatedDailyExercises;
-    } else {
-        delete updatedLog[formattedDate];
-    }
-
-    try {
-        await setDoc(docRef, updatedLog);
-    } catch (error) {
-        console.error("Failed to save workout log to Firestore:", error);
-    }
-  };
-
-  const handleSetCompletionChange = (exerciseId: string, setIndex: number, completed: boolean) => {
-    const updatedDailyExercises = dailyExercises.map(ex => {
-        if (ex.id === exerciseId) {
-            const newSets = [...ex.sets];
-            newSets[setIndex] = { ...newSets[setIndex], completed };
-            return { ...ex, sets: newSets };
-        }
-        return ex;
-    });
-    updateWorkoutInStorage(updatedDailyExercises);
-    
-    if (completed) {
-      setIsTimerActive(true);
-    }
-  };
-
-  const handleSetUpdate = (exerciseId: string, setIndex: number, field: "reps" | "weight", value: number) => {
-    const updatedDailyExercises = dailyExercises.map(ex => {
-      if (ex.id === exerciseId) {
-        const newSets = [...ex.sets];
-        newSets[setIndex] = { ...newSets[setIndex], [field]: value };
-        return { ...ex, sets: newSets };
+  /** Best ever per exercise, excluding today, so today's sets can beat it. */
+  const prMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof getExercisePR>>();
+    dailyExercises.forEach((workoutExercise) => {
+      if (!map.has(workoutExercise.exerciseId)) {
+        map.set(workoutExercise.exerciseId, getExercisePR(workoutLog, workoutExercise.exerciseId, formattedDate));
       }
-      return ex;
     });
-    updateWorkoutInStorage(updatedDailyExercises);
-  };
+    return map;
+  }, [dailyExercises, workoutLog, formattedDate]);
 
-  const handleAddSet = (exerciseId: string) => {
-    const updatedDailyExercises = dailyExercises.map(ex => {
-      if (ex.id === exerciseId) {
-        // Copy the last set's weight and reps, or use defaults
-        const lastSet = ex.sets[ex.sets.length - 1];
-        const newSet: Set = lastSet 
-          ? { reps: lastSet.reps, weight: lastSet.weight, completed: false }
-          : { reps: 10, weight: 0, completed: false };
-          
-        return { ...ex, sets: [...ex.sets, newSet] };
+  const lastSessionMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof getLastSession>>();
+    dailyExercises.forEach((workoutExercise) => {
+      if (!map.has(workoutExercise.exerciseId)) {
+        map.set(workoutExercise.exerciseId, getLastSession(workoutLog, workoutExercise.exerciseId, formattedDate));
       }
-      return ex;
     });
-    updateWorkoutInStorage(updatedDailyExercises);
-  };
+    return map;
+  }, [dailyExercises, workoutLog, formattedDate]);
 
-  const handleRemoveSet = (exerciseId: string, setIndex: number) => {
-    const updatedDailyExercises = dailyExercises.map(ex => {
-      if (ex.id === exerciseId) {
-        const newSets = ex.sets.filter((_, idx) => idx !== setIndex);
-        return { ...ex, sets: newSets };
-      }
-      return ex;
-    });
-    updateWorkoutInStorage(updatedDailyExercises);
-  };
+  const persist = useCallback(
+    (exercises: WorkoutExercise[], immediate = false) => saveDay(formattedDate, exercises, immediate),
+    [saveDay, formattedDate],
+  );
 
-  const getExerciseDetails = (exerciseId: string): Exercise | undefined => {
-    return allExercises.find(ex => ex.id === exerciseId);
-  };
-  
-  const handleAddExerciseClick = () => {
-    setIsAddSheetOpen(true);
-  }
+  const updateExerciseAt = useCallback(
+    (workoutExerciseId: string, updater: (exercise: WorkoutExercise) => WorkoutExercise, immediate = false) => {
+      persist(
+        dailyExercises.map((exercise) => (exercise.id === workoutExerciseId ? updater(exercise) : exercise)),
+        immediate,
+      );
+    },
+    [dailyExercises, persist],
+  );
 
-  const handleDeleteWorkoutExercise = () => {
-    if (!exerciseToConfirmDelete) return;
-    const updatedDailyExercises = dailyExercises.filter(ex => ex.id !== exerciseToConfirmDelete.id);
-    updateWorkoutInStorage(updatedDailyExercises);
-    setExerciseToConfirmDelete(null);
-  };
+  /**
+   * Builds a set list pre-filled from the last session for this exercise, which
+   * is what you almost always want to repeat or beat.
+   */
+  const buildSets = useCallback(
+    (exerciseId: string, count: number, reps?: number, weightKg?: number): WorkoutSet[] => {
+      const last = getLastSession(workoutLog, exerciseId, formattedDate);
+      const reference = (last?.sets ?? []).filter(isCountedSet);
 
-  const handleSaveNewExercise = (exerciseId: string) => {
-    if (dailyExercises.some(ex => ex.exerciseId === exerciseId)) {
-      toast({
-        title: t('error'),
-        description: t('exerciseAlreadyAdded') || "Este ejercicio ya está en tu rutina de hoy.",
-        variant: "destructive"
+      return Array.from({ length: Math.max(1, count) }, (_, index) => {
+        const source = reference[index] ?? reference[reference.length - 1];
+        const set: WorkoutSet = {
+          reps: reps ?? source?.reps ?? 10,
+          weight: weightKg ?? source?.weight ?? 0,
+          completed: false,
+          type: 'normal',
+        };
+        if (source?.duration) set.duration = source.duration;
+        return set;
       });
+    },
+    [workoutLog, formattedDate],
+  );
+
+  const handleSetToggle = (workoutExerciseId: string, setIndex: number, completed: boolean) => {
+    const target = dailyExercises.find((exercise) => exercise.id === workoutExerciseId);
+    if (!target) return;
+
+    const updatedSet: WorkoutSet = { ...target.sets[setIndex], completed };
+
+    updateExerciseAt(
+      workoutExerciseId,
+      (exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set, index) => (index === setIndex ? updatedSet : set)),
+      }),
+      true,
+    );
+
+    if (!completed) return;
+
+    const exerciseName = resolveExerciseName(target, allExercises, t);
+    startRest(target.restSeconds ?? settings.defaultRestSeconds, exerciseName);
+
+    const pr = prMap.get(target.exerciseId);
+    if (pr && detectPR(updatedSet, pr)) {
+      triggerHaptic('success');
+      confetti({
+        particleCount: 120,
+        spread: 75,
+        origin: { y: 0.6 },
+        colors: ['#f97316', '#fbbf24', '#a855f7'],
+      });
+      toast({
+        title: t('newPR'),
+        description: t('newPRDescription', {
+          exercise: exerciseName,
+          weight: `${trimZeros(fromKg(updatedSet.weight, unit))} ${unit} × ${updatedSet.reps}`,
+        }),
+      });
+    }
+  };
+
+  const handleSetUpdate = (workoutExerciseId: string, setIndex: number, patch: Partial<WorkoutSet>) => {
+    updateExerciseAt(workoutExerciseId, (exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set, index) => (index === setIndex ? { ...set, ...patch } : set)),
+    }));
+  };
+
+  const handleAddSet = (workoutExerciseId: string) => {
+    updateExerciseAt(
+      workoutExerciseId,
+      (exercise) => {
+        const last = exercise.sets[exercise.sets.length - 1];
+        const newSet: WorkoutSet = last
+          ? { ...last, completed: false, rpe: undefined }
+          : { reps: 10, weight: 0, completed: false, type: 'normal' };
+        return { ...exercise, sets: [...exercise.sets, newSet] };
+      },
+      true,
+    );
+  };
+
+  const handleRemoveSet = (workoutExerciseId: string, setIndex: number) => {
+    updateExerciseAt(
+      workoutExerciseId,
+      (exercise) => ({ ...exercise, sets: exercise.sets.filter((_, index) => index !== setIndex) }),
+      true,
+    );
+  };
+
+  const handleNotesChange = (workoutExerciseId: string, notes: string) => {
+    updateExerciseAt(workoutExerciseId, (exercise) => ({
+      ...exercise,
+      notes: notes.trim() === '' ? undefined : notes,
+    }));
+  };
+
+  const handleApplySuggestion = (workoutExerciseId: string, weightKg: number) => {
+    triggerHaptic('light');
+    updateExerciseAt(
+      workoutExerciseId,
+      (exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set) =>
+          isCountedSet(set) && !set.completed ? { ...set, weight: weightKg } : set,
+        ),
+      }),
+      true,
+    );
+  };
+
+  const handleAddExercise = (exerciseId: string) => {
+    if (dailyExercises.some((exercise) => exercise.exerciseId === exerciseId)) {
+      toast({ title: t('error'), description: t('exerciseAlreadyAdded'), variant: 'destructive' });
       return;
     }
 
-    const newSets: Set[] = Array.from({ length: 3 }, () => ({
-      reps: 10,
-      weight: 0,
-      completed: false,
-    }));
-
-    const newWorkoutExercise: WorkoutExercise = {
+    const definition = allExercises.find((exercise) => exercise.id === exerciseId);
+    const newExercise: WorkoutExercise = {
       id: uuidv4(),
-      exerciseId: exerciseId,
-      sets: newSets,
+      exerciseId,
+      // Snapshot so history survives the definition being deleted later.
+      exerciseName: definition ? t(definition.name) : undefined,
+      bodyPart: definition?.bodyPart,
+      sets: buildSets(exerciseId, 3),
     };
-    
-    const updatedDailyExercises = [...dailyExercises, newWorkoutExercise];
-    updateWorkoutInStorage(updatedDailyExercises);
-    setIsAddSheetOpen(false); // Close the sheet automatically
+
+    persist([...dailyExercises, newExercise], true);
+    setIsAddSheetOpen(false);
   };
 
-  const handleLoadTemplate = (exerciseIds: string[]) => {
-    const currentExerciseIds = dailyExercises.map(ex => ex.exerciseId);
-    const newExercisesToAdd = exerciseIds.filter(id => !currentExerciseIds.includes(id));
-    
-    if (newExercisesToAdd.length > 0) {
-      const newWorkoutExercises = newExercisesToAdd.map(exerciseId => ({
-        id: uuidv4(),
-        exerciseId: exerciseId,
-        sets: Array.from({ length: 3 }, () => ({ reps: 10, weight: 0, completed: false })),
-      }));
-      updateWorkoutInStorage([...dailyExercises, ...newWorkoutExercises]);
+  const handleLoadTemplate = (templateExercises: TemplateExercise[]) => {
+    const existingIds = dailyExercises.map((exercise) => exercise.exerciseId);
+    const toAdd = templateExercises.filter((entry) => !existingIds.includes(entry.exerciseId));
+
+    if (toAdd.length > 0) {
+      const newExercises: WorkoutExercise[] = toAdd.map((entry) => {
+        const definition = allExercises.find((exercise) => exercise.id === entry.exerciseId);
+        return {
+          id: uuidv4(),
+          exerciseId: entry.exerciseId,
+          exerciseName: definition ? t(definition.name) : undefined,
+          bodyPart: definition?.bodyPart,
+          restSeconds: entry.restSeconds,
+          sets: buildSets(entry.exerciseId, entry.sets, entry.reps || undefined, entry.weight),
+        };
+      });
+      persist([...dailyExercises, ...newExercises], true);
     }
+
     setIsTemplateSheetOpen(false);
   };
 
+  const handleDeleteWorkoutExercise = () => {
+    if (!exerciseToConfirmDelete) return;
+    persist(
+      dailyExercises.filter((exercise) => exercise.id !== exerciseToConfirmDelete.id),
+      true,
+    );
+    setExerciseToConfirmDelete(null);
+  };
+
   const handleCopyDay = () => {
-    const workoutToCopy = dailyExercises.map(ex => ({
-      ...ex,
-      id: uuidv4(),
-      sets: ex.sets.map(set => ({ ...set, completed: false }))
-    }));
-    setCopiedWorkout(workoutToCopy);
-  }
+    triggerHaptic('light');
+    setCopiedWorkout(
+      dailyExercises.map((exercise) => ({
+        ...exercise,
+        id: uuidv4(),
+        sets: exercise.sets.map((set) => ({ ...set, completed: false })),
+      })),
+    );
+    toast({ title: t('workoutCopied'), description: t('workoutCopiedDescription') });
+  };
 
   const handlePasteDay = () => {
-    if (dailyExercises.length > 0) {
-      setShowPasteConfirm(true);
-    } else {
-      executePaste();
-    }
-  }
+    if (dailyExercises.length > 0) setShowPasteConfirm(true);
+    else executePaste();
+  };
 
   const executePaste = () => {
     if (!copiedWorkout) return;
-    updateWorkoutInStorage(copiedWorkout);
+    // Fresh ids: pasting the same day twice must not collide.
+    persist(
+      copiedWorkout.map((exercise) => ({ ...exercise, id: uuidv4() })),
+      true,
+    );
     setShowPasteConfirm(false);
-  }
-  
-  const getFormattedDate = () => {
-    const locale = language === 'es' ? es : enUS;
-    return format(date, "EEEE, d", { locale });
-  }
+  };
 
   const handleShare = async () => {
     if (!ticketRef.current || dailyExercises.length === 0) {
-      toast({
-        title: "Error",
-        description: t('noWorkoutPlanned') || "No hay entrenamiento para compartir hoy.",
-        variant: "destructive"
-      });
+      toast({ title: t('error'), description: t('nothingToShare'), variant: 'destructive' });
       return;
     }
 
     try {
       setIsSharing(true);
-      
-      // We need to wait a tiny bit to ensure fonts/layout are ready if needed
-      await new Promise(r => setTimeout(r, 100));
+      // Give the off-screen ticket a frame to lay out before rasterising.
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const blob = await toBlob(ticketRef.current, { 
+      const blob = await toBlob(ticketRef.current, {
         quality: 0.95,
         cacheBust: true,
-        pixelRatio: 2, // High res for stories
-        skipFonts: true, // Bypass entirely to prevent the CORS cssRules error
+        pixelRatio: 2,
+        skipFonts: true,
         fontEmbedCSS: '',
         width: 1080,
         height: ticketRef.current.scrollHeight,
-        style: {
-          transform: 'scale(1)',
-          transformOrigin: 'top left'
-        }
+        style: { transform: 'scale(1)', transformOrigin: 'top left' },
       });
 
-      if (!blob) throw new Error("Failed to generate image");
+      if (!blob) throw new Error('Failed to generate image');
 
       const file = new File([blob], `workout-${formattedDate}.png`, { type: 'image/png' });
-      const text = `🔥 ¡Entrenamiento completado!\n📅 ${getFormattedDate()}\n💪 ${dailyExercises.length} ejercicios realizados.\n¡Sigue tu progreso en Workout Planner!`;
+      const text = t('shareMessage', { date: getFormattedDate(), count: dailyExercises.length });
 
-      // Try native share first
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: 'Mi Entrenamiento',
-          text: text,
-          files: [file]
-        });
-        toast({
-          title: "¡Compartido!",
-          description: "Has compartido tu entrenamiento con éxito.",
-        });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: t('myWorkout'), text, files: [file] });
+        toast({ title: t('shared'), description: t('sharedDescription') });
       } else {
-        // Fallback for desktop or browsers that don't support file sharing
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `workout-${formattedDate}.png`;
-        a.click();
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `workout-${formattedDate}.png`;
+        anchor.click();
         URL.revokeObjectURL(url);
-        
-        toast({
-          title: "Imagen descargada",
-          description: "Tu dispositivo no soporta compartir imágenes directamente, así que la hemos descargado.",
-        });
+        toast({ title: t('imageDownloaded'), description: t('imageDownloadedDescription') });
       }
     } catch (error: any) {
-      console.error("Error sharing:", error);
-      if (error.name !== 'AbortError') { // User cancelling native share throws AbortError
-        toast({
-          title: "Error al compartir",
-          description: "Hubo un problema al generar la imagen. Inténtalo de nuevo.",
-          variant: "destructive"
-        });
+      // Dismissing the native share sheet throws AbortError; that isn't a failure.
+      if (error?.name !== 'AbortError') {
+        console.error('Error sharing workout:', error);
+        toast({ title: t('shareError'), description: t('shareErrorDescription'), variant: 'destructive' });
       }
     } finally {
       setIsSharing(false);
     }
   };
 
-  const existingExerciseIds = dailyExercises.map(ex => ex.exerciseId);
+  const historyExerciseName = useMemo(() => {
+    if (!historyExerciseId) return '';
+    const definition = allExercises.find((exercise) => exercise.id === historyExerciseId);
+    if (definition) return t(definition.name);
+    const logged = dailyExercises.find((exercise) => exercise.exerciseId === historyExerciseId);
+    return logged?.exerciseName ?? t('deletedExercise');
+  }, [historyExerciseId, allExercises, dailyExercises, t]);
 
   return (
     <>
-      <Card className="border-0 shadow-none bg-transparent sm:border sm:shadow-sm sm:bg-card">
+      <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-card sm:shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between px-2 sm:px-6">
           <CardTitle className="font-headline text-2xl capitalize">
             {t('workoutFor', { date: getFormattedDate() })}
           </CardTitle>
           <div className="flex items-center gap-1">
-             {dailyExercises.length > 0 && (
-                <Button variant="outline" size="icon" onClick={handleCopyDay} aria-label={t('copyDay')} className="rounded-full">
-                    <Copy className="h-5 w-5" />
-                </Button>
-             )}
-             {copiedWorkout && (
-                <Button variant="outline" size="icon" onClick={handlePasteDay} aria-label={t('pasteDay')} className="rounded-full">
-                    <CopyCheck className="h-5 w-5" />
-                </Button>
-             )}
             {dailyExercises.length > 0 && (
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={handleShare} 
-                disabled={isSharing}
-                className="rounded-full relative overflow-hidden"
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCopyDay}
+                aria-label={t('copyDay')}
+                className="rounded-full"
               >
-                {isSharing ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
-                )}
+                <Copy className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="outline" size="icon" onClick={() => setIsTemplateSheetOpen(true)} aria-label={t('loadTemplate')} className="rounded-full shadow-sm text-primary border-primary/20 bg-primary/5">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+            {copiedWorkout && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePasteDay}
+                aria-label={t('pasteDay')}
+                className="rounded-full"
+              >
+                <CopyCheck className="h-5 w-5" />
+              </Button>
+            )}
+            {dailyExercises.length > 0 && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleShare}
+                disabled={isSharing}
+                aria-label={t('shareWorkout')}
+                className="rounded-full"
+              >
+                {isSharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 className="h-5 w-5" />}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsTemplateSheetOpen(true)}
+              aria-label={t('loadTemplate')}
+              className="rounded-full border-primary/20 bg-primary/5 text-primary shadow-sm"
+            >
+              <FileText className="h-5 w-5" />
             </Button>
-            <Button variant="default" size="icon" onClick={handleAddExerciseClick} aria-label={t('addExercise')} className="rounded-full shadow-md">
+            <Button
+              variant="default"
+              size="icon"
+              onClick={() => setIsAddSheetOpen(true)}
+              aria-label={t('addExercise')}
+              className="rounded-full shadow-md"
+            >
               <Plus className="h-6 w-6" />
-              <span className="sr-only">{t('addExercise')}</span>
             </Button>
           </div>
         </CardHeader>
+
         <CardContent className="space-y-4 px-2 sm:px-6">
           {isLoading ? (
-            <div className="flex justify-center items-center py-10">
+            <div className="flex items-center justify-center py-10">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : dailyExercises.length > 0 ? (
-            dailyExercises.map((workoutExercise) => {
-              const exerciseDetails = getExerciseDetails(workoutExercise.exerciseId);
-              if (!exerciseDetails) return null;
-              return (
-                <WorkoutCard
+            <Reorder.Group
+              axis="y"
+              values={dailyExercises}
+              onReorder={(reordered) => persist(reordered, true)}
+              className="space-y-4"
+            >
+              {dailyExercises.map((workoutExercise) => (
+                <ReorderableExercise
                   key={workoutExercise.id}
                   workoutExercise={workoutExercise}
-                  exerciseDetails={exerciseDetails}
-                  onSetToggle={handleSetCompletionChange}
-                  onSetUpdate={handleSetUpdate}
-                  onAddSet={handleAddSet}
-                  onRemoveSet={handleRemoveSet}
+                  exerciseName={resolveExerciseName(workoutExercise, allExercises, t)}
+                  bodyPart={resolveBodyPart(workoutExercise, allExercises)}
+                  emoji={allExercises.find((exercise) => exercise.id === workoutExercise.exerciseId)?.emoji}
+                  tracking={resolveTracking(workoutExercise, allExercises)}
+                  unit={unit}
+                  pr={prMap.get(workoutExercise.exerciseId) ?? {
+                    maxWeight: 0,
+                    maxWeightReps: 0,
+                    best1RM: 0,
+                    date: null,
+                  }}
+                  lastSession={lastSessionMap.get(workoutExercise.exerciseId) ?? null}
+                  isOrphaned={!allExercises.some((exercise) => exercise.id === workoutExercise.exerciseId)}
+                  onSetToggle={(setIndex, completed) =>
+                    handleSetToggle(workoutExercise.id, setIndex, completed)
+                  }
+                  onSetUpdate={(setIndex, patch) => handleSetUpdate(workoutExercise.id, setIndex, patch)}
+                  onAddSet={() => handleAddSet(workoutExercise.id)}
+                  onRemoveSet={(setIndex) => handleRemoveSet(workoutExercise.id, setIndex)}
+                  onNotesChange={(notes) => handleNotesChange(workoutExercise.id, notes)}
+                  onApplySuggestion={(weightKg) => handleApplySuggestion(workoutExercise.id, weightKg)}
+                  onOpenHistory={() => setHistoryExerciseId(workoutExercise.exerciseId)}
+                  onOpenPlates={(weightKg) => setPlateTarget(weightKg)}
                   onDelete={() => setExerciseToConfirmDelete(workoutExercise)}
                 />
-              );
-            })
+              ))}
+            </Reorder.Group>
           ) : (
-            <div className="text-center py-12 px-4 rounded-xl border border-dashed border-border bg-secondary/10">
-              <p className="text-lg font-medium text-foreground mb-1">{t('noWorkoutPlanned')}</p>
-              <p className="text-muted-foreground mb-4">{t('enjoyRestDay')}</p>
-              <Button onClick={handleAddExerciseClick} className="rounded-full">
-                <Plus className="h-4 w-4 mr-2" />
-                Empezar a entrenar
+            <div className="rounded-xl border border-dashed border-border bg-secondary/10 px-4 py-12 text-center">
+              <p className="mb-1 text-lg font-medium text-foreground">{t('noWorkoutPlanned')}</p>
+              <p className="mb-4 text-muted-foreground">{t('enjoyRestDay')}</p>
+              <Button onClick={() => setIsAddSheetOpen(true)} className="rounded-full">
+                <Plus className="mr-2 h-4 w-4" />
+                {t('startTraining')}
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <AddExerciseSheet 
+      <AddExerciseSheet
         isOpen={isAddSheetOpen}
         onClose={() => setIsAddSheetOpen(false)}
-        onAddExercise={handleSaveNewExercise}
-        existingExerciseIds={existingExerciseIds}
+        onAddExercise={handleAddExercise}
+        existingExerciseIds={dailyExercises.map((exercise) => exercise.exerciseId)}
       />
 
-      <LoadTemplateSheet 
+      <LoadTemplateSheet
         isOpen={isTemplateSheetOpen}
         onClose={() => setIsTemplateSheetOpen(false)}
         onLoadTemplate={handleLoadTemplate}
       />
 
-      <AlertDialog open={!!exerciseToConfirmDelete} onOpenChange={(isOpen) => !isOpen && setExerciseToConfirmDelete(null)}>
+      <PlateCalculator
+        isOpen={plateTarget !== null}
+        onClose={() => setPlateTarget(null)}
+        initialWeightKg={plateTarget ?? 0}
+      />
+
+      <ExerciseHistorySheet
+        isOpen={historyExerciseId !== null}
+        onClose={() => setHistoryExerciseId(null)}
+        exerciseId={historyExerciseId}
+        exerciseName={historyExerciseName}
+      />
+
+      <AlertDialog
+        open={!!exerciseToConfirmDelete}
+        onOpenChange={(open) => !open && setExerciseToConfirmDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteExercise')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteWorkoutExerciseConfirmation', { exerciseName: exerciseToConfirmDelete ? t(getExerciseDetails(exerciseToConfirmDelete.exerciseId)?.name || '') : '' })}
+              {t('deleteWorkoutExerciseConfirmation', {
+                exerciseName: exerciseToConfirmDelete
+                  ? resolveExerciseName(exerciseToConfirmDelete, allExercises, t)
+                  : '',
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setExerciseToConfirmDelete(null)}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setExerciseToConfirmDelete(null)}>
+              {t('cancel')}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteWorkoutExercise}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -444,32 +541,61 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('pasteWorkout')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('pasteWorkoutConfirmation')}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t('pasteWorkoutConfirmation')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setShowPasteConfirm(false)}>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={executePaste}>
-              {t('pasteAndReplace')}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={executePaste}>{t('pasteAndReplace')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <RestTimer 
-        isActive={isTimerActive} 
-        onClose={() => setIsTimerActive(false)} 
-        initialSeconds={90} 
-      />
-
-      <ShareWorkoutTicket 
+      <ShareWorkoutTicket
         ref={ticketRef}
         dateStr={getFormattedDate()}
-        userName={user?.displayName || user?.email?.split('@')[0] || "Atleta"}
+        userName={user?.displayName || user?.email?.split('@')[0] || t('athlete')}
         dailyExercises={dailyExercises}
-        getExerciseDetails={getExerciseDetails}
+        exercises={allExercises}
+        unit={unit}
       />
     </>
+  );
+}
+
+type ReorderableExerciseProps = Omit<
+  React.ComponentProps<typeof WorkoutCard>,
+  'suggestion' | 'bodyPartLabel' | 'onApplySuggestion' | 'onDragHandlePointerDown'
+> & {
+  bodyPart?: string;
+  onApplySuggestion: (weightKg: number) => void;
+};
+
+/**
+ * Reorder handling lives here so the card itself stays presentational. Dragging
+ * is limited to the grip handle, otherwise it would fight the swipe-to-delete
+ * gesture on the set rows.
+ */
+function ReorderableExercise({ bodyPart, onApplySuggestion, ...cardProps }: ReorderableExerciseProps) {
+  const { t } = useLanguage();
+  const { settings } = useProfile();
+  const dragControls = useDragControls();
+
+  const suggestion = suggestProgression(cardProps.lastSession, settings.weightUnit);
+
+  return (
+    <Reorder.Item
+      value={cardProps.workoutExercise}
+      dragListener={false}
+      dragControls={dragControls}
+      className="list-none"
+    >
+      <WorkoutCard
+        {...cardProps}
+        bodyPartLabel={bodyPart ? t(bodyPart.toLowerCase()) : undefined}
+        suggestion={suggestion}
+        onApplySuggestion={() => suggestion !== null && onApplySuggestion(suggestion)}
+        onDragHandlePointerDown={(event) => dragControls.start(event)}
+      />
+    </Reorder.Item>
   );
 }

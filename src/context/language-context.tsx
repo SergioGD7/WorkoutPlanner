@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import en from '@/locales/en.json';
 import es from '@/locales/es.json';
 
@@ -8,6 +16,8 @@ type Language = 'en' | 'es';
 type Translations = { [key: string]: string };
 
 const translations: Record<Language, Translations> = { en, es };
+
+const STORAGE_KEY = 'workoutPlanner.language';
 
 interface LanguageContextType {
   language: Language;
@@ -17,46 +27,56 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en');
+function detectBrowserLanguage(): Language {
+  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
+  return candidates.some((lang) => lang?.toLowerCase().startsWith('es')) ? 'es' : 'en';
+}
 
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>('en');
+
+  // An explicit choice must survive a reload; only fall back to the browser
+  // locale when the user has never picked one.
   useEffect(() => {
-    // navigator.languages returns an array of preferred languages, sorted by preference.
-    // We check if any of the user's preferred languages is Spanish.
-    const hasSpanish = navigator.languages.some(lang => lang.toLowerCase().startsWith('es'));
-    
-    if (hasSpanish) {
-      setLanguage('es');
-    } else {
-      setLanguage('en');
-    }
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    setLanguageState(stored === 'en' || stored === 'es' ? stored : detectBrowserLanguage());
   }, []);
 
-  const t = useCallback((key: string, replacements?: { [key: string]: string | number }) => {
-    let translation = translations[language][key];
-    if (translation === undefined) {
-      // Fallback to English
-      translation = translations['en'][key];
-      if (translation === undefined) {
-        console.warn(`Translation not found for key: ${key}`);
-        return key;
-      }
-    }
-
-    if (replacements) {
-      Object.keys(replacements).forEach((placeholder) => {
-        translation = translation.replace(`{${placeholder}}`, String(replacements[placeholder]));
-      });
-    }
-
-    return translation;
+  // Keeps screen readers and the browser translator in sync with the content.
+  useEffect(() => {
+    document.documentElement.lang = language;
   }, [language]);
 
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
+  const setLanguage = useCallback((next: Language) => {
+    setLanguageState(next);
+    window.localStorage.setItem(STORAGE_KEY, next);
+  }, []);
+
+  const t = useCallback(
+    (key: string, replacements?: { [key: string]: string | number }) => {
+      let translation = translations[language][key] ?? translations.en[key];
+
+      if (translation === undefined) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`Translation not found for key: ${key}`);
+        }
+        return key;
+      }
+
+      if (replacements) {
+        Object.keys(replacements).forEach((placeholder) => {
+          translation = translation.replace(`{${placeholder}}`, String(replacements[placeholder]));
+        });
+      }
+
+      return translation;
+    },
+    [language],
   );
+
+  const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t]);
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {

@@ -1,15 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { X, Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useLanguage } from "@/context/language-context";
-import { useExercises } from "@/context/exercise-context";
-import { useTemplates } from "@/context/template-context";
-import type { WorkoutTemplate } from "@/lib/types";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from 'react';
+import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
+import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +17,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
+import { useLanguage } from '@/context/language-context';
+import { useExercises } from '@/context/exercise-context';
+import { useTemplates } from '@/context/template-context';
+import { DEFAULT_TEMPLATE_REPS, DEFAULT_TEMPLATE_SETS } from '@/lib/data';
+import type { TemplateDay, WorkoutTemplate } from '@/lib/types';
+import { templateDays, templateExerciseCount } from '@/lib/workout-utils';
 
 interface ManageTemplatesSheetProps {
   isOpen: boolean;
@@ -27,7 +31,7 @@ interface ManageTemplatesSheetProps {
 }
 
 export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplatesSheetProps) {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useTemplates();
   const { exercises } = useExercises();
 
@@ -35,67 +39,110 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
   const [editingTemplate, setEditingTemplate] = useState<WorkoutTemplate | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<WorkoutTemplate | null>(null);
 
-  // Form State
-  const [nameKey, setNameKey] = useState("");
-  const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
+  const [name, setName] = useState('');
+  const [days, setDays] = useState<TemplateDay[]>([]);
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const activeDay = days[activeDayIndex];
+
+  const handleDragEnd = (_event: unknown, info: PanInfo) => {
     if (info.offset.y > 100 || info.velocity.y > 500) {
-      if (view === 'list') {
-        onClose();
-      } else {
-        setView('list');
-      }
+      if (view === 'list') onClose();
+      else setView('list');
     }
   };
 
   const handleCreateNew = () => {
     setEditingTemplate(null);
-    setNameKey("");
-    setSelectedExercises([]);
+    setName('');
+    setDays([{ id: uuidv4(), name: t('templateFullBodyDayA'), exercises: [] }]);
+    setActiveDayIndex(0);
     setView('edit');
   };
 
-  const handleEdit = (tpl: WorkoutTemplate) => {
-    setEditingTemplate(tpl);
-    // Un poco de hack: si es una plantilla por defecto, usará una clave de traducción.
-    // Para simplificar para el usuario final, guardaremos el nombre que escriba tal cual en nameKey.
-    // Si t(tpl.nameKey) devuelve un valor traducido, usamos ese valor como inicial.
-    const translatedName = t(tpl.nameKey);
-    setNameKey(translatedName !== tpl.nameKey ? translatedName : tpl.nameKey);
-    setSelectedExercises(tpl.exercises);
+  const handleEdit = (template: WorkoutTemplate) => {
+    setEditingTemplate(template);
+    // Built-in routines carry a translation key; show the translated text so the
+    // user edits words rather than an identifier.
+    const translated = t(template.nameKey);
+    setName(translated !== template.nameKey ? translated : template.nameKey);
+    setDays(
+      templateDays(template).map((day) => ({
+        ...day,
+        id: day.id || uuidv4(),
+        name: t(day.name) !== day.name ? t(day.name) : day.name,
+      })),
+    );
+    setActiveDayIndex(0);
     setView('edit');
   };
 
   const handleSave = async () => {
-    if (!nameKey.trim()) return;
+    if (!name.trim()) return;
+    const payload = {
+      nameKey: name.trim(),
+      days: days.map((day) => ({ ...day, name: day.name.trim() || t('dayName') })),
+    };
 
-    if (editingTemplate) {
-      await updateTemplate({
-        ...editingTemplate,
-        nameKey: nameKey.trim(),
-        exercises: selectedExercises,
-      });
-    } else {
-      await addTemplate({
-        nameKey: nameKey.trim(),
-        exercises: selectedExercises,
-      });
-    }
+    if (editingTemplate) await updateTemplate({ ...editingTemplate, ...payload, exercises: undefined });
+    else await addTemplate(payload);
+
     setView('list');
   };
 
-  const confirmDelete = async () => {
-    if (templateToDelete) {
-      await deleteTemplate(templateToDelete.id);
-      setTemplateToDelete(null);
-    }
+  const patchDay = (index: number, patch: Partial<TemplateDay>) => {
+    setDays((previous) => previous.map((day, i) => (i === index ? { ...day, ...patch } : day)));
   };
 
-  const toggleExercise = (id: string) => {
-    setSelectedExercises(prev => 
-      prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
-    );
+  const toggleExerciseInDay = (exerciseId: string) => {
+    if (!activeDay) return;
+    const exists = activeDay.exercises.some((entry) => entry.exerciseId === exerciseId);
+    patchDay(activeDayIndex, {
+      exercises: exists
+        ? activeDay.exercises.filter((entry) => entry.exerciseId !== exerciseId)
+        : [
+            ...activeDay.exercises,
+            {
+              exerciseId,
+              sets: DEFAULT_TEMPLATE_SETS,
+              reps: DEFAULT_TEMPLATE_REPS,
+              restSeconds: 90,
+            },
+          ],
+    });
+  };
+
+  const patchExercise = (exerciseId: string, patch: { sets?: number; reps?: number; restSeconds?: number }) => {
+    if (!activeDay) return;
+    patchDay(activeDayIndex, {
+      exercises: activeDay.exercises.map((entry) =>
+        entry.exerciseId === exerciseId ? { ...entry, ...patch } : entry,
+      ),
+    });
+  };
+
+  const addDay = () => {
+    setDays((previous) => [
+      ...previous,
+      { id: uuidv4(), name: `${t('routineDays')} ${previous.length + 1}`, exercises: [] },
+    ]);
+    setActiveDayIndex(days.length);
+  };
+
+  const removeDay = (index: number) => {
+    setDays((previous) => previous.filter((_, i) => i !== index));
+    setActiveDayIndex((previous) => Math.max(0, previous - (index <= previous ? 1 : 0)));
+  };
+
+  const confirmDelete = async () => {
+    if (!templateToDelete) return;
+    await deleteTemplate(templateToDelete.id);
+    setTemplateToDelete(null);
+  };
+
+  const exerciseName = (exerciseId: string) => {
+    const definition = exercises.find((exercise) => exercise.id === exerciseId);
+    return definition ? t(definition.name) : t('deletedExercise');
   };
 
   return (
@@ -111,139 +158,303 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
           />
 
           <motion.div
-            initial={{ y: "100%" }}
+            initial={{ y: '100%' }}
             animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             drag="y"
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={handleDragEnd}
-            className="fixed bottom-0 left-0 right-0 z-50 h-[85vh] bg-card border-t border-border rounded-t-[2rem] shadow-2xl flex flex-col"
+            className="fixed bottom-0 left-0 right-0 z-50 flex h-[90vh] flex-col rounded-t-[2rem] border-t border-border bg-card shadow-2xl"
           >
-            <div className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing touch-none">
-              <div className="w-12 h-1.5 bg-muted rounded-full" />
+            <div className="flex w-full cursor-grab touch-none justify-center py-4 active:cursor-grabbing">
+              <div className="h-1.5 w-12 rounded-full bg-muted" />
             </div>
 
             {view === 'list' ? (
-              // --- LIST VIEW ---
               <>
-                <div className="px-6 pb-4 flex items-center justify-between">
-                  <h2 className="text-2xl font-headline font-bold">
-                    Gestionar Rutinas
-                  </h2>
-                  <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+                <div className="flex items-center justify-between px-6 pb-4">
+                  <h2 className="font-headline text-2xl font-bold">{t('manageRoutines')}</h2>
+                  <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label={t('close')}>
                     <X className="h-5 w-5" />
                   </Button>
                 </div>
-                
+
                 <div className="px-6 pb-4">
                   <Button onClick={handleCreateNew} className="w-full rounded-xl">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Crear Nueva Rutina
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('createNewRoutine')}
                   </Button>
                 </div>
 
                 <ScrollArea className="flex-1 px-6 pb-8">
-                  <div className="space-y-3">
-                    {templates.map(tpl => (
-                      <div key={tpl.id} className="p-4 rounded-xl border border-border bg-card flex justify-between items-center shadow-sm">
-                        <div>
-                          <p className="font-bold">{t(tpl.nameKey) || tpl.nameKey}</p>
-                          <p className="text-xs text-muted-foreground">{tpl.exercises.length} ejercicios</p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(tpl)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setTemplateToDelete(tpl)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {templates.length === 0 ? (
+                    <p className="py-8 text-center text-muted-foreground">{t('noTemplatesSaved')}</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {templates.map((template) => {
+                        const dayCount = templateDays(template).length;
+                        return (
+                          <div
+                            key={template.id}
+                            className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-sm"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-bold">{t(template.nameKey)}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {templateExerciseCount(template)} {t('exercises').toLowerCase()}
+                                {dayCount > 1 && ` · ${dayCount} ${t('routineDays').toLowerCase()}`}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEdit(template)}
+                                aria-label={t('editRoutine')}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setTemplateToDelete(template)}
+                                aria-label={t('deleteRoutine')}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </ScrollArea>
               </>
             ) : (
-              // --- EDIT VIEW ---
               <>
-                <div className="px-6 pb-4 flex items-center justify-between">
+                <div className="flex items-center justify-between px-6 pb-4">
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => setView('list')} className="rounded-full -ml-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setView('list')}
+                      className="-ml-2 rounded-full"
+                      aria-label={t('cancel')}
+                    >
                       <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h2 className="text-xl font-headline font-bold">
-                      {editingTemplate ? 'Editar Rutina' : 'Nueva Rutina'}
+                    <h2 className="font-headline text-xl font-bold">
+                      {editingTemplate ? t('editRoutine') : t('newRoutine')}
                     </h2>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+                  <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label={t('close')}>
                     <X className="h-5 w-5" />
                   </Button>
                 </div>
 
-                <div className="px-6 space-y-4 pb-4">
+                <div className="space-y-3 px-6 pb-3">
                   <div>
-                    <label className="text-sm font-semibold mb-1 block">Nombre de la rutina</label>
-                    <Input 
-                      value={nameKey} 
-                      onChange={(e) => setNameKey(e.target.value)} 
-                      placeholder="Ej: Torso, Pierna, Pecho y Tríceps..."
+                    <Label htmlFor="routine-name" className="mb-1 block text-sm font-semibold">
+                      {t('routineName')}
+                    </Label>
+                    <Input
+                      id="routine-name"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder={t('routineNamePlaceholder')}
                       className="bg-secondary/20"
                     />
                   </div>
+
+                  {/* Day chips: a routine can hold an A/B split or a full mesocycle. */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {days.map((day, index) => (
+                      <button
+                        key={day.id}
+                        type="button"
+                        onClick={() => setActiveDayIndex(index)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          index === activeDayIndex
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary/40 text-muted-foreground hover:bg-secondary/70'
+                        }`}
+                      >
+                        {day.name || `${index + 1}`}
+                      </button>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addDay}
+                      className="h-7 rounded-full px-2"
+                      aria-label={t('addDay')}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  {activeDay && days.length > 1 && (
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <Label htmlFor="day-name" className="mb-1 block text-xs font-semibold">
+                          {t('dayName')}
+                        </Label>
+                        <Input
+                          id="day-name"
+                          value={activeDay.name}
+                          onChange={(event) => patchDay(activeDayIndex, { name: event.target.value })}
+                          className="h-9 bg-secondary/20"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeDay(activeDayIndex)}
+                        aria-label={t('deleteDay')}
+                        className="mb-0.5"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="px-6 pb-2">
-                  <h3 className="font-semibold text-sm">Selecciona los ejercicios:</h3>
-                </div>
+                <ScrollArea className="flex-1 px-6 pb-28">
+                  <div className="space-y-4">
+                    {activeDay && (
+                      <>
+                        <div>
+                          <h3 className="mb-2 text-sm font-semibold">{t('selectExercisesLabel')}</h3>
+                          {activeDay.exercises.length === 0 ? (
+                            <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+                              {t('emptyRoutineDay')}
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {activeDay.exercises.map((entry) => (
+                                <div
+                                  key={entry.exerciseId}
+                                  className="rounded-xl border border-border/60 bg-secondary/10 p-3"
+                                >
+                                  <div className="mb-2 flex items-center justify-between gap-2">
+                                    <p className="truncate text-sm font-semibold">
+                                      {exerciseName(entry.exerciseId)}
+                                    </p>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => toggleExerciseInDay(entry.exerciseId)}
+                                      aria-label={t('delete')}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <NumberField
+                                      label={t('targetSets')}
+                                      value={entry.sets}
+                                      min={1}
+                                      onChange={(sets) => patchExercise(entry.exerciseId, { sets })}
+                                    />
+                                    <NumberField
+                                      label={t('targetReps')}
+                                      value={entry.reps}
+                                      min={0}
+                                      onChange={(reps) => patchExercise(entry.exerciseId, { reps })}
+                                    />
+                                    <NumberField
+                                      label={`${t('restShort')} (${t('seconds')})`}
+                                      value={entry.restSeconds ?? 90}
+                                      min={0}
+                                      step={15}
+                                      onChange={(restSeconds) =>
+                                        patchExercise(entry.exerciseId, { restSeconds })
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
 
-                <ScrollArea className="flex-1 px-6 pb-24">
-                  <div className="space-y-2">
-                    {exercises.map(ex => {
-                      const isSelected = selectedExercises.includes(ex.id);
-                      return (
-                        <div 
-                          key={ex.id}
-                          onClick={() => toggleExercise(ex.id)}
-                          className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                            isSelected ? 'bg-primary/10 border-primary text-primary' : 'bg-secondary/5 border-transparent text-foreground hover:bg-secondary/10'
-                          }`}
-                        >
-                          <div className={`w-5 h-5 rounded-md flex items-center justify-center border ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground'}`}>
-                            {isSelected && <X className="h-3 w-3 text-primary-foreground rotate-45" />}
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{t(ex.name)}</p>
-                            <p className="text-xs opacity-70 capitalize">{t(ex.bodyPart.toLowerCase())}</p>
+                        <div>
+                          <h3 className="mb-2 text-sm font-semibold">{t('addExercisesToDay')}</h3>
+                          <div className="space-y-2">
+                            {exercises.map((exercise) => {
+                              const isSelected = activeDay.exercises.some(
+                                (entry) => entry.exerciseId === exercise.id,
+                              );
+                              return (
+                                <button
+                                  key={exercise.id}
+                                  type="button"
+                                  onClick={() => toggleExerciseInDay(exercise.id)}
+                                  className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                                    isSelected
+                                      ? 'border-primary bg-primary/10 text-primary'
+                                      : 'border-transparent bg-secondary/5 text-foreground hover:bg-secondary/10'
+                                  }`}
+                                >
+                                  <div
+                                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
+                                      isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
+                                    }`}
+                                  >
+                                    {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium">{t(exercise.name)}</p>
+                                    <p className="text-xs capitalize opacity-70">
+                                      {t(exercise.bodyPart.toLowerCase())}
+                                    </p>
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
-                      )
-                    })}
+                      </>
+                    )}
                   </div>
                 </ScrollArea>
 
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-card via-card to-transparent">
-                   <Button onClick={handleSave} disabled={!nameKey.trim() || selectedExercises.length === 0} className="w-full rounded-xl h-12 text-base shadow-lg">
-                      Guardar Rutina
-                   </Button>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-card via-card to-transparent p-6">
+                  <Button
+                    onClick={handleSave}
+                    disabled={!name.trim() || days.every((day) => day.exercises.length === 0)}
+                    className="h-12 w-full rounded-xl text-base shadow-lg"
+                  >
+                    {t('saveRoutine')}
+                  </Button>
                 </div>
               </>
             )}
           </motion.div>
 
-          <AlertDialog open={!!templateToDelete} onOpenChange={(isOpen) => !isOpen && setTemplateToDelete(null)}>
+          <AlertDialog
+            open={!!templateToDelete}
+            onOpenChange={(open) => !open && setTemplateToDelete(null)}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Eliminar rutina</AlertDialogTitle>
+                <AlertDialogTitle>{t('deleteRoutine')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  ¿Seguro que quieres eliminar la rutina "{templateToDelete && (t(templateToDelete.nameKey) || templateToDelete.nameKey)}"? Esta acción no se puede deshacer.
+                  {t('deleteRoutineConfirmation', {
+                    name: templateToDelete ? t(templateToDelete.nameKey) : '',
+                  })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setTemplateToDelete(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Eliminar
+                <AlertDialogCancel onClick={() => setTemplateToDelete(null)}>{t('cancel')}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={confirmDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {t('delete')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -251,5 +462,35 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
         </>
       )}
     </AnimatePresence>
+  );
+}
+
+interface NumberFieldProps {
+  label: string;
+  value: number;
+  min?: number;
+  step?: number;
+  onChange: (value: number) => void;
+}
+
+function NumberField({ label, value, min = 0, step = 1, onChange }: NumberFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={min}
+        step={step}
+        value={value}
+        onChange={(event) => {
+          const parsed = Number(event.target.value);
+          if (Number.isFinite(parsed) && parsed >= min) onChange(parsed);
+        }}
+        className="h-9 w-full rounded-md border border-transparent bg-background text-center font-semibold outline-none focus:border-primary/50"
+      />
+    </label>
   );
 }

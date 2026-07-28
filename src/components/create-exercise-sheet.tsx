@@ -20,13 +20,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
 import { bodyParts } from "@/lib/data";
-import type { Exercise, BodyPart } from "@/lib/types";
+import type { Exercise, BodyPart, ExerciseTracking } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+const TRACKING_OPTIONS: { value: ExerciseTracking; labelKey: string }[] = [
+  { value: "weight", labelKey: "trackingWeight" },
+  { value: "bodyweight", labelKey: "trackingBodyweight" },
+  { value: "duration", labelKey: "trackingDuration" },
+];
 
 const formSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   bodyPart: z.enum(bodyParts as unknown as [string, ...string[]]),
+  tracking: z.enum(["weight", "bodyweight", "duration"]),
 });
 
 interface CreateExerciseSheetProps {
@@ -51,6 +58,7 @@ export default function CreateExerciseSheet({
       name: "",
       description: "",
       bodyPart: "Chest",
+      tracking: "weight",
     },
   });
 
@@ -61,12 +69,14 @@ export default function CreateExerciseSheet({
           name: exerciseToEdit.name,
           description: exerciseToEdit.description,
           bodyPart: exerciseToEdit.bodyPart,
+          tracking: exerciseToEdit.tracking ?? "weight",
         });
       } else {
         form.reset({
           name: "",
           description: "",
           bodyPart: "Chest",
+          tracking: "weight",
         });
       }
     }
@@ -78,11 +88,13 @@ export default function CreateExerciseSheet({
         ...exerciseToEdit,
         ...values,
         bodyPart: values.bodyPart as BodyPart,
+        tracking: values.tracking as ExerciseTracking,
       });
     } else {
       await addExercise({
         ...values,
         bodyPart: values.bodyPart as BodyPart,
+        tracking: values.tracking as ExerciseTracking,
       });
     }
     onClose();
@@ -206,6 +218,39 @@ export default function CreateExerciseSheet({
                     )}
                   />
                   
+                  {/* Drives which inputs the set row shows while logging. */}
+                  <FormField
+                    control={form.control}
+                    name="tracking"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-semibold">{t("exerciseType")}</FormLabel>
+                        <FormControl>
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            {TRACKING_OPTIONS.map((option) => {
+                              const isSelected = field.value === option.value;
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  onClick={() => field.onChange(option.value)}
+                                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                                    isSelected
+                                    ? "bg-primary text-primary-foreground shadow-md scale-105"
+                                    : "bg-secondary/30 hover:bg-secondary/60 text-foreground border border-transparent"
+                                  }`}
+                                >
+                                  {t(option.labelKey)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="pt-4 flex gap-3">
                     <Button 
                       type="button" 

@@ -118,7 +118,7 @@ export default function AddExerciseSheet({ isOpen, onClose, onAddExercise, exist
             <ScrollArea className="flex-1 px-6 pb-8">
               {Object.keys(exercisesByBodyPart).length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground">
-                  No exercises found.
+                  {t('noExercisesFound')}
                 </div>
               ) : (
                 <div className="space-y-6 pb-12">
@@ -146,7 +146,7 @@ export default function AddExerciseSheet({ isOpen, onClose, onAddExercise, exist
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-foreground truncate">
                                   {t(exercise.name)}
-                                  {isAdded && <span className="ml-2 text-[10px] uppercase bg-primary/20 text-primary px-1.5 py-0.5 rounded-sm">Añadido</span>}
+                                  {isAdded && <span className="ml-2 text-[10px] uppercase bg-primary/20 text-primary px-1.5 py-0.5 rounded-sm">{t('added')}</span>}
                                 </p>
                                 <p className="text-xs text-muted-foreground capitalize">{t(exercise.bodyPart.toLowerCase())}</p>
                               </div>

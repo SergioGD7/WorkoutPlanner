@@ -1,29 +1,40 @@
 "use client";
 
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { X, FileText, Settings2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useLanguage } from "@/context/language-context";
-import { useTemplates } from "@/context/template-context";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import ManageTemplatesSheet from "@/components/manage-templates-sheet";
-import { useState } from "react";
+import { useState } from 'react';
+import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
+import { ChevronRight, FileText, Settings2, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import ManageTemplatesSheet from '@/components/manage-templates-sheet';
+import { useLanguage } from '@/context/language-context';
+import { useTemplates } from '@/context/template-context';
+import type { TemplateExercise, WorkoutTemplate } from '@/lib/types';
+import { templateDays, templateExerciseCount } from '@/lib/workout-utils';
 
 interface LoadTemplateSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoadTemplate: (exerciseIds: string[]) => void;
+  onLoadTemplate: (exercises: TemplateExercise[]) => void;
 }
 
 export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: LoadTemplateSheetProps) {
   const { t } = useLanguage();
   const { templates } = useTemplates();
   const [isManageOpen, setIsManageOpen] = useState(false);
+  /** Set when a multi-day routine is tapped: the user still has to pick a day. */
+  const [dayPickerFor, setDayPickerFor] = useState<WorkoutTemplate | null>(null);
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    if (info.offset.y > 100 || info.velocity.y > 500) {
-      onClose();
+  const handleDragEnd = (_event: unknown, info: PanInfo) => {
+    if (info.offset.y > 100 || info.velocity.y > 500) onClose();
+  };
+
+  const handleTemplateClick = (template: WorkoutTemplate) => {
+    const days = templateDays(template);
+    if (days.length > 1) {
+      setDayPickerFor(template);
+      return;
     }
+    onLoadTemplate(days[0]?.exercises ?? []);
   };
 
   return (
@@ -39,30 +50,44 @@ export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: L
           />
 
           <motion.div
-            initial={{ y: "100%" }}
+            initial={{ y: '100%' }}
             animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             drag="y"
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={handleDragEnd}
-            className="fixed bottom-0 left-0 right-0 z-50 h-[70vh] bg-card border-t border-border rounded-t-[2rem] shadow-2xl flex flex-col"
+            className="fixed bottom-0 left-0 right-0 z-50 flex h-[70vh] flex-col rounded-t-[2rem] border-t border-border bg-card shadow-2xl"
           >
-            <div className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing touch-none">
-              <div className="w-12 h-1.5 bg-muted rounded-full" />
+            <div className="flex w-full cursor-grab touch-none justify-center py-4 active:cursor-grabbing">
+              <div className="h-1.5 w-12 rounded-full bg-muted" />
             </div>
 
-            <div className="px-6 pb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-headline font-bold flex items-center gap-2">
+            <div className="flex items-center justify-between px-6 pb-4">
+              <h2 className="flex items-center gap-2 font-headline text-2xl font-bold">
                 <FileText className="text-primary" />
-                {t('loadTemplate') || 'Cargar Plantilla'}
+                {dayPickerFor ? t('chooseDay') : t('loadTemplate')}
               </h2>
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => setIsManageOpen(true)} className="rounded-full">
-                  <Settings2 className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+                {!dayPickerFor && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsManageOpen(true)}
+                    className="rounded-full"
+                    aria-label={t('manageRoutines')}
+                  >
+                    <Settings2 className="h-5 w-5" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => (dayPickerFor ? setDayPickerFor(null) : onClose())}
+                  className="rounded-full"
+                  aria-label={t('close')}
+                >
                   <X className="h-5 w-5" />
                 </Button>
               </div>
@@ -70,31 +95,57 @@ export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: L
 
             <ScrollArea className="flex-1 px-6 pb-8">
               <div className="space-y-4">
-                {templates.length === 0 && (
-                  <p className="text-muted-foreground text-center py-8">No hay plantillas guardadas.</p>
+                {dayPickerFor ? (
+                  templateDays(dayPickerFor).map((day) => (
+                    <button
+                      key={day.id}
+                      type="button"
+                      onClick={() => {
+                        onLoadTemplate(day.exercises);
+                        setDayPickerFor(null);
+                      }}
+                      className="flex w-full items-center justify-between rounded-2xl border border-transparent bg-secondary/10 p-4 text-left transition-all hover:border-border/50 hover:bg-secondary/30 active:scale-[0.98]"
+                    >
+                      <div>
+                        <h3 className="mb-1 text-lg font-bold text-foreground">{t(day.name)}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {day.exercises.length} {t('exercises')}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    </button>
+                  ))
+                ) : templates.length === 0 ? (
+                  <p className="py-8 text-center text-muted-foreground">{t('noTemplatesSaved')}</p>
+                ) : (
+                  templates.map((template) => {
+                    const days = templateDays(template);
+                    return (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => handleTemplateClick(template)}
+                        className="flex w-full items-center justify-between rounded-2xl border border-transparent bg-secondary/10 p-4 text-left transition-all hover:border-border/50 hover:bg-secondary/30 active:scale-[0.98]"
+                      >
+                        <div>
+                          <h3 className="mb-1 text-lg font-bold text-foreground">
+                            {t(template.nameKey)}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {templateExerciseCount(template)} {t('exercises')}
+                            {days.length > 1 && ` · ${days.length} ${t('routineDays').toLowerCase()}`}
+                          </p>
+                        </div>
+                        {days.length > 1 && <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                      </button>
+                    );
+                  })
                 )}
-                {templates.map((template) => (
-                  <div 
-                    key={template.id}
-                    onClick={() => onLoadTemplate(template.exercises)}
-                    className="p-4 rounded-2xl bg-secondary/10 hover:bg-secondary/30 border border-transparent hover:border-border/50 cursor-pointer transition-all active:scale-[0.98]"
-                  >
-                    <h3 className="font-bold text-lg text-foreground mb-1">
-                      {t(template.nameKey) || template.nameKey}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {template.exercises.length} {t('exercises')}
-                    </p>
-                  </div>
-                ))}
               </div>
             </ScrollArea>
           </motion.div>
 
-          <ManageTemplatesSheet 
-            isOpen={isManageOpen} 
-            onClose={() => setIsManageOpen(false)} 
-          />
+          <ManageTemplatesSheet isOpen={isManageOpen} onClose={() => setIsManageOpen(false)} />
         </>
       )}
     </AnimatePresence>

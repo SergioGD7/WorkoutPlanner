@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import { Dumbbell, HomeIcon, BookOpen, BarChart3, LogOut, CalendarDays, SettingsIcon, User } from "lucide-react";
+import { Dumbbell, HomeIcon, BookOpen, BarChart3, LogOut, CalendarDays, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
@@ -14,6 +14,7 @@ import { useLanguage } from "@/context/language-context";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { triggerHaptic } from "@/utils/haptics";
+import RestTimer from "@/components/rest-timer";
 import { AnimatePresence, motion, Variants } from "framer-motion";
 
 type View = "dashboard" | "library" | "progress" | "calendar" | "settings";
@@ -117,9 +118,9 @@ export default function HomePage() {
           <div className="flex flex-1 md:flex-none justify-end items-center gap-2">
             <LanguageSwitcher />
             <ThemeSwitcher />
-            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout" className="rounded-full">
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label={t('logout')} className="rounded-full">
               <LogOut className="h-5 w-5" />
-              <span className="sr-only">Logout</span>
+              <span className="sr-only">{t('logout')}</span>
             </Button>
           </div>
         </header>
@@ -140,6 +141,9 @@ export default function HomePage() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Rest timer lives at the shell level so it survives navigation between views. */}
+      <RestTimer />
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t flex items-center justify-around px-2 z-50 glass-effect">

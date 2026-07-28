@@ -1,90 +1,89 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { useLanguage } from "@/context/language-context";
+import { useEffect, useMemo, useRef } from 'react';
+import { Flame, Trophy } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useLanguage } from '@/context/language-context';
 import type { WorkoutLog } from '@/lib/types';
-import { parseISO, isValid, isToday, isYesterday, differenceInDays } from 'date-fns';
-import { Flame, Trophy } from "lucide-react";
-import confetti from "canvas-confetti";
+import { calculateStreak, totalCompletedWorkouts } from '@/lib/workout-utils';
 
 interface GamificationBadgesProps {
   workoutLog: WorkoutLog;
 }
 
+/** Highest streak already celebrated, so we don't re-fire on every mount. */
+const CELEBRATED_KEY = 'workoutPlanner.celebratedStreak';
+
 export default function GamificationBadges({ workoutLog }: GamificationBadgesProps) {
   const { t } = useLanguage();
 
-  const streak = useMemo(() => {
-    if (!workoutLog || Object.keys(workoutLog).length === 0) return 0;
+  // Both numbers count only days with at least one *completed* set: merely
+  // planning a workout no longer inflates the streak or the total.
+  const streak = useMemo(() => calculateStreak(workoutLog), [workoutLog]);
+  const totalWorkouts = useMemo(() => totalCompletedWorkouts(workoutLog), [workoutLog]);
 
-    const sortedDates = Object.keys(workoutLog)
-      .map(dateStr => parseISO(dateStr))
-      .filter(date => isValid(date))
-      .sort((a, b) => b.getTime() - a.getTime());
-
-    if (sortedDates.length === 0) return 0;
-
-    let currentStreak = 0;
-    const today = new Date();
-
-    // Check if the latest workout was today or yesterday to start counting
-    if (isToday(sortedDates[0]) || isYesterday(sortedDates[0])) {
-      currentStreak = 1;
-      for (let i = 0; i < sortedDates.length - 1; i++) {
-        const diff = differenceInDays(sortedDates[i], sortedDates[i + 1]);
-        if (diff === 1) {
-          currentStreak++;
-        } else if (diff > 1) {
-          break; // Streak broken
-        }
-      }
-    }
-
-    return currentStreak;
-  }, [workoutLog]);
+  const hasCheckedRef = useRef(false);
 
   useEffect(() => {
-    if (streak > 0) {
-      const lastConfettiStreak = sessionStorage.getItem('lastConfettiStreak');
-      
-      // If there's a previous streak recorded in this session, and the new one is higher, celebrate
-      if (lastConfettiStreak !== null && streak > Number(lastConfettiStreak)) {
+    if (streak === 0) return;
+
+    const stored = Number(window.localStorage.getItem(CELEBRATED_KEY) ?? 0);
+
+    // First render of a session just records where we are; a streak that grows
+    // afterwards (or beats the best ever celebrated) earns the confetti.
+    if (streak > stored) {
+      if (hasCheckedRef.current || stored > 0) {
         confetti({
           particleCount: 100,
           spread: 70,
           origin: { y: 0.6 },
-          colors: ['#f97316', '#a855f7'] // orange and purple
+          colors: ['#f97316', '#a855f7'],
         });
       }
-      
-      // Always update the session storage with the current streak
-      sessionStorage.setItem('lastConfettiStreak', streak.toString());
+      window.localStorage.setItem(CELEBRATED_KEY, String(streak));
+    } else if (streak < stored) {
+      // Streak broken: reset so the next comeback is celebrated again.
+      window.localStorage.setItem(CELEBRATED_KEY, String(streak));
     }
+
+    hasCheckedRef.current = true;
   }, [streak]);
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      <Card className="glass-effect bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/20">
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className="bg-orange-500/20 p-3 rounded-full">
-            <Flame className="h-6 w-6 text-orange-500" />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground font-medium">{t('currentStreak')}</p>
-            <h3 className="text-2xl font-bold font-headline">{streak} {t('days')}</h3>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="glass-effect bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/20">
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className="bg-blue-500/20 p-3 rounded-full">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Card className="glass-effect cursor-help border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-red-500/10">
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className="rounded-full bg-orange-500/20 p-3">
+                  <Flame className="h-6 w-6 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{t('currentStreak')}</p>
+                  <h3 className="font-headline text-2xl font-bold">
+                    {streak} {t('days')}
+                  </h3>
+                </div>
+              </CardContent>
+            </Card>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[220px] text-center">
+            <p className="text-xs">{t('streakExplanation')}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      <Card className="glass-effect border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+        <CardContent className="flex items-center gap-4 p-4">
+          <div className="rounded-full bg-blue-500/20 p-3">
             <Trophy className="h-6 w-6 text-blue-500" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground font-medium">{t('totalWorkouts')}</p>
-            <h3 className="text-2xl font-bold font-headline">{Object.keys(workoutLog).length}</h3>
+            <p className="text-sm font-medium text-muted-foreground">{t('totalWorkouts')}</p>
+            <h3 className="font-headline text-2xl font-bold">{totalWorkouts}</h3>
           </div>
         </CardContent>
       </Card>

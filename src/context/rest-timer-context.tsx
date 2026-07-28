@@ -1,0 +1,208 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { triggerHaptic } from '@/utils/haptics';
+import { useProfile } from './profile-context';
+
+/**
+ * The rest timer is driven by an absolute end timestamp rather than a
+ * decrementing counter, so it survives the tab being backgrounded (mobile
+ * browsers throttle timers) and a page reload mid-set.
+ */
+const STORAGE_KEY = 'restTimer.endsAt';
+
+interface RestTimerState {
+  isActive: boolean;
+  /** Seconds remaining, never negative. */
+  remaining: number;
+  total: number;
+  label: string | null;
+}
+
+interface RestTimerContextType extends RestTimerState {
+  start: (seconds?: number, label?: string | null) => void;
+  stop: () => void;
+  addSeconds: (delta: number) => void;
+  /** Asks for notification permission; returns whether it was granted. */
+  requestNotificationPermission: () => Promise<boolean>;
+}
+
+const RestTimerContext = createContext<RestTimerContextType | undefined>(undefined);
+
+function playChime() {
+  try {
+    const AudioContextCtor =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    const context = new AudioContextCtor();
+    const now = context.currentTime;
+
+    // Two short ascending beeps — audible over gym noise, no asset needed.
+    [880, 1174].forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, now + index * 0.22);
+      gain.gain.exponentialRampToValueAtTime(0.35, now + index * 0.22 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.22 + 0.2);
+      oscillator.connect(gain).connect(context.destination);
+      oscillator.start(now + index * 0.22);
+      oscillator.stop(now + index * 0.22 + 0.22);
+    });
+
+    setTimeout(() => void context.close(), 900);
+  } catch {
+    // Autoplay blocked or WebAudio unavailable: the haptic still fires.
+  }
+}
+
+export function RestTimerProvider({ children }: { children: ReactNode }) {
+  const { settings } = useProfile();
+  const [endsAt, setEndsAt] = useState<number | null>(null);
+  const [total, setTotal] = useState(settings.defaultRestSeconds);
+  const [label, setLabel] = useState<string | null>(null);
+  const [remaining, setRemaining] = useState(0);
+  const firedRef = useRef(false);
+
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  // Restore an in-flight rest after a reload.
+  useEffect(() => {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    const parsed = Number(stored);
+    if (Number.isFinite(parsed) && parsed > Date.now()) {
+      setEndsAt(parsed);
+      setRemaining(Math.ceil((parsed - Date.now()) / 1000));
+      firedRef.current = false;
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    setEndsAt(null);
+    setRemaining(0);
+    setLabel(null);
+    firedRef.current = true;
+    window.localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
+  const finish = useCallback(() => {
+    if (firedRef.current) return;
+    firedRef.current = true;
+
+    triggerHaptic('heavy');
+    setTimeout(() => triggerHaptic('success'), 400);
+
+    if (settingsRef.current.restTimerSound) playChime();
+
+    if (
+      settingsRef.current.restTimerNotifications &&
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'granted'
+    ) {
+      try {
+        new Notification('Workout Planner', {
+          body: label ? `${label} — rest over` : 'Rest over',
+          tag: 'rest-timer',
+        });
+      } catch {
+        // Some browsers require a service worker registration for this.
+      }
+    }
+
+    setEndsAt(null);
+    setRemaining(0);
+    window.localStorage.removeItem(STORAGE_KEY);
+  }, [label]);
+
+  // Recompute from the wall clock every 250 ms; drift-free by construction.
+  useEffect(() => {
+    if (endsAt === null) return;
+
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      setRemaining(left);
+      if (left <= 0) finish();
+    };
+
+    tick();
+    const interval = setInterval(tick, 250);
+    const onVisible = () => tick();
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [endsAt, finish]);
+
+  const start = useCallback(
+    (seconds?: number, nextLabel: string | null = null) => {
+      const duration = Math.max(5, seconds ?? settingsRef.current.defaultRestSeconds);
+      const end = Date.now() + duration * 1000;
+      firedRef.current = false;
+      setTotal(duration);
+      setLabel(nextLabel);
+      setEndsAt(end);
+      setRemaining(duration);
+      window.localStorage.setItem(STORAGE_KEY, String(end));
+    },
+    [],
+  );
+
+  const addSeconds = useCallback((delta: number) => {
+    setEndsAt((previous) => {
+      if (previous === null) return previous;
+      const next = Math.max(Date.now(), previous + delta * 1000);
+      window.localStorage.setItem(STORAGE_KEY, String(next));
+      firedRef.current = false;
+      return next;
+    });
+  }, []);
+
+  const requestNotificationPermission = useCallback(async () => {
+    if (typeof Notification === 'undefined') return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      isActive: endsAt !== null,
+      remaining,
+      total,
+      label,
+      start,
+      stop,
+      addSeconds,
+      requestNotificationPermission,
+    }),
+    [endsAt, remaining, total, label, start, stop, addSeconds, requestNotificationPermission],
+  );
+
+  return <RestTimerContext.Provider value={value}>{children}</RestTimerContext.Provider>;
+}
+
+export function useRestTimer() {
+  const context = useContext(RestTimerContext);
+  if (context === undefined) {
+    throw new Error('useRestTimer must be used within a RestTimerProvider');
+  }
+  return context;
+}

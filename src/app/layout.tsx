@@ -1,16 +1,51 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { PT_Sans } from 'next/font/google';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/context/language-context';
 import { ExerciseProvider } from '@/context/exercise-context';
 import { TemplateProvider } from '@/context/template-context';
+import { ProfileProvider } from '@/context/profile-context';
+import { RestTimerProvider } from '@/context/rest-timer-context';
 import { Providers } from '@/components/providers';
 import { AuthProvider } from '@/context/auth-context';
 import { WorkoutProvider } from '@/context/workout-context';
+import ErrorBoundary from '@/components/error-boundary';
+
+// Self-hosted by Next: no runtime request to Google Fonts, which also means the
+// font is available offline once the app is installed.
+const ptSans = PT_Sans({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  display: 'swap',
+  variable: '--font-pt-sans',
+});
 
 export const metadata: Metadata = {
   title: 'Workout Planner',
   description: 'Track your gym progress with Workout Planner.',
+  applicationName: 'Workout Planner',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'Workout Planner',
+    statusBarStyle: 'black-translucent',
+  },
+  icons: {
+    icon: [
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#f97316',
+  width: 'device-width',
+  initialScale: 1,
+  // Notched phones: let the bottom nav sit above the home indicator.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -19,27 +54,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
-      </head>
+    // `lang` is kept in sync with the chosen language by LanguageProvider.
+    <html lang="en" className={ptSans.variable} suppressHydrationWarning>
       <body className="font-body antialiased">
-        <Providers>
-          <AuthProvider>
-            <LanguageProvider>
-              <ExerciseProvider>
-                <TemplateProvider>
-                  <WorkoutProvider>
-                    {children}
-                    <Toaster />
-                  </WorkoutProvider>
-                </TemplateProvider>
-              </ExerciseProvider>
-            </LanguageProvider>
-          </AuthProvider>
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <AuthProvider>
+              <LanguageProvider>
+                <ProfileProvider>
+                  <ExerciseProvider>
+                    <TemplateProvider>
+                      <WorkoutProvider>
+                        <RestTimerProvider>
+                          {children}
+                          <Toaster />
+                        </RestTimerProvider>
+                      </WorkoutProvider>
+                    </TemplateProvider>
+                  </ExerciseProvider>
+                </ProfileProvider>
+              </LanguageProvider>
+            </AuthProvider>
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );
