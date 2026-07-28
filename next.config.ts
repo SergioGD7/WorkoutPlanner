@@ -1,8 +1,13 @@
 import withPWAInit from '@ducanh2912/next-pwa';
 import type { NextConfig } from 'next';
+import { basePath } from './src/lib/base-path';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Deployed as a static site to GitHub Pages: no server at runtime.
+  output: 'export',
+  // Pages serves the app from a subdirectory; empty locally.
+  ...(basePath && { basePath }),
 };
 
 const withPWA = withPWAInit({

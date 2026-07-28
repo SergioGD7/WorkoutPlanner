@@ -100,6 +100,12 @@
   "close": "Close",
   "previousWeek": "Previous week",
   "nextWeek": "Next week",
+  "previousMonth": "Previous month",
+  "nextMonth": "Next month",
+  "expandToMonth": "Show the whole month",
+  "collapseToWeek": "Show only this week",
+  "back": "Back",
+  "backToDashboard": "Back to dashboard",
 
   "createCustomExercise": "Create Custom Exercise",
   "createExercise": "Create Exercise",

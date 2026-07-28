@@ -1,0 +1,40 @@
+import type { MetadataRoute } from 'next';
+import { withBasePath } from '@/lib/base-path';
+
+export const dynamic = 'force-static';
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'Workout Planner',
+    short_name: 'Workout',
+    description: 'Plan your workouts, log every set and track your progress.',
+    start_url: withBasePath('/'),
+    scope: withBasePath('/'),
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#0b0b0c',
+    theme_color: '#f97316',
+    categories: ['health', 'fitness', 'sports'],
+    icons: [
+      {
+        src: withBasePath('/icons/icon-192.png'),
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: withBasePath('/icons/icon-512.png'),
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        // Cropped to a circle by some launchers; glyph stays inside the safe zone.
+        src: withBasePath('/icons/icon-maskable-512.png'),
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+    ],
+  };
+}

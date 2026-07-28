@@ -9,7 +9,6 @@ import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
 import ProgressTracker from "@/components/progress-tracker";
 import CalendarView from "@/components/calendar-view";
-import Settings from "@/components/settings";
 import { useLanguage } from "@/context/language-context";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -17,7 +16,7 @@ import { triggerHaptic } from "@/utils/haptics";
 import RestTimer from "@/components/rest-timer";
 import { AnimatePresence, motion, Variants } from "framer-motion";
 
-type View = "dashboard" | "library" | "progress" | "calendar" | "settings";
+type View = "dashboard" | "library" | "progress" | "calendar";
 
 const pageVariants: Variants = {
   initial: { opacity: 0, y: 10, scale: 0.98 },
@@ -43,10 +42,14 @@ export default function HomePage() {
     router.push('/login');
   };
 
-  const handleViewChange = (newView: View) => {
+  const handleViewChange = (newView: string) => {
+    if (newView === "settings") {
+      router.push('/settings');
+      return;
+    }
     if (view !== newView) {
       triggerHaptic('light');
-      setView(newView);
+      setView(newView as View);
     }
   };
 
@@ -58,8 +61,6 @@ export default function HomePage() {
         return <ProgressTracker />;
       case "calendar":
         return <CalendarView />;
-      case "settings":
-        return <Settings />;
       case "dashboard":
       default:
         return <Dashboard />;
@@ -71,7 +72,8 @@ export default function HomePage() {
     { id: "library", icon: BookOpen, label: t('library') },
     { id: "progress", icon: BarChart3, label: t('progress') },
     { id: "calendar", icon: CalendarDays, label: t('calendar') },
-    { id: "settings", icon: User, label: t('profile') || 'Profile' }
+    // Not a view: navigates to the standalone /settings route.
+    { id: "settings", icon: User, label: t('profile') }
   ] as const;
 
   if (loading || !user) {
@@ -95,7 +97,7 @@ export default function HomePage() {
             <Button
               key={item.id}
               variant={view === item.id ? "secondary" : "ghost"}
-              onClick={() => handleViewChange(item.id as View)}
+              onClick={() => handleViewChange(item.id)}
               className="justify-start rounded-full"
             >
               <item.icon className="mr-2 h-5 w-5" />
@@ -152,7 +154,7 @@ export default function HomePage() {
           return (
             <button
               key={item.id}
-              onClick={() => handleViewChange(item.id as View)}
+              onClick={() => handleViewChange(item.id)}
               className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}

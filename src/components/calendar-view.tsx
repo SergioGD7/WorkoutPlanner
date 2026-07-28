@@ -1,10 +1,32 @@
 "use client";
 
 import { useMemo, useState } from 'react';
-import { addDays, eachDayOfInterval, format, isSameDay, startOfWeek, subDays } from 'date-fns';
+import {
+  addDays,
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+  subDays,
+  subMonths,
+} from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
-import { CheckCircle2, ChevronLeft, ChevronRight, Circle, Loader2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Circle,
+  Loader2,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +45,8 @@ import {
   trimZeros,
 } from '@/lib/workout-utils';
 
+const WEEK_STARTS_ON = 1;
+
 interface DayExerciseSummary {
   workoutExerciseId: string;
   exerciseId: string;
@@ -35,7 +59,11 @@ interface DayExerciseSummary {
 
 export default function CalendarView() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
+    startOfWeek(new Date(), { weekStartsOn: WEEK_STARTS_ON }),
+  );
+  const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
+  const [isMonthView, setIsMonthView] = useState(true);
 
   const { t, language } = useLanguage();
   const { exercises } = useExercises();
@@ -72,88 +100,207 @@ export default function CalendarView() {
     }));
   }, [selectedDate, workoutLog, exercises, t]);
 
-  const weekDays = eachDayOfInterval({ start: currentWeekStart, end: addDays(currentWeekStart, 6) });
+  const weekDays = useMemo(
+    () => eachDayOfInterval({ start: currentWeekStart, end: addDays(currentWeekStart, 6) }),
+    [currentWeekStart],
+  );
+
+  /** Full month grid, padded to whole weeks so the columns line up. */
+  const monthDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    return eachDayOfInterval({
+      start: startOfWeek(monthStart, { weekStartsOn: WEEK_STARTS_ON }),
+      end: endOfWeek(endOfMonth(monthStart), { weekStartsOn: WEEK_STARTS_ON }),
+    });
+  }, [currentMonth]);
+
+  /** Picking a day from the month grid collapses back to the week strip. */
+  const handleDayClick = (day: Date) => {
+    setSelectedDate(day);
+    setCurrentWeekStart(startOfWeek(day, { weekStartsOn: WEEK_STARTS_ON }));
+    setIsMonthView(false);
+  };
+
+  const renderDayDots = (dateKey: string, isSelected: boolean) => (
+    <div className="mt-1 flex h-1 space-x-[2px]">
+      {(dailyBodyParts.get(dateKey) ?? []).slice(0, 3).map((part) => (
+        <div
+          key={part}
+          className="h-1 w-1 rounded-full"
+          style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <Card className="glass-effect overflow-hidden border-primary/10">
-        <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCurrentWeekStart(subDays(currentWeekStart, 7))}
-            className="h-8 w-8"
-            aria-label={t('previousWeek')}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <CardTitle className="font-headline text-lg uppercase tracking-wider">
-            {format(currentWeekStart, 'MMMM yyyy', { locale })}
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCurrentWeekStart(addDays(currentWeekStart, 7))}
-            className="h-8 w-8"
-            aria-label={t('nextWeek')}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          {isLoading ? (
-            <div className="flex h-[80px] items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="mt-2 flex w-full items-center justify-between">
-              {weekDays.map((day) => {
-                const isSelected = isSameDay(day, selectedDate);
-                const isTodayDate = isSameDay(day, new Date());
-                const dayKey = format(day, 'yyyy-MM-dd');
-                const bodyPartsOnDay = dailyBodyParts.get(dayKey) ?? [];
+      <motion.div layout className="overflow-hidden">
+        <Card className="glass-effect overflow-hidden border-primary/10">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                isMonthView
+                  ? setCurrentMonth(subMonths(currentMonth, 1))
+                  : setCurrentWeekStart(subDays(currentWeekStart, 7))
+              }
+              className="h-8 w-8"
+              aria-label={isMonthView ? t('previousMonth') : t('previousWeek')}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
 
-                return (
-                  <button
-                    key={day.toISOString()}
-                    type="button"
-                    onClick={() => setSelectedDate(day)}
-                    className={`relative flex h-14 w-10 flex-col items-center justify-center rounded-xl transition-all duration-300 ${
-                      isSelected
-                        ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                    <span
-                      className={`text-[10px] font-bold uppercase ${
-                        isSelected ? 'text-primary-foreground' : 'text-muted-foreground'
-                      }`}
+            {/* Tapping the title expands the whole month. */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!isMonthView) setCurrentMonth(startOfMonth(selectedDate));
+                setIsMonthView((previous) => !previous);
+              }}
+              className="group flex items-center gap-2 rounded-lg px-3 py-1.5 transition-colors hover:bg-muted/50"
+              aria-expanded={isMonthView}
+              aria-label={isMonthView ? t('collapseToWeek') : t('expandToMonth')}
+            >
+              <CardTitle className="flex items-center gap-2 font-headline text-lg uppercase tracking-wider">
+                {format(isMonthView ? currentMonth : currentWeekStart, 'MMMM yyyy', { locale })}
+              </CardTitle>
+              {isMonthView ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+              )}
+            </button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                isMonthView
+                  ? setCurrentMonth(addMonths(currentMonth, 1))
+                  : setCurrentWeekStart(addDays(currentWeekStart, 7))
+              }
+              className="h-8 w-8"
+              aria-label={isMonthView ? t('nextMonth') : t('nextWeek')}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </CardHeader>
+
+          <CardContent className="p-4 pt-0">
+            {isLoading ? (
+              <div className="flex h-[80px] items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <motion.div layout>
+                <AnimatePresence mode="popLayout">
+                  {isMonthView ? (
+                    <motion.div
+                      key="month-view"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-2"
                     >
-                      {format(day, 'EEE', { locale }).substring(0, 1)}
-                    </span>
-                    <span
-                      className={`font-headline text-base font-bold ${
-                        isTodayDate && !isSelected ? 'text-primary' : ''
-                      }`}
+                      <div className="mb-2 grid grid-cols-7">
+                        {weekDays.map((day) => (
+                          <div
+                            key={day.toISOString()}
+                            className="text-center text-[10px] font-bold uppercase text-muted-foreground"
+                          >
+                            {format(day, 'EEE', { locale }).substring(0, 1)}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-y-2">
+                        {monthDays.map((day) => {
+                          const isSelected = isSameDay(day, selectedDate);
+                          const isTodayDate = isSameDay(day, new Date());
+                          const isCurrentMonth = isSameMonth(day, currentMonth);
+                          const dayKey = format(day, 'yyyy-MM-dd');
+
+                          return (
+                            <div key={day.toISOString()} className="flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => handleDayClick(day)}
+                                className={`relative flex h-12 w-10 flex-col items-center justify-center rounded-xl transition-all duration-300 ${
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]'
+                                    : isCurrentMonth
+                                      ? 'hover:bg-muted'
+                                      : 'opacity-30 hover:bg-muted hover:opacity-100'
+                                }`}
+                              >
+                                <span
+                                  className={`font-headline text-base font-bold leading-none ${
+                                    isTodayDate && !isSelected ? 'text-primary' : ''
+                                  }`}
+                                >
+                                  {format(day, 'd')}
+                                </span>
+                                {renderDayDots(dayKey, isSelected)}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="week-view"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-2 flex w-full items-center justify-between"
                     >
-                      {format(day, 'd')}
-                    </span>
-                    <div className="mt-1 flex space-x-[2px]">
-                      {bodyPartsOnDay.slice(0, 3).map((part) => (
-                        <div
-                          key={part}
-                          className="h-1 w-1 rounded-full"
-                          style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }}
-                        />
-                      ))}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      {weekDays.map((day) => {
+                        const isSelected = isSameDay(day, selectedDate);
+                        const isTodayDate = isSameDay(day, new Date());
+                        const dayKey = format(day, 'yyyy-MM-dd');
+
+                        return (
+                          <button
+                            key={day.toISOString()}
+                            type="button"
+                            onClick={() => handleDayClick(day)}
+                            className={`relative flex h-14 w-10 flex-col items-center justify-center rounded-xl transition-all duration-300 ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            <span
+                              className={`text-[10px] font-bold uppercase ${
+                                isSelected ? 'text-primary-foreground' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {format(day, 'EEE', { locale }).substring(0, 1)}
+                            </span>
+                            <span
+                              className={`font-headline text-base font-bold ${
+                                isTodayDate && !isSelected ? 'text-primary' : ''
+                              }`}
+                            >
+                              {format(day, 'd')}
+                            </span>
+                            {renderDayDots(dayKey, isSelected)}
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <Card className="glass-effect bg-card/50">
         <CardHeader className="border-b border-border/50 pb-2">
@@ -207,9 +354,7 @@ export default function CalendarView() {
                         <div
                           key={setIndex}
                           className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${
-                            set.completed
-                              ? 'border border-primary/20 bg-primary/10'
-                              : 'bg-background/50'
+                            set.completed ? 'border border-primary/20 bg-primary/10' : 'bg-background/50'
                           } ${!isCountedSet(set) ? 'opacity-70' : ''}`}
                         >
                           <span className="font-medium text-muted-foreground">
