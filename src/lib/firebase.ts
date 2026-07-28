@@ -18,7 +18,10 @@ let db: Firestore;
 if (typeof window !== 'undefined') {
   try {
     db = initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      // Optional fields on sets (rpe, duration, notes) are simply absent when
+      // unset; without this a single `undefined` would reject the whole write.
+      ignoreUndefinedProperties: true,
     });
   } catch (error) {
     // Fallback if already initialized (e.g., during Next.js HMR)

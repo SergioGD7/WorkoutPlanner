@@ -1,103 +1,77 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { PlusCircle, Pencil, Trash2, Dumbbell } from "lucide-react";
-import CreateExerciseSheet from "./create-exercise-sheet";
-import { useExercises } from "@/context/exercise-context";
-import { useLanguage } from "@/context/language-context";
-import { useAuth } from "@/context/auth-context";
-import { bodyParts as allBodyParts } from "@/lib/data";
-import type { Exercise, WorkoutLog } from "@/lib/types";
-import DeleteExerciseDialog from "./delete-exercise-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Search } from "lucide-react";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useMemo, useState } from 'react';
+import { Dumbbell, History, Pencil, PlusCircle, Search, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import CreateExerciseSheet from '@/components/create-exercise-sheet';
+import DeleteExerciseDialog from '@/components/delete-exercise-dialog';
+import ExerciseHistorySheet from '@/components/exercise-history-sheet';
+import { useExercises } from '@/context/exercise-context';
+import { useLanguage } from '@/context/language-context';
+import { useProfile } from '@/context/profile-context';
+import { useWorkout } from '@/context/workout-context';
+import { bodyParts as allBodyParts } from '@/lib/data';
+import type { Exercise } from '@/lib/types';
+import { fromKg, getExercisePR } from '@/lib/workout-utils';
 
 export default function ExerciseLibrary() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
-  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
-  
+  const [historyExercise, setHistoryExercise] = useState<Exercise | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+
   const { exercises, deleteExercise } = useExercises();
   const { t } = useLanguage();
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
+  const { settings } = useProfile();
+  const { workoutLog } = useWorkout();
 
-  const bodyPartsWithAll = ["all", ...allBodyParts];
-  
-  useEffect(() => {
-    if (user) {
-        const docRef = doc(db, `users/${user.uid}/workout_logs/all`);
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setWorkoutLog(docSnap.data() as WorkoutLog);
-            } else {
-                setWorkoutLog({});
-            }
-        });
-        return () => unsubscribe();
-    }
-  }, [user]);
+  const unit = settings.weightUnit;
+  const bodyPartsWithAll = ['all', ...allBodyParts];
 
-  const handleCreateClick = () => {
-    setExerciseToEdit(null);
-    setIsDialogOpen(true);
-  }
-
-  const handleEditClick = (exercise: Exercise) => {
-    setExerciseToEdit(exercise);
-    setIsDialogOpen(true);
-  };
-  
-  const handleDeleteClick = (exercise: Exercise) => {
-    setExerciseToDelete(exercise);
-  };
-
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setExerciseToEdit(null);
-  };
-  
-  const handleDeleteConfirm = async () => {
-    if (exerciseToDelete) {
-      await deleteExercise(exerciseToDelete.id);
-      setExerciseToDelete(null);
-    }
-  };
-
-  // 1RM Estimator using Epley formula: 1RM = w * (1 + r/30)
-  const getEstimated1RM = (exerciseId: string) => {
-    let max1RM = 0;
-    Object.values(workoutLog).forEach(dailyWorkout => {
-      const exerciseLogs = dailyWorkout.filter(log => log.exerciseId === exerciseId);
-      exerciseLogs.forEach(log => {
-        log.sets.forEach(set => {
-          if (set.weight > 0 && set.reps > 0) {
-            const current1RM = set.weight * (1 + set.reps / 30);
-            if (current1RM > max1RM) {
-              max1RM = current1RM;
-            }
-          }
-        });
-      });
+  /** Best estimated 1RM per exercise, computed once for the whole grid. */
+  const oneRmByExercise = useMemo(() => {
+    const map = new Map<string, number>();
+    exercises.forEach((exercise) => {
+      const pr = getExercisePR(workoutLog, exercise.id);
+      if (pr.best1RM > 0) map.set(exercise.id, Math.round(fromKg(pr.best1RM, unit)));
     });
-    return max1RM > 0 ? Math.round(max1RM) : null;
+    return map;
+  }, [exercises, workoutLog, unit]);
+
+  const handleDeleteConfirm = async () => {
+    if (!exerciseToDelete) return;
+    await deleteExercise(exerciseToDelete.id);
+    setExerciseToDelete(null);
+  };
+
+  const matchesSearch = (exercise: Exercise) => {
+    const needle = searchTerm.toLowerCase();
+    if (!needle) return true;
+    return (
+      exercise.name.toLowerCase().includes(needle) ||
+      t(exercise.name).toLowerCase().includes(needle) ||
+      t(exercise.bodyPart.toLowerCase()).toLowerCase().includes(needle)
+    );
   };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl md:text-2xl font-bold tracking-tight font-headline">{t('exerciseLibrary')}</h2>
-        <Button onClick={handleCreateClick}>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-headline text-xl font-bold tracking-tight md:text-2xl">{t('exerciseLibrary')}</h2>
+        <Button
+          onClick={() => {
+            setExerciseToEdit(null);
+            setIsDialogOpen(true);
+          }}
+        >
           <PlusCircle className="mr-2 h-4 w-4" />
           <span className="hidden sm:inline">{t('createCustomExercise')}</span>
           <span className="sm:hidden">{t('create')}</span>
@@ -105,23 +79,24 @@ export default function ExerciseLibrary() {
       </div>
 
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input 
-          placeholder={t('searchExercises') || "Search exercises..."} 
-          className="pl-10 h-12 bg-muted/50 border-transparent focus-visible:ring-primary rounded-xl text-base"
+        <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder={t('searchExercises')}
+          aria-label={t('searchExercises')}
+          className="h-12 rounded-xl border-transparent bg-muted/50 pl-10 text-base focus-visible:ring-primary"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(event) => setSearchTerm(event.target.value)}
         />
       </div>
 
       <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-        <ScrollArea className="w-full whitespace-nowrap mb-6">
-          <TabsList className="inline-flex h-12 items-center justify-start rounded-none bg-transparent p-1 text-muted-foreground gap-2 w-full">
+        <ScrollArea className="mb-6 w-full whitespace-nowrap">
+          <TabsList className="inline-flex h-12 w-full items-center justify-start gap-2 rounded-none bg-transparent p-1 text-muted-foreground">
             {bodyPartsWithAll.map((part) => (
-              <TabsTrigger 
-                key={part} 
+              <TabsTrigger
+                key={part}
                 value={part}
-                className="rounded-full border-transparent bg-secondary/50 hover:bg-secondary/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md px-5 py-2.5 text-sm font-medium transition-all"
+                className="rounded-full border-transparent bg-secondary/50 px-5 py-2.5 text-sm font-medium transition-all hover:bg-secondary/80 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
               >
                 {t(part.toLowerCase())}
               </TabsTrigger>
@@ -129,42 +104,72 @@ export default function ExerciseLibrary() {
           </TabsList>
           <ScrollBar orientation="horizontal" className="invisible" />
         </ScrollArea>
+
         {bodyPartsWithAll.map((part) => (
           <TabsContent key={part} value={part} className="mt-0 outline-none">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-10">
+            <div className="grid gap-4 pb-10 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {exercises
-                .filter((ex) => activeTab === 'all' || ex.bodyPart === activeTab)
-                .filter((ex) => 
-                  ex.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                  t(ex.name).toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  t(ex.bodyPart.toLowerCase()).toLowerCase().includes(searchTerm.toLowerCase())
-                )
+                .filter((exercise) => activeTab === 'all' || exercise.bodyPart === activeTab)
+                .filter(matchesSearch)
                 .map((exercise) => {
-                  const estimated1RM = getEstimated1RM(exercise.id);
+                  const oneRm = oneRmByExercise.get(exercise.id);
                   return (
-                    <Card key={exercise.id} className="glass-effect transition-all hover:shadow-lg hover:border-primary/50 relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm rounded-bl-lg">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditClick(exercise)}>
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">{t('editExercise')}</span>
+                    <Card
+                      key={exercise.id}
+                      className="glass-effect group relative overflow-hidden transition-all hover:border-primary/50 hover:shadow-lg"
+                    >
+                      <div className="absolute right-0 top-0 rounded-bl-lg bg-background/80 p-2 opacity-0 backdrop-blur-sm transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setHistoryExercise(exercise)}
+                          aria-label={t('viewHistory')}
+                        >
+                          <History className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteClick(exercise)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                            setExerciseToEdit(exercise);
+                            setIsDialogOpen(true);
+                          }}
+                          aria-label={t('editExercise')}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setExerciseToDelete(exercise)}
+                          aria-label={t('deleteExercise')}
+                        >
                           <Trash2 className="h-4 w-4 text-destructive" />
-                          <span className="sr-only">{t('deleteExercise')}</span>
                         </Button>
                       </div>
-                      
+
                       <CardHeader className="flex flex-col items-start justify-between pb-2">
-                        <CardTitle className="font-headline text-lg w-full pr-12">{exercise.emoji} {t(exercise.name)}</CardTitle>
-                        <div className="flex gap-2 items-center mt-2 w-full justify-between">
-                          <Badge className="capitalize bg-accent/20 text-accent hover:bg-accent/30 border-transparent">{t(exercise.bodyPart.toLowerCase())}</Badge>
-                          {estimated1RM !== null && estimated1RM > 0 && (
+                        <CardTitle className="w-full pr-28 font-headline text-lg">
+                          {exercise.emoji} {t(exercise.name)}
+                        </CardTitle>
+                        <div className="mt-2 flex w-full items-center justify-between gap-2">
+                          <Badge className="border-transparent bg-accent/20 capitalize text-accent hover:bg-accent/30">
+                            {t(exercise.bodyPart.toLowerCase())}
+                          </Badge>
+                          {oneRm !== undefined && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Badge variant="secondary" className="flex items-center gap-1 bg-primary/10 text-primary border-primary/20 cursor-help">
+                                  <Badge
+                                    variant="secondary"
+                                    className="flex cursor-help items-center gap-1 border-primary/20 bg-primary/10 text-primary"
+                                  >
                                     <Dumbbell className="h-3 w-3" />
-                                    1RM: {estimated1RM}kg
+                                    1RM: {oneRm}
+                                    {unit}
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="max-w-[200px] text-center">
@@ -176,7 +181,7 @@ export default function ExerciseLibrary() {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-muted-foreground line-clamp-3">{t(exercise.description)}</p>
+                        <p className="line-clamp-3 text-sm text-muted-foreground">{t(exercise.description)}</p>
                       </CardContent>
                     </Card>
                   );
@@ -185,12 +190,28 @@ export default function ExerciseLibrary() {
           </TabsContent>
         ))}
       </Tabs>
-      <CreateExerciseSheet isOpen={isDialogOpen} onClose={handleCloseDialog} exerciseToEdit={exerciseToEdit} />
-      <DeleteExerciseDialog 
+
+      <CreateExerciseSheet
+        isOpen={isDialogOpen}
+        onClose={() => {
+          setIsDialogOpen(false);
+          setExerciseToEdit(null);
+        }}
+        exerciseToEdit={exerciseToEdit}
+      />
+
+      <DeleteExerciseDialog
         isOpen={!!exerciseToDelete}
         onClose={() => setExerciseToDelete(null)}
         onConfirm={handleDeleteConfirm}
-        exerciseName={exerciseToDelete ? t(exerciseToDelete.name) : ""}
+        exerciseName={exerciseToDelete ? t(exerciseToDelete.name) : ''}
+      />
+
+      <ExerciseHistorySheet
+        isOpen={historyExercise !== null}
+        onClose={() => setHistoryExercise(null)}
+        exerciseId={historyExercise?.id ?? null}
+        exerciseName={historyExercise ? t(historyExercise.name) : ''}
       />
     </div>
   );

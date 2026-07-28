@@ -1,0 +1,22 @@
+rules_version = '2';
+
+// Every document in this app lives under users/{userId}. A signed-in user may
+// read and write only their own subtree; nothing else is reachable.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // workout_days/{yyyy-MM-dd}, exercises, templates, body_entries,
+      // profile/* and the legacy workout_logs/all document.
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

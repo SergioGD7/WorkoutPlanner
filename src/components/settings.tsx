@@ -1,227 +1,127 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useLanguage } from '@/context/language-context';
-import ChangePasswordForm from './change-password-form';
-import ImportDataForm from './import-data-form';
-import { useAuth } from '@/context/auth-context';
-import { useExercises } from '@/context/exercise-context';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Settings as SettingsIcon, Trophy, Target, TrendingUp, Edit2, Check, ChevronLeft } from "lucide-react";
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { doc, onSnapshot, setDoc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { WorkoutLog } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
+import { ChevronLeft, Settings as SettingsIcon, Trophy, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import BodyMetricsCard from '@/components/body-metrics-card';
+import { useAuth } from '@/context/auth-context';
+import { useExercises } from '@/context/exercise-context';
+import { useLanguage } from '@/context/language-context';
+import { useProfile } from '@/context/profile-context';
+import { useWorkout } from '@/context/workout-context';
+import { fromKg, getExercisePR, totalCompletedWorkouts, trimZeros } from '@/lib/workout-utils';
 
+/**
+ * The profile screen, rendered at /settings. Preferences, security and data
+ * tools live one level down at /settings/advanced.
+ */
 export default function Settings() {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const { exercises } = useExercises();
+  const { workoutLog } = useWorkout();
+  const { settings } = useProfile();
   const router = useRouter();
-  
-  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
-  const [isEditingWeight, setIsEditingWeight] = useState(false);
-  const [isEditingFat, setIsEditingFat] = useState(false);
-  
-  const [weightInput, setWeightInput] = useState("67.5");
-  const [fatInput, setFatInput] = useState("");
-  
-  const [profileStats, setProfileStats] = useState<{ weight: number, fat: number | null }>({
-     weight: 67.5,
-     fat: null
-  });
 
-  const getLocale = () => language === 'es' ? es : enUS;
+  const unit = settings.weightUnit;
+  const locale = language === 'es' ? es : enUS;
 
-  useEffect(() => {
-    if (user) {
-        // Load workout logs for PRs
-        const logRef = doc(db, `users/${user.uid}/workout_logs/all`);
-        const unsubscribeLogs = onSnapshot(logRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setWorkoutLog(docSnap.data() as WorkoutLog);
-            } else {
-                setWorkoutLog({});
-            }
-        });
+  const totalWorkouts = useMemo(() => totalCompletedWorkouts(workoutLog), [workoutLog]);
 
-        // Load profile stats
-        const statsRef = doc(db, `users/${user.uid}/profile/stats`);
-        const loadStats = async () => {
-           const snap = await getDoc(statsRef);
-           if (snap.exists()) {
-              const data = snap.data();
-              setProfileStats({ weight: data.weight || 67.5, fat: data.fat || null });
-              setWeightInput(data.weight?.toString() || "67.5");
-              setFatInput(data.fat?.toString() || "");
-           }
-        };
-        loadStats();
-
-        return () => unsubscribeLogs();
-    }
-  }, [user]);
-
-  const saveStats = async (field: 'weight' | 'fat', value: number) => {
-     if (!user) return;
-     const newStats = { ...profileStats, [field]: value };
-     setProfileStats(newStats);
-     const statsRef = doc(db, `users/${user.uid}/profile/stats`);
-     await setDoc(statsRef, newStats, { merge: true });
-  };
-
-  const handleSaveWeight = () => {
-     const val = parseFloat(weightInput);
-     if (!isNaN(val)) saveStats('weight', val);
-     setIsEditingWeight(false);
-  };
-
-  const handleSaveFat = () => {
-     const val = parseFloat(fatInput);
-     if (!isNaN(val)) saveStats('fat', val);
-     setIsEditingFat(false);
-  };
-
-  const getPR = (exerciseId: string) => {
-     let maxWeight = 0;
-     let prDateStr = "";
-
-     Object.entries(workoutLog).forEach(([dateStr, exercises]) => {
-        const exLogs = exercises.filter(e => e.exerciseId === exerciseId);
-        exLogs.forEach(log => {
-           log.sets.forEach(set => {
-              if (set.weight > maxWeight) {
-                 maxWeight = set.weight;
-                 prDateStr = dateStr;
-              }
-           });
-        });
-     });
-
-     return {
-        weight: maxWeight,
-        date: prDateStr ? format(parseISO(prDateStr), 'MMM d, yyyy', { locale: getLocale() }) : null
-     };
-  };
+  /** Only exercises with an actual record are worth a card. */
+  const records = useMemo(
+    () =>
+      exercises
+        .map((exercise) => ({ exercise, pr: getExercisePR(workoutLog, exercise.id) }))
+        .filter((entry) => entry.pr.maxWeight > 0)
+        .sort((a, b) => b.pr.maxWeight - a.pr.maxWeight),
+    [exercises, workoutLog],
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="rounded-full">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {/* This route sits outside the app shell, so it needs its own way back. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push('/')}
+            className="-ml-2 rounded-full"
+            aria-label={t('backToDashboard')}
+          >
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight font-headline">{t('profile') || 'Profile'}</h2>
+          <h2 className="font-headline text-xl font-bold tracking-tight md:text-2xl">{t('profile')}</h2>
         </div>
-        
-        <Button variant="outline" size="icon" className="rounded-full" onClick={() => router.push('/settings/advanced')}>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => router.push('/settings/advanced')}
+          className="rounded-full"
+          aria-label={t('settings')}
+        >
           <SettingsIcon className="h-5 w-5" />
         </Button>
       </div>
 
-      <Card className="glass-effect border-primary/20 text-center py-8 relative overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
+      <Card className="glass-effect relative overflow-hidden border-primary/20 py-8 text-center">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent" />
         <div className="relative z-10">
-            <div className="mx-auto w-24 h-24 rounded-full bg-background flex items-center justify-center border-2 border-primary mb-4 shadow-[0_0_20px_rgba(249,115,22,0.4)]">
+          <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full border-2 border-primary bg-background shadow-[0_0_20px_rgba(249,115,22,0.4)]">
             <User className="h-12 w-12 text-primary" />
-            </div>
-            <CardTitle className="font-headline text-2xl uppercase tracking-wider">{user?.email?.split('@')[0] || 'Athlete'}</CardTitle>
-            <p className="text-primary font-medium mt-1">{t('level12Lifter') || 'Level 12 Lifter'}</p>
-            <div className="w-64 h-2 bg-muted rounded-full mx-auto mt-3 overflow-hidden">
-            <div className="h-full bg-primary w-[70%] rounded-full" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">XP: 45,670 / 50,000</p>
+          </div>
+          <CardTitle className="font-headline text-2xl uppercase tracking-wider">
+            {user?.displayName || user?.email?.split('@')[0] || t('athlete')}
+          </CardTitle>
+          {/* Real counters replace the old hardcoded "Level 12 / 45,670 XP". */}
+          <p className="mt-2 text-sm text-muted-foreground">
+            {totalWorkouts} {t('totalWorkouts').toLowerCase()} · {records.length}{' '}
+            {t('personalRecords').toLowerCase()}
+          </p>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <Card className="glass-effect">
-            <CardHeader className="pb-2 flex flex-row justify-between items-center">
-               <CardTitle className="font-headline text-lg">{t('bodyWeight') || 'Body Weight'}</CardTitle>
-               <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-               <div className="flex items-center gap-2">
-                  {isEditingWeight ? (
-                     <>
-                        <Input 
-                           type="number" 
-                           step="0.01"
-                           value={weightInput} 
-                           onChange={(e) => setWeightInput(e.target.value)} 
-                           className="w-24 text-xl font-bold h-10" 
-                        />
-                        <Button size="icon" variant="ghost" onClick={handleSaveWeight}><Check className="h-4 w-4 text-green-500"/></Button>
-                     </>
-                  ) : (
-                     <>
-                        <div className="text-3xl font-bold">{profileStats.weight} <span className="text-sm font-normal text-muted-foreground">kg</span></div>
-                        <Button size="icon" variant="ghost" onClick={() => setIsEditingWeight(true)} className="h-8 w-8 ml-2 opacity-50 hover:opacity-100"><Edit2 className="h-4 w-4"/></Button>
-                     </>
-                  )}
-               </div>
-               <div className="h-16 w-full mt-4 flex items-end opacity-50">
-                  <svg viewBox="0 0 100 30" className="w-full h-full" preserveAspectRatio="none">
-                     <path d="M0 25 L20 20 L40 22 L60 15 L80 18 L100 10" fill="none" stroke="#f97316" strokeWidth="2" />
-                  </svg>
-               </div>
-            </CardContent>
-         </Card>
-         <Card className="glass-effect">
-            <CardHeader className="pb-2 flex flex-row justify-between items-center">
-               <CardTitle className="font-headline text-lg">{t('bodyFat') || 'Body Fat'}</CardTitle>
-               <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-               <div className="flex items-center gap-2">
-                  {isEditingFat ? (
-                     <>
-                        <Input 
-                           type="number" 
-                           value={fatInput} 
-                           onChange={(e) => setFatInput(e.target.value)} 
-                           className="w-24 text-xl font-bold h-10" 
-                        />
-                        <Button size="icon" variant="ghost" onClick={handleSaveFat}><Check className="h-4 w-4 text-green-500"/></Button>
-                     </>
-                  ) : (
-                     <>
-                        <div className="text-3xl font-bold">{profileStats.fat ?? '--'} <span className="text-sm font-normal text-muted-foreground">%</span></div>
-                        <Button size="icon" variant="ghost" onClick={() => setIsEditingFat(true)} className="h-8 w-8 ml-2 opacity-50 hover:opacity-100"><Edit2 className="h-4 w-4"/></Button>
-                     </>
-                  )}
-               </div>
-               <div className="h-16 w-full mt-4 flex items-end opacity-50">
-                  <svg viewBox="0 0 100 30" className="w-full h-full" preserveAspectRatio="none">
-                     <path d="M0 20 L20 18 L40 19 L60 15 L80 12 L100 10" fill="none" stroke="#f97316" strokeWidth="2" />
-                  </svg>
-               </div>
-            </CardContent>
-         </Card>
-      </div>
+      <BodyMetricsCard />
 
       <div>
-        <h3 className="text-xl font-bold font-headline mb-4 flex items-center gap-2"><Trophy className="h-5 w-5 text-primary" /> {t('personalRecords') || 'Personal Records'}</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-           {exercises.map(ex => {
-              const pr = getPR(ex.id);
-              return (
-                 <Card key={ex.id} className="glass-effect hover:border-primary/50 transition-colors">
-                    <CardContent className="p-4">
-                       <p className="text-sm text-muted-foreground uppercase tracking-wider font-bold line-clamp-2 min-h-[2.5rem]" title={t(ex.name)}>{t(ex.name)}</p>
-                       <p className="text-2xl font-bold mt-1">{pr.weight > 0 ? pr.weight : '--'} <span className="text-sm font-normal">kg</span></p>
-                       <p className="text-xs text-muted-foreground mt-2">{pr.date || '--'}</p>
-                    </CardContent>
-                 </Card>
-              );
-           })}
-        </div>
+        <h3 className="mb-4 flex items-center gap-2 font-headline text-xl font-bold">
+          <Trophy className="h-5 w-5 text-primary" /> {t('personalRecords')}
+        </h3>
+        {records.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            {t('noRecordsYet')}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {records.map(({ exercise, pr }) => (
+              <Card key={exercise.id} className="glass-effect transition-colors hover:border-primary/50">
+                <CardContent className="p-4">
+                  <p
+                    className="line-clamp-2 min-h-[2.5rem] text-sm font-bold uppercase tracking-wider text-muted-foreground"
+                    title={t(exercise.name)}
+                  >
+                    {t(exercise.name)}
+                  </p>
+                  <p className="mt-1 text-2xl font-bold">
+                    {trimZeros(fromKg(pr.maxWeight, unit))}
+                    <span className="text-sm font-normal"> {unit}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    × {pr.maxWeightReps}
+                    {pr.date && ` · ${format(parseISO(pr.date), 'MMM d, yyyy', { locale })}`}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,169 +1,193 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { format, parseISO, isValid, addDays, subDays, startOfWeek, endOfWeek, isSameDay, eachDayOfInterval, startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth } from 'date-fns';
+import { useMemo, useState } from 'react';
+import {
+  addDays,
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+  subDays,
+  subMonths,
+} from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
-
-import { useAuth } from '@/context/auth-context';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Circle,
+  Loader2,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
-import type { WorkoutLog, BodyPart, Set as WorkoutSet } from '@/lib/types';
+import { useProfile } from '@/context/profile-context';
+import { useWorkout } from '@/context/workout-context';
+import type { BodyPart, Set as WorkoutSet } from '@/lib/types';
 import { bodyPartColorMap } from '@/lib/style-utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, ChevronLeft, ChevronRight, CheckCircle2, Circle, ChevronDown, ChevronUp } from 'lucide-react';
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  exerciseVolume,
+  fromKg,
+  isCountedSet,
+  resolveBodyPart,
+  resolveExerciseName,
+  trimZeros,
+} from '@/lib/workout-utils';
 
-type DailyBodyPartsMap = Map<string, BodyPart[]>;
+const WEEK_STARTS_ON = 1;
 
-type WorkoutForDay = {
-  date: Date;
-  exercises: {
-    workoutExerciseId: string;
-    exerciseId: string;
-    exerciseName: string;
-    bodyPart?: BodyPart;
-    totalVolume: number;
-    sets: WorkoutSet[];
-  }[];
-} | null;
+interface DayExerciseSummary {
+  workoutExerciseId: string;
+  exerciseId: string;
+  exerciseName: string;
+  bodyPart?: BodyPart;
+  totalVolume: number;
+  notes?: string;
+  sets: WorkoutSet[];
+}
 
 export default function CalendarView() {
-  const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
+    startOfWeek(new Date(), { weekStartsOn: WEEK_STARTS_ON }),
+  );
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
   const [isMonthView, setIsMonthView] = useState(true);
 
-  const { user } = useAuth();
   const { t, language } = useLanguage();
-  const { exercises: allExercises } = useExercises();
+  const { exercises } = useExercises();
+  const { settings } = useProfile();
+  const { workoutLog, isLoading } = useWorkout();
 
-  const getLocale = () => (language === 'es' ? es : enUS);
+  const unit = settings.weightUnit;
+  const locale = language === 'es' ? es : enUS;
 
-  useEffect(() => {
-    setIsLoading(true);
-    if (user) {
-      const docRef = doc(db, `users/${user.uid}/workout_logs/all`);
-      const unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          setWorkoutLog(docSnap.data() as WorkoutLog);
-        } else {
-          setWorkoutLog({});
-        }
-        setIsLoading(false);
-      }, (error) => {
-        console.error("Failed to load workout logs from Firestore:", error);
-        setWorkoutLog({});
-        setIsLoading(false);
-      });
-      return () => unsubscribe();
-    } else {
-      setWorkoutLog({});
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  const dailyBodyParts = useMemo((): DailyBodyPartsMap => {
-    const map: DailyBodyPartsMap = new Map();
-    if (!allExercises.length) return map;
-
-    Object.entries(workoutLog).forEach(([dateStr, workoutExercises]) => {
-      const parts = workoutExercises.map(we => {
-        const exerciseDetail = allExercises.find(e => e.id === we.exerciseId);
-        return exerciseDetail?.bodyPart;
-      }).filter((p): p is BodyPart => !!p);
-      map.set(dateStr, Array.from(new Set(parts)));
+  const dailyBodyParts = useMemo(() => {
+    const map = new Map<string, BodyPart[]>();
+    Object.entries(workoutLog).forEach(([dateKey, dayExercises]) => {
+      const parts = dayExercises
+        .map((workoutExercise) => resolveBodyPart(workoutExercise, exercises))
+        .filter((part): part is BodyPart => Boolean(part));
+      map.set(dateKey, Array.from(new Set(parts)));
     });
-
     return map;
-  }, [workoutLog, allExercises]);
+  }, [workoutLog, exercises]);
 
-  const workoutForDay = useMemo((): WorkoutForDay => {
-    if (!selectedDate || !allExercises.length) return null;
-
+  const workoutForDay = useMemo((): DayExerciseSummary[] => {
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
-    const dailyWorkout = workoutLog[dateKey];
-    if (!dailyWorkout) return null;
+    const dayExercises = workoutLog[dateKey];
+    if (!dayExercises) return [];
 
-    return {
-      date: selectedDate,
-      exercises: dailyWorkout.map(we => {
-        const exerciseDetail = allExercises.find(e => e.id === we.exerciseId);
-        const totalVolume = we.sets.reduce((sum, set) => sum + (set.reps * set.weight), 0);
-        return {
-          workoutExerciseId: we.id,
-          exerciseId: we.exerciseId,
-          exerciseName: exerciseDetail ? t(exerciseDetail.name) : 'Unknown Exercise',
-          bodyPart: exerciseDetail?.bodyPart,
-          totalVolume: totalVolume,
-          sets: we.sets,
-        };
-      }),
-    };
-  }, [selectedDate, workoutLog, allExercises, t]);
+    return dayExercises.map((workoutExercise) => ({
+      workoutExerciseId: workoutExercise.id,
+      exerciseId: workoutExercise.exerciseId,
+      exerciseName: resolveExerciseName(workoutExercise, exercises, t),
+      bodyPart: resolveBodyPart(workoutExercise, exercises),
+      totalVolume: exerciseVolume(workoutExercise),
+      notes: workoutExercise.notes,
+      sets: workoutExercise.sets,
+    }));
+  }, [selectedDate, workoutLog, exercises, t]);
 
-  const nextWeek = () => setCurrentWeekStart(addDays(currentWeekStart, 7));
-  const prevWeek = () => setCurrentWeekStart(subDays(currentWeekStart, 7));
+  const weekDays = useMemo(
+    () => eachDayOfInterval({ start: currentWeekStart, end: addDays(currentWeekStart, 6) }),
+    [currentWeekStart],
+  );
 
-  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-
-  const weekDays = useMemo(() => eachDayOfInterval({
-    start: currentWeekStart,
-    end: addDays(currentWeekStart, 6)
-  }), [currentWeekStart]);
-
+  /** Full month grid, padded to whole weeks so the columns line up. */
   const monthDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(monthStart);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start: startDate, end: endDate });
+    return eachDayOfInterval({
+      start: startOfWeek(monthStart, { weekStartsOn: WEEK_STARTS_ON }),
+      end: endOfWeek(endOfMonth(monthStart), { weekStartsOn: WEEK_STARTS_ON }),
+    });
   }, [currentMonth]);
 
+  /** Picking a day from the month grid collapses back to the week strip. */
   const handleDayClick = (day: Date) => {
     setSelectedDate(day);
-    setCurrentWeekStart(startOfWeek(day, { weekStartsOn: 1 }));
+    setCurrentWeekStart(startOfWeek(day, { weekStartsOn: WEEK_STARTS_ON }));
     setIsMonthView(false);
   };
 
+  const renderDayDots = (dateKey: string, isSelected: boolean) => (
+    <div className="mt-1 flex h-1 space-x-[2px]">
+      {(dailyBodyParts.get(dateKey) ?? []).slice(0, 3).map((part) => (
+        <div
+          key={part}
+          className="h-1 w-1 rounded-full"
+          style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      {/* Horizontal Swipeable Week Calendar / Full Month Calendar */}
       <motion.div layout className="overflow-hidden">
-        <Card className="glass-effect border-primary/10 overflow-hidden">
-          <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-            <Button variant="ghost" size="icon" onClick={isMonthView ? prevMonth : prevWeek} className="h-8 w-8">
+        <Card className="glass-effect overflow-hidden border-primary/10">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                isMonthView
+                  ? setCurrentMonth(subMonths(currentMonth, 1))
+                  : setCurrentWeekStart(subDays(currentWeekStart, 7))
+              }
+              className="h-8 w-8"
+              aria-label={isMonthView ? t('previousMonth') : t('previousWeek')}
+            >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            
-            <button 
+
+            {/* Tapping the title expands the whole month. */}
+            <button
+              type="button"
               onClick={() => {
                 if (!isMonthView) setCurrentMonth(startOfMonth(selectedDate));
-                setIsMonthView(!isMonthView);
+                setIsMonthView((previous) => !previous);
               }}
-              className="flex items-center gap-2 hover:bg-muted/50 px-3 py-1.5 rounded-lg transition-colors group"
+              className="group flex items-center gap-2 rounded-lg px-3 py-1.5 transition-colors hover:bg-muted/50"
+              aria-expanded={isMonthView}
+              aria-label={isMonthView ? t('collapseToWeek') : t('expandToMonth')}
             >
-              <CardTitle className="font-headline text-lg uppercase tracking-wider flex items-center gap-2">
-                {format(isMonthView ? currentMonth : currentWeekStart, 'MMMM yyyy', { locale: getLocale() })}
+              <CardTitle className="flex items-center gap-2 font-headline text-lg uppercase tracking-wider">
+                {format(isMonthView ? currentMonth : currentWeekStart, 'MMMM yyyy', { locale })}
               </CardTitle>
               {isMonthView ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <ChevronUp className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
               )}
             </button>
 
-            <Button variant="ghost" size="icon" onClick={isMonthView ? nextMonth : nextWeek} className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                isMonthView
+                  ? setCurrentMonth(addMonths(currentMonth, 1))
+                  : setCurrentWeekStart(addDays(currentWeekStart, 7))
+              }
+              className="h-8 w-8"
+              aria-label={isMonthView ? t('nextMonth') : t('nextWeek')}
+            >
               <ChevronRight className="h-5 w-5" />
             </Button>
           </CardHeader>
+
           <CardContent className="p-4 pt-0">
             {isLoading ? (
               <div className="flex h-[80px] items-center justify-center">
@@ -176,47 +200,50 @@ export default function CalendarView() {
                     <motion.div
                       key="month-view"
                       initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
+                      animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3 }}
                       className="mt-2"
                     >
-                      {/* Weekday headers */}
-                      <div className="grid grid-cols-7 mb-2">
-                        {weekDays.map(day => (
-                          <div key={day.toISOString()} className="text-center text-[10px] uppercase font-bold text-muted-foreground">
-                            {format(day, 'EEE', { locale: getLocale() }).substring(0, 1)}
+                      <div className="mb-2 grid grid-cols-7">
+                        {weekDays.map((day) => (
+                          <div
+                            key={day.toISOString()}
+                            className="text-center text-[10px] font-bold uppercase text-muted-foreground"
+                          >
+                            {format(day, 'EEE', { locale }).substring(0, 1)}
                           </div>
                         ))}
                       </div>
-                      
-                      {/* Month Grid */}
+
                       <div className="grid grid-cols-7 gap-y-2">
                         {monthDays.map((day) => {
                           const isSelected = isSameDay(day, selectedDate);
                           const isTodayDate = isSameDay(day, new Date());
                           const isCurrentMonth = isSameMonth(day, currentMonth);
                           const dayKey = format(day, 'yyyy-MM-dd');
-                          const bodyPartsOnDay = dailyBodyParts.get(dayKey) || [];
 
                           return (
                             <div key={day.toISOString()} className="flex justify-center">
                               <button
+                                type="button"
                                 onClick={() => handleDayClick(day)}
-                                className={`flex flex-col items-center justify-center w-10 h-12 rounded-xl transition-all duration-300 relative ${
-                                  isSelected ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]' : 
-                                  (!isCurrentMonth ? 'opacity-30 hover:opacity-100 hover:bg-muted' : 'hover:bg-muted')
+                                className={`relative flex h-12 w-10 flex-col items-center justify-center rounded-xl transition-all duration-300 ${
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]'
+                                    : isCurrentMonth
+                                      ? 'hover:bg-muted'
+                                      : 'opacity-30 hover:bg-muted hover:opacity-100'
                                 }`}
                               >
-                                <span className={`text-base font-bold font-headline leading-none ${isTodayDate && !isSelected ? 'text-primary' : ''}`}>
+                                <span
+                                  className={`font-headline text-base font-bold leading-none ${
+                                    isTodayDate && !isSelected ? 'text-primary' : ''
+                                  }`}
+                                >
                                   {format(day, 'd')}
                                 </span>
-                                {/* Dots for workouts */}
-                                <div className="flex space-x-[2px] mt-1.5 h-1">
-                                  {bodyPartsOnDay.slice(0, 3).map((part, i) => (
-                                    <div key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }} />
-                                  ))}
-                                </div>
+                                {renderDayDots(dayKey, isSelected)}
                               </button>
                             </div>
                           );
@@ -227,38 +254,44 @@ export default function CalendarView() {
                     <motion.div
                       key="week-view"
                       initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
+                      animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.3 }}
-                      className="flex justify-between items-center w-full mt-2"
+                      className="mt-2 flex w-full items-center justify-between"
                     >
                       {weekDays.map((day) => {
                         const isSelected = isSameDay(day, selectedDate);
                         const isTodayDate = isSameDay(day, new Date());
                         const dayKey = format(day, 'yyyy-MM-dd');
-                        const bodyPartsOnDay = dailyBodyParts.get(dayKey) || [];
 
                         return (
                           <button
                             key={day.toISOString()}
+                            type="button"
                             onClick={() => handleDayClick(day)}
-                            className={`flex flex-col items-center justify-center w-10 h-14 rounded-xl transition-all duration-300 relative ${isSelected ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]' : 'hover:bg-muted'
-                              }`}
+                            className={`relative flex h-14 w-10 flex-col items-center justify-center rounded-xl transition-all duration-300 ${
+                              isSelected
+                                ? 'bg-primary text-primary-foreground shadow-[0_0_15px_rgba(249,115,22,0.4)]'
+                                : 'hover:bg-muted'
+                            }`}
                           >
-                            <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
-                              {format(day, 'EEE', { locale: getLocale() }).substring(0, 1)}
+                            <span
+                              className={`text-[10px] font-bold uppercase ${
+                                isSelected ? 'text-primary-foreground' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {format(day, 'EEE', { locale }).substring(0, 1)}
                             </span>
-                            <span className={`text-base font-bold font-headline ${isTodayDate && !isSelected ? 'text-primary' : ''}`}>
+                            <span
+                              className={`font-headline text-base font-bold ${
+                                isTodayDate && !isSelected ? 'text-primary' : ''
+                              }`}
+                            >
                               {format(day, 'd')}
                             </span>
-                            {/* Dots for workouts */}
-                            <div className="flex space-x-[2px] mt-1">
-                              {bodyPartsOnDay.slice(0, 3).map((part, i) => (
-                                <div key={i} className="w-1 h-1 rounded-full" style={{ backgroundColor: isSelected ? '#fff' : bodyPartColorMap.get(part) }} />
-                              ))}
-                            </div>
+                            {renderDayDots(dayKey, isSelected)}
                           </button>
-                        )
+                        );
                       })}
                     </motion.div>
                   )}
@@ -269,67 +302,108 @@ export default function CalendarView() {
         </Card>
       </motion.div>
 
-      {/* Timeline View */}
       <Card className="glass-effect bg-card/50">
-        <CardHeader className="pb-2 border-b border-border/50">
-          <CardTitle className="font-headline text-lg text-primary uppercase tracking-wider flex items-center justify-between">
-            <span>{t('workoutDetailsFor', { date: format(selectedDate, 'PPP', { locale: getLocale() }) })}</span>
-            {workoutForDay?.exercises.length ? (
-              <span className="text-xs font-normal text-muted-foreground normal-case">
-                {workoutForDay.exercises.length} {t('exercises')}
+        <CardHeader className="border-b border-border/50 pb-2">
+          <CardTitle className="flex items-center justify-between font-headline text-lg uppercase tracking-wider text-primary">
+            <span>{t('workoutDetailsFor', { date: format(selectedDate, 'PPP', { locale }) })}</span>
+            {workoutForDay.length > 0 && (
+              <span className="text-xs font-normal normal-case text-muted-foreground">
+                {workoutForDay.length} {t('exercises')}
               </span>
-            ) : null}
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          {workoutForDay && workoutForDay.exercises.length > 0 ? (
-            <div className="relative border-l-2 border-muted/50 ml-3 sm:ml-4 space-y-8 pb-4">
-              {workoutForDay.exercises.map((ex, idx) => (
-                <div key={ex.workoutExerciseId} className="relative pl-6 sm:pl-8">
-                  {/* Timeline Dot */}
+          {workoutForDay.length > 0 ? (
+            <div className="relative ml-3 space-y-8 border-l-2 border-muted/50 pb-4 sm:ml-4">
+              {workoutForDay.map((entry) => (
+                <div key={entry.workoutExerciseId} className="relative pl-6 sm:pl-8">
                   <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-primary ring-4 ring-background" />
 
-                  {/* Exercise Card */}
-                  <div className="bg-surface-variant/30 rounded-xl p-4 shadow-sm border border-border/50">
-                    <div className="flex justify-between items-start mb-3">
+                  <div className="rounded-xl border border-border/50 bg-secondary/10 p-4 shadow-sm">
+                    <div className="mb-3 flex items-start justify-between">
                       <div>
-                        <h4 className="font-headline font-bold text-lg leading-tight">{ex.exerciseName}</h4>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          {ex.bodyPart && (
-                            <Badge variant="outline" className="text-[10px] h-5 border-transparent bg-muted/80 uppercase" style={{ color: bodyPartColorMap.get(ex.bodyPart) }}>
-                              {t(ex.bodyPart.toLowerCase())}
+                        <h4 className="font-headline text-lg font-bold leading-tight">{entry.exerciseName}</h4>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          {entry.bodyPart && (
+                            <Badge
+                              variant="outline"
+                              className="h-5 border-transparent bg-muted/80 text-[10px] uppercase"
+                              style={{ color: bodyPartColorMap.get(entry.bodyPart) }}
+                            >
+                              {t(entry.bodyPart.toLowerCase())}
                             </Badge>
                           )}
-                          <span className="text-xs text-muted-foreground">{ex.sets.length} {t('sets')}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {entry.sets.length} {t('sets').toLowerCase()}
+                          </span>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t('volume')}</p>
-                        <p className="font-bold text-sm text-primary">{ex.totalVolume.toLocaleString()} kg</p>
+                        <p className="mb-0.5 text-xs uppercase tracking-wider text-muted-foreground">
+                          {t('volume')}
+                        </p>
+                        <p className="text-sm font-bold text-primary">
+                          {Math.round(fromKg(entry.totalVolume, unit)).toLocaleString()} {unit}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                      {ex.sets.map((set, setIndex) => (
-                        <div key={setIndex} className={`flex justify-between items-center rounded-lg px-3 py-2 text-sm ${set.completed ? 'bg-primary/10 border border-primary/20' : 'bg-background/50'}`}>
-                          <span className="font-medium text-muted-foreground">{t('set')} {setIndex + 1}</span>
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {entry.sets.map((set, setIndex) => (
+                        <div
+                          key={setIndex}
+                          className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${
+                            set.completed ? 'border border-primary/20 bg-primary/10' : 'bg-background/50'
+                          } ${!isCountedSet(set) ? 'opacity-70' : ''}`}
+                        >
+                          <span className="font-medium text-muted-foreground">
+                            {t('set')} {setIndex + 1}
+                            {!isCountedSet(set) && (
+                              <span className="ml-1 text-[10px] uppercase">({t('warmup')})</span>
+                            )}
+                          </span>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold">{set.weight}kg <span className="text-muted-foreground font-normal mx-1">×</span> {set.reps}</span>
-                            {set.completed ? <CheckCircle2 className="h-4 w-4 text-green-500 ml-1" /> : <Circle className="h-4 w-4 text-muted-foreground/50 ml-1" />}
+                            <span className="font-bold">
+                              {set.duration ? (
+                                `${set.duration}${t('seconds')}`
+                              ) : (
+                                <>
+                                  {trimZeros(fromKg(set.weight, unit))}
+                                  {unit}
+                                  <span className="mx-1 font-normal text-muted-foreground">×</span>
+                                  {set.reps}
+                                </>
+                              )}
+                              {set.rpe ? (
+                                <span className="ml-1 text-[10px] text-muted-foreground">@{set.rpe}</span>
+                              ) : null}
+                            </span>
+                            {set.completed ? (
+                              <CheckCircle2 className="ml-1 h-4 w-4 text-green-500" />
+                            ) : (
+                              <Circle className="ml-1 h-4 w-4 text-muted-foreground/50" />
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
+
+                    {entry.notes && (
+                      <p className="mt-3 rounded-lg bg-background/60 p-2 text-xs italic text-muted-foreground">
+                        {entry.notes}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-10 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted/30 flex items-center justify-center mb-4">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted/30">
                 <span className="text-2xl opacity-50">📅</span>
               </div>
-              <p className="text-muted-foreground font-medium">{t('noWorkoutOnThisDay')}</p>
+              <p className="font-medium text-muted-foreground">{t('noWorkoutOnThisDay')}</p>
             </div>
           )}
         </CardContent>

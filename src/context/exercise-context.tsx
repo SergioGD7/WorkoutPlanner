@@ -1,20 +1,28 @@
-
 "use client";
 
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { initialExercises as initialExercisesData } from '@/lib/data';
-import type { Exercise, BodyPart } from '@/lib/types';
-import { useAuth } from './auth-context';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import { collection, deleteDoc, doc, onSnapshot, query, setDoc, writeBatch } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { db } from '@/lib/firebase';
+import { initialExercises as initialExercisesData } from '@/lib/data';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
-import { collection, doc, setDoc, writeBatch, onSnapshot, query } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import type { Exercise } from '@/lib/types';
+import { useAuth } from './auth-context';
 
 interface ExerciseContextType {
   exercises: Exercise[];
   addExercise: (exercise: Omit<Exercise, 'id' | 'emoji'>) => Promise<void>;
   updateExercise: (exercise: Exercise) => Promise<void>;
   deleteExercise: (exerciseId: string) => Promise<void>;
+  replaceExercises: (exercises: Exercise[]) => Promise<void>;
 }
 
 const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
@@ -34,94 +42,116 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const collectionRef = getExercisesCollectionRef();
-    if (!collectionRef) return;
-
-    const unsubscribe = onSnapshot(query(collectionRef), async (querySnapshot) => {
+    const collectionRef = collection(db, `users/${user.uid}/exercises`);
+    const unsubscribe = onSnapshot(
+      query(collectionRef),
+      (querySnapshot) => {
         if (querySnapshot.empty) {
-           console.log("No exercises found for user. This might be a new account or migration pending.");
-           // Migration is now handled by AuthContext, so we might see this state briefly.
-           // We can set initial exercises as a fallback display until Firestore syncs.
-           setExercises(initialExercisesData);
-        } else {
-            const firestoreExercises = querySnapshot.docs.map(doc => doc.data() as Exercise);
-            setExercises(firestoreExercises);
+          // Seeding happens at sign-in; show the defaults until it lands.
+          setExercises(initialExercisesData);
+          return;
         }
-    }, (error) => {
-        console.error("Error fetching exercises from Firestore:", error);
-        setExercises(initialExercisesData); // Fallback
-    });
+        setExercises(
+          querySnapshot.docs
+            .map((docSnap) => docSnap.data() as Exercise)
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      },
+      (error) => {
+        console.error('Error fetching exercises from Firestore:', error);
+        setExercises(initialExercisesData);
+      },
+    );
 
     return () => unsubscribe();
-  }, [user, getExercisesCollectionRef]);
+  }, [user]);
 
-  const addExercise = async (exerciseData: Omit<Exercise, 'id' | 'emoji'>) => {
-    const collectionRef = getExercisesCollectionRef();
-    if (!collectionRef) {
-      console.error("No user logged in to add exercise");
-      return;
-    }
-    
-    const newExercise: Exercise = {
-      id: uuidv4(),
-      ...exerciseData,
-      emoji: bodyPartEmojiMap.get(exerciseData.bodyPart) || '💪',
-    };
+  const addExercise = useCallback(
+    async (exerciseData: Omit<Exercise, 'id' | 'emoji'>) => {
+      const collectionRef = getExercisesCollectionRef();
+      if (!collectionRef) return;
 
-    try {
-        const docRef = doc(collectionRef, newExercise.id);
-        await setDoc(docRef, newExercise);
-        // The onSnapshot listener will update the state, no need for setExercises here
-    } catch(e) {
-        console.error("Error adding exercise to Firestore: ", e);
-    }
-  };
-  
-  const updateExercise = async (updatedExerciseData: Exercise) => {
-    const collectionRef = getExercisesCollectionRef();
-    if (!collectionRef) {
-      console.error("No user logged in to update exercise");
-      return;
-    }
-    
-    const exerciseWithCorrectEmoji: Exercise = {
-        ...updatedExerciseData,
-        emoji: bodyPartEmojiMap.get(updatedExerciseData.bodyPart) || '💪',
-    };
-    
-    try {
-        const docRef = doc(collectionRef, exerciseWithCorrectEmoji.id);
-        await setDoc(docRef, exerciseWithCorrectEmoji, { merge: true });
-    } catch(e) {
-        console.error("Error updating exercise in Firestore: ", e);
-    }
-  };
+      const newExercise: Exercise = {
+        id: uuidv4(),
+        tracking: 'weight',
+        ...exerciseData,
+        emoji: bodyPartEmojiMap.get(exerciseData.bodyPart) || '💪',
+      };
 
-  const deleteExercise = async (exerciseId: string) => {
-    const collectionRef = getExercisesCollectionRef();
-    if (!collectionRef) {
-      console.error("No user logged in to delete exercise");
-      return;
-    }
-
-    // TODO: Also delete this exercise from all workout logs.
-    // This is more complex and requires a batch write or cloud function.
-    // For now, we just delete the exercise definition.
-    try {
-        const docRef = doc(collectionRef, exerciseId);
-        const batch = writeBatch(db);
-        batch.delete(docRef);
-        await batch.commit();
-    } catch(e) {
-        console.error("Error deleting exercise from Firestore: ", e);
-    }
-  };
-
-  return (
-    <ExerciseContext.Provider value={{ exercises, addExercise, updateExercise, deleteExercise }}>
-      {children}
-    </ExerciseContext.Provider>
+      try {
+        await setDoc(doc(collectionRef, newExercise.id), newExercise);
+      } catch (error) {
+        console.error('Error adding exercise to Firestore:', error);
+      }
+    },
+    [getExercisesCollectionRef],
   );
+
+  const updateExercise = useCallback(
+    async (updated: Exercise) => {
+      const collectionRef = getExercisesCollectionRef();
+      if (!collectionRef) return;
+
+      const withEmoji: Exercise = {
+        ...updated,
+        emoji: bodyPartEmojiMap.get(updated.bodyPart) || '💪',
+      };
+
+      try {
+        await setDoc(doc(collectionRef, withEmoji.id), withEmoji, { merge: true });
+      } catch (error) {
+        console.error('Error updating exercise in Firestore:', error);
+      }
+    },
+    [getExercisesCollectionRef],
+  );
+
+  /**
+   * Only the definition is removed. Past log entries keep working because they
+   * carry a name/body-part snapshot (see `resolveExerciseName`), so history and
+   * volume charts stay intact instead of silently dropping sets.
+   */
+  const deleteExercise = useCallback(
+    async (exerciseId: string) => {
+      const collectionRef = getExercisesCollectionRef();
+      if (!collectionRef) return;
+
+      try {
+        await deleteDoc(doc(collectionRef, exerciseId));
+      } catch (error) {
+        console.error('Error deleting exercise from Firestore:', error);
+      }
+    },
+    [getExercisesCollectionRef],
+  );
+
+  const replaceExercises = useCallback(
+    async (incoming: Exercise[]) => {
+      const collectionRef = getExercisesCollectionRef();
+      if (!collectionRef || incoming.length === 0) return;
+
+      for (let i = 0; i < incoming.length; i += 400) {
+        const batch = writeBatch(db);
+        incoming.slice(i, i + 400).forEach((exercise) => {
+          const withEmoji: Exercise = {
+            ...exercise,
+            id: exercise.id || uuidv4(),
+            emoji: exercise.emoji || bodyPartEmojiMap.get(exercise.bodyPart) || '💪',
+          };
+          batch.set(doc(collectionRef, withEmoji.id), withEmoji, { merge: true });
+        });
+        await batch.commit();
+      }
+    },
+    [getExercisesCollectionRef],
+  );
+
+  const value = useMemo(
+    () => ({ exercises, addExercise, updateExercise, deleteExercise, replaceExercises }),
+    [exercises, addExercise, updateExercise, deleteExercise, replaceExercises],
+  );
+
+  return <ExerciseContext.Provider value={value}>{children}</ExerciseContext.Provider>;
 }
 
 export function useExercises() {

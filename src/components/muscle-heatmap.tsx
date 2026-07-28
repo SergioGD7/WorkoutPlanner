@@ -1,193 +1,196 @@
 "use client";
 
-import { useMemo } from "react";
-import { parseISO, isValid, differenceInDays, startOfDay, format } from 'date-fns';
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useLanguage } from "@/context/language-context";
-import type { WorkoutLog } from '@/lib/types';
+import { useMemo } from 'react';
+import { differenceInCalendarDays, isValid, parseISO, startOfDay } from 'date-fns';
+import { Activity } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
-import { Activity } from "lucide-react";
+import type { WorkoutLog } from '@/lib/types';
+import { bodyParts } from '@/lib/data';
+import { isWorkoutCompleted, resolveBodyPart } from '@/lib/workout-utils';
 
 interface MuscleHeatmapProps {
   workoutLog: WorkoutLog;
 }
 
-type DurationType = "7" | "30" | "all";
+/** Days of rest before a muscle group is considered fully recovered. */
+const FULLY_RECOVERED_DAYS = 4;
+
+type MuscleKey = 'chest' | 'back' | 'shoulders' | 'arms' | 'core' | 'legs';
+
+interface RecoveryStat {
+  percent: number;
+  daysAgo: number | null;
+}
 
 export default function MuscleHeatmap({ workoutLog }: MuscleHeatmapProps) {
   const { exercises } = useExercises();
   const { t } = useLanguage();
 
   const muscleRecovery = useMemo(() => {
-    const lastTrained: Record<string, number | null> = {
-      chest: null,
-      back: null,
-      shoulders: null,
-      arms: null,
-      core: null,
-      legs: null,
-    };
+    const lastTrained = new Map<MuscleKey, number>();
+    const today = startOfDay(new Date());
 
-    const sortedDates = Object.keys(workoutLog)
-      .map(d => parseISO(d))
-      .filter(isValid)
-      .sort((a, b) => b.getTime() - a.getTime());
+    Object.entries(workoutLog).forEach(([dateKey, dayExercises]) => {
+      // Only completed work creates fatigue.
+      if (!isWorkoutCompleted(dayExercises)) return;
 
-    sortedDates.forEach(date => {
-      const dateStr = format(date, "yyyy-MM-dd");
-      const workoutExercises = workoutLog[dateStr];
-      if (!workoutExercises) return;
+      const date = parseISO(dateKey);
+      if (!isValid(date)) return;
 
-      workoutExercises.forEach(workoutEx => {
-        const exerciseDetails = exercises.find(ex => ex.id === workoutEx.exerciseId);
-        if (!exerciseDetails) return;
+      const daysAgo = Math.max(0, differenceInCalendarDays(today, startOfDay(date)));
 
-        let bp = exerciseDetails.bodyPart.toLowerCase();
-        if (['upper arms', 'lower arms'].includes(bp)) bp = 'arms';
-        if (['upper legs', 'lower legs'].includes(bp)) bp = 'legs';
-        if (['waist'].includes(bp)) bp = 'core';
-        if (['chest', 'back', 'shoulders', 'arms', 'core', 'legs'].includes(bp)) {
-          if (lastTrained[bp] === null) {
-             const diff = differenceInDays(startOfDay(new Date()), startOfDay(date));
-             lastTrained[bp] = Math.max(0, diff);
-          }
-        }
+      dayExercises.forEach((workoutExercise) => {
+        if (!workoutExercise.sets.some((set) => set.completed)) return;
+
+        const bodyPart = resolveBodyPart(workoutExercise, exercises);
+        if (!bodyPart) return;
+
+        const key = bodyPart.toLowerCase() as MuscleKey;
+        const previous = lastTrained.get(key);
+        if (previous === undefined || daysAgo < previous) lastTrained.set(key, daysAgo);
       });
     });
 
-    const recoveryStats: Record<string, { percent: number, daysAgo: number | null }> = {};
-    const FULLY_RECOVERED_DAYS = 4; // 4 days to fully recover
-
-    Object.keys(lastTrained).forEach(bp => {
-      const days = lastTrained[bp];
-      if (days === null) {
-        recoveryStats[bp] = { percent: 100, daysAgo: null };
-      } else {
-        const pct = Math.min(100, (days / FULLY_RECOVERED_DAYS) * 100);
-        recoveryStats[bp] = { percent: Math.round(pct), daysAgo: days };
-      }
+    const stats = {} as Record<MuscleKey, RecoveryStat>;
+    bodyParts.forEach((part) => {
+      const key = part.toLowerCase() as MuscleKey;
+      const daysAgo = lastTrained.get(key);
+      stats[key] =
+        daysAgo === undefined
+          ? { percent: 100, daysAgo: null }
+          : { percent: Math.round(Math.min(100, (daysAgo / FULLY_RECOVERED_DAYS) * 100)), daysAgo };
     });
 
-    return recoveryStats;
+    return stats;
   }, [workoutLog, exercises]);
-  
+
   const getColor = (percent: number) => {
-    if (percent >= 80) return "#22c55e"; // Green (Recovered)
-    if (percent >= 40) return "#f97316"; // Orange (Recovering)
-    return "#ef4444"; // Red (Fatigued)
+    if (percent >= 80) return '#22c55e';
+    if (percent >= 40) return '#f97316';
+    return '#ef4444';
   };
 
-  const renderTooltip = (part: string, stat: {percent: number, daysAgo: number|null}, children: React.ReactNode) => (
+  const describe = (stat: RecoveryStat) =>
+    stat.daysAgo === null
+      ? t('neverTrained')
+      : `${t('recoveredPercent', { percent: stat.percent })} · ${t('lastTrained', { days: stat.daysAgo })}`;
+
+  const renderRegion = (part: MuscleKey, children: React.ReactNode) => (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <g className="cursor-help outline-none transition-opacity hover:opacity-80">
-            {children}
-          </g>
+          <g className="cursor-help outline-none transition-opacity hover:opacity-80">{children}</g>
         </TooltipTrigger>
-        <TooltipContent side="top" className="bg-background border-border">
-          <p className="font-semibold capitalize text-center mb-1">{t(part)}</p>
-          <p className="text-xs text-muted-foreground">
-            {stat.daysAgo === null 
-              ? t('fullyRecoveredNoLogs') 
-              : t('percentRecovered', { percent: stat.percent, days: stat.daysAgo })}
-          </p>
+        <TooltipContent side="top" className="border-border bg-background">
+          <p className="mb-1 text-center font-semibold capitalize">{t(part)}</p>
+          <p className="text-xs text-muted-foreground">{describe(muscleRecovery[part])}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 
   return (
-    <Card className="glass-effect overflow-hidden relative">
+    <Card className="glass-effect relative overflow-hidden">
       <CardHeader className="pb-2">
-        <div className="flex flex-row items-center justify-between gap-4">
-          <CardTitle className="font-headline text-lg flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            {t('muscleRecovery') || 'Muscle Recovery'}
-          </CardTitle>
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">{t('trackMuscleReadiness')}</p>
+        <CardTitle className="flex items-center gap-2 font-headline text-lg">
+          <Activity className="h-5 w-5 text-primary" />
+          {t('muscleRecovery')}
+        </CardTitle>
+        <p className="mt-2 text-xs text-muted-foreground">{t('trackMuscleReadiness')}</p>
       </CardHeader>
-      <CardContent className="flex flex-col md:flex-row items-center justify-between gap-6 pt-4">
-        
-        {/* SVG Silhouette */}
-        <div className="relative w-48 h-64 mx-auto flex-shrink-0">
-          <svg viewBox="0 0 100 200" className="w-full h-full drop-shadow-md">
-            
-            {/* Back (Lats behind chest) */}
-            {renderTooltip('back', muscleRecovery.back, (
+      <CardContent className="flex flex-col items-center justify-between gap-6 pt-4 md:flex-row">
+        <div className="relative mx-auto h-64 w-48 flex-shrink-0">
+          <svg viewBox="0 0 100 200" className="h-full w-full drop-shadow-md" role="img" aria-label={t('muscleRecovery')}>
+            {renderRegion(
+              'back',
               <>
                 <path d="M35 45 Q25 60 38 70 Z" fill={getColor(muscleRecovery.back.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
                 <path d="M65 45 Q75 60 62 70 Z" fill={getColor(muscleRecovery.back.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="0.5" />
-              </>
-            ))}
+              </>,
+            )}
 
-            {renderTooltip('shoulders', muscleRecovery.shoulders, (
-              <path d="M30 40 Q50 30 70 40 L85 55 L78 65 Q70 50 65 45 Q50 50 35 45 Q30 50 22 65 L15 55 Z" fill={getColor(muscleRecovery.shoulders.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-            ))}
-            
-            {renderTooltip('chest', muscleRecovery.chest, (
-              <path d="M35 45 Q50 50 65 45 L62 70 Q50 75 38 70 Z" fill={getColor(muscleRecovery.chest.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-            ))}
+            {renderRegion(
+              'shoulders',
+              <path
+                d="M30 40 Q50 30 70 40 L85 55 L78 65 Q70 50 65 45 Q50 50 35 45 Q30 50 22 65 L15 55 Z"
+                fill={getColor(muscleRecovery.shoulders.percent)}
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="1"
+              />,
+            )}
 
-            {renderTooltip('core', muscleRecovery.core, (
-              <path d="M38 70 Q50 75 62 70 L58 100 Q50 105 42 100 Z" fill={getColor(muscleRecovery.core.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-            ))}
+            {renderRegion(
+              'chest',
+              <path
+                d="M35 45 Q50 50 65 45 L62 70 Q50 75 38 70 Z"
+                fill={getColor(muscleRecovery.chest.percent)}
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="1"
+              />,
+            )}
 
-            {renderTooltip('arms', muscleRecovery.arms, (
+            {renderRegion(
+              'core',
+              <path
+                d="M38 70 Q50 75 62 70 L58 100 Q50 105 42 100 Z"
+                fill={getColor(muscleRecovery.core.percent)}
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="1"
+              />,
+            )}
+
+            {renderRegion(
+              'arms',
               <>
                 <path d="M15 55 L22 65 L18 110 L10 105 Z" fill={getColor(muscleRecovery.arms.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
                 <path d="M85 55 L78 65 L82 110 L90 105 Z" fill={getColor(muscleRecovery.arms.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-              </>
-            ))}
+              </>,
+            )}
 
-            {renderTooltip('legs', muscleRecovery.legs, (
+            {renderRegion(
+              'legs',
               <>
                 <path d="M42 100 Q45 103 50 105 L48 180 L35 180 L38 100 Z" fill={getColor(muscleRecovery.legs.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
                 <path d="M58 100 Q55 103 50 105 L52 180 L65 180 L62 100 Z" fill={getColor(muscleRecovery.legs.percent)} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-              </>
-            ))}
+              </>,
+            )}
 
-            {/* Head (Neutral) */}
             <circle cx="50" cy="20" r="12" fill="#333535" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
           </svg>
         </div>
 
-        {/* Legend */}
-        <div className="flex-1 space-y-3 w-full">
-          {Object.entries(muscleRecovery).map(([part, stat]) => (
-            <TooltipProvider key={part}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center justify-between cursor-help p-1 rounded-md hover:bg-surface-variant/30 transition-colors">
-                    <span className="capitalize text-sm font-medium">{t(part)}</span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-24 h-2.5 rounded-full bg-muted overflow-hidden">
-                        <div 
-                          className="h-full rounded-full transition-all duration-500" 
-                          style={{ 
-                            width: `${stat.percent}%`,
-                            backgroundColor: getColor(stat.percent)
-                          }}
-                        />
+        <div className="w-full flex-1 space-y-3">
+          {bodyParts.map((part) => {
+            const key = part.toLowerCase() as MuscleKey;
+            const stat = muscleRecovery[key];
+            return (
+              <TooltipProvider key={key}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex cursor-help items-center justify-between rounded-md p-1 transition-colors hover:bg-secondary/20">
+                      <span className="text-sm font-medium capitalize">{t(key)}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="h-2.5 w-24 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${stat.percent}%`, backgroundColor: getColor(stat.percent) }}
+                          />
+                        </div>
+                        <span className="w-12 text-right text-xs text-muted-foreground">{stat.percent}%</span>
                       </div>
-                      <span className="text-xs text-muted-foreground w-12 text-right">
-                        {stat.percent}%
-                      </span>
                     </div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="left" className="bg-background border-border">
-                   <p className="text-xs">
-                     {stat.daysAgo === null ? t('fullyRecovered') : t('lastTrained', { days: stat.daysAgo })}
-                   </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ))}
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="border-border bg-background">
+                    <p className="text-xs">{describe(stat)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })}
         </div>
-
       </CardContent>
     </Card>
   );

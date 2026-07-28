@@ -1,25 +1,26 @@
-
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { 
-  getAuth, 
-  onAuthStateChanged, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  EmailAuthProvider,
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updatePassword,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  type User as FirebaseUser 
+  type User as FirebaseUser,
 } from 'firebase/auth';
-import { app, db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, writeBatch, collection } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, writeBatch, limit, query } from 'firebase/firestore';
 import { Dumbbell } from 'lucide-react';
-import type { WorkoutLog, Exercise } from '@/lib/types';
+import { auth, db } from '@/lib/firebase';
+import { initialExercises as initialExercisesData, workoutTemplates as defaultTemplates } from '@/lib/data';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
+import type { Exercise, WorkoutLog } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
-import { initialExercises as initialExercisesData } from '@/lib/data';
 
 interface LoggedInUser {
   uid: string;
@@ -27,121 +28,124 @@ interface LoggedInUser {
   displayName?: string | null;
 }
 
+type AuthResult = { success: boolean; messageKey?: string };
+
 interface AuthContextType {
   user: LoggedInUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; messageKey?: string }>;
-  signUp: (email: string, password: string) => Promise<{ success: boolean; messageKey?: string }>;
+  login: (email: string, password: string) => Promise<AuthResult>;
+  signUp: (email: string, password: string) => Promise<AuthResult>;
+  signInWithGoogle: () => Promise<AuthResult>;
   logout: () => void;
-  changePassword: (currentPass: string, newPass: string) => Promise<{ success: boolean, messageKey?: string }>;
-  importWorkoutLogs: (logs: WorkoutLog) => Promise<{ success: boolean, messageKey?: string }>;
-  importExercises: (exercises: (Omit<Exercise, 'emoji'>)[]) => Promise<{ success: boolean, messageKey?: string }>;
+  changePassword: (currentPass: string, newPass: string) => Promise<AuthResult>;
+  resetPassword: (email: string) => Promise<AuthResult>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const auth = getAuth(app);
 
 const formatFirebaseError = (errorCode: string, context?: 'login' | 'changePassword'): string => {
   switch (errorCode) {
     case 'auth/invalid-email':
       return 'invalidEmail';
     case 'auth/invalid-credential':
-        if (context === 'changePassword') {
-            return 'incorrectCurrentPassword';
-        }
-        return 'userExistsPasswordIncorrect';
+      return context === 'changePassword' ? 'incorrectCurrentPassword' : 'userExistsPasswordIncorrect';
     case 'auth/user-not-found':
     case 'auth/wrong-password':
       return 'userExistsPasswordIncorrect';
     case 'auth/email-already-in-use':
       return 'emailAlreadyInUse';
     case 'auth/weak-password':
-        return 'passwordTooShort';
+      return 'passwordTooShort';
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'popupClosed';
+    case 'auth/account-exists-with-different-credential':
+      return 'accountExistsWithDifferentCredential';
+    case 'auth/too-many-requests':
+      return 'tooManyRequests';
+    case 'auth/network-request-failed':
+      return 'networkError';
     default:
-      console.error("Unhandled Firebase Auth Error:", errorCode);
+      console.error('Unhandled Firebase Auth error:', errorCode);
       return 'unknownError';
   }
-}
+};
 
-async function initializeDataForNewUser(userId: string, email: string) {
-  console.log(`Checking data for user ${userId}...`);
-  
+/**
+ * Seeds the exercise library and default routines for a brand new account, and
+ * carries over data from the pre-Firestore localStorage era if any is found.
+ *
+ * The legacy `workout_logs/all` document written here is split into per-day
+ * documents by `WorkoutProvider` on the next render.
+ */
+async function initializeDataForNewUser(userId: string, email: string | null) {
+  const exercisesCollectionRef = collection(db, `users/${userId}/exercises`);
+  const existingExercises = await getDocs(query(exercisesCollectionRef, limit(1)));
+  const hasExercises = !existingExercises.empty;
+
   const workoutLogDocRef = doc(db, `users/${userId}/workout_logs/all`);
-  const logDocSnap = await getDoc(workoutLogDocRef);
+  const daysSnapshot = await getDocs(query(collection(db, `users/${userId}/workout_days`), limit(1)));
+  const legacySnap = await getDoc(workoutLogDocRef);
+  const hasWorkouts = !daysSnapshot.empty || legacySnap.exists();
 
-  // If workout log already exists in Firestore, do nothing.
-  if (logDocSnap.exists()) {
-    console.log("User already has data in Firestore. No migration needed.");
-    return;
-  }
-  
-  console.log(`No Firestore data found. Checking local storage for ${email}...`);
-  const localLogsKey = `workout_logs_${email}`;
-  const localExercisesKey = `exercises_${email}`;
-  const storedLogsJSON = localStorage.getItem(localLogsKey);
-  const storedExercisesJSON = localStorage.getItem(localExercisesKey);
+  if (hasExercises && hasWorkouts) return;
 
   const batch = writeBatch(db);
 
-  if (storedLogsJSON) {
-    console.log("Local workout logs found. Migrating to Firestore.");
-    try {
-        const localLogs: WorkoutLog = JSON.parse(storedLogsJSON);
-        batch.set(workoutLogDocRef, localLogs);
+  if (!hasExercises) {
+    const localExercisesJSON = email ? window.localStorage.getItem(`exercises_${email}`) : null;
+    let seeded = false;
 
-        const exercisesCollectionRef = collection(db, `users/${userId}/exercises`);
-        if (storedExercisesJSON) {
-            console.log("Local exercises found. Migrating to Firestore.");
-            const localExercises: (Exercise | Omit<Exercise, 'emoji'>)[] = JSON.parse(storedExercisesJSON);
-            localExercises.forEach(ex => {
-                const exerciseWithEmoji = {
-                    ...ex,
-                    id: ex.id || uuidv4(),
-                    emoji: bodyPartEmojiMap.get(ex.bodyPart) || '💪',
-                } as Exercise;
-                const exDocRef = doc(exercisesCollectionRef, exerciseWithEmoji.id);
-                batch.set(exDocRef, exerciseWithEmoji);
-            });
-        } else {
-             initialExercisesData.forEach(exercise => {
-                const exDocRef = doc(exercisesCollectionRef, exercise.id);
-                batch.set(exDocRef, exercise);
-            });
-        }
-    } catch(e) {
-        console.error("Failed to parse or migrate local data:", e);
-        // If parsing fails, don't commit anything, initialize with default data instead.
-        const freshBatch = writeBatch(db);
-        const exercisesCollectionRef = collection(db, `users/${userId}/exercises`);
-        initialExercisesData.forEach(exercise => {
-            const exDocRef = doc(exercisesCollectionRef, exercise.id);
-            freshBatch.set(exDocRef, exercise);
+    if (localExercisesJSON) {
+      try {
+        const localExercises = JSON.parse(localExercisesJSON) as (Exercise | Omit<Exercise, 'emoji'>)[];
+        localExercises.forEach((exercise) => {
+          const withEmoji = {
+            ...exercise,
+            id: exercise.id || uuidv4(),
+            emoji: bodyPartEmojiMap.get(exercise.bodyPart) || '💪',
+          } as Exercise;
+          batch.set(doc(exercisesCollectionRef, withEmoji.id), withEmoji);
         });
-        freshBatch.set(workoutLogDocRef, {});
-        await freshBatch.commit();
-        return;
+        seeded = localExercises.length > 0;
+      } catch (error) {
+        console.error('Could not parse local exercises, falling back to defaults:', error);
+      }
     }
-  } else {
-    // If no local data, this is a fresh user. Populate with initial exercises.
-    console.log("No local data found. Populating with initial exercises for new user.");
-    const exercisesCollectionRef = collection(db, `users/${userId}/exercises`);
-    initialExercisesData.forEach(exercise => {
-        const exDocRef = doc(exercisesCollectionRef, exercise.id);
-        batch.set(exDocRef, exercise);
+
+    if (!seeded) {
+      initialExercisesData.forEach((exercise) => {
+        batch.set(doc(exercisesCollectionRef, exercise.id), exercise);
+      });
+    }
+  }
+
+  if (!hasWorkouts) {
+    const localLogsJSON = email ? window.localStorage.getItem(`workout_logs_${email}`) : null;
+    if (localLogsJSON) {
+      try {
+        const localLogs = JSON.parse(localLogsJSON) as WorkoutLog;
+        batch.set(workoutLogDocRef, localLogs);
+      } catch (error) {
+        console.error('Could not parse local workout logs, skipping migration:', error);
+      }
+    }
+  }
+
+  const templatesCollectionRef = collection(db, `users/${userId}/templates`);
+  const existingTemplates = await getDocs(query(templatesCollectionRef, limit(1)));
+  if (existingTemplates.empty) {
+    defaultTemplates.forEach((template) => {
+      batch.set(doc(templatesCollectionRef, template.id), template);
     });
-    // Create an empty workout log document
-    batch.set(workoutLogDocRef, {});
   }
 
   try {
     await batch.commit();
-    console.log("Data initialization/migration to Firestore completed successfully.");
   } catch (error) {
-    console.error("Error committing batch to Firestore:", error);
+    console.error('Failed to initialize account data:', error);
   }
 }
-
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LoggedInUser | null>(null);
@@ -149,38 +153,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-        });
-      } else {
-        setUser(null);
-      }
+      setUser(
+        firebaseUser
+          ? {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+            }
+          : null,
+      );
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
+  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      await initializeDataForNewUser(userCredential.user.uid, email);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      await initializeDataForNewUser(credential.user.uid, email);
       return { success: true };
     } catch (error: any) {
-      return { success: false, messageKey: formatFirebaseError(error.code, 'login') };
+      return { success: false, messageKey: formatFirebaseError(error?.code, 'login') };
     }
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string): Promise<{ success: boolean; messageKey?: string }> => {
+  const signUp = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await initializeDataForNewUser(userCredential.user.uid, email);
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      await initializeDataForNewUser(credential.user.uid, email);
       return { success: true };
     } catch (error: any) {
-      return { success: false, messageKey: formatFirebaseError(error.code) };
+      return { success: false, messageKey: formatFirebaseError(error?.code) };
+    }
+  }, []);
+
+  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const credential = await signInWithPopup(auth, provider);
+      await initializeDataForNewUser(credential.user.uid, credential.user.email);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, messageKey: formatFirebaseError(error?.code) };
     }
   }, []);
 
@@ -188,65 +203,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signOut(auth);
     } catch (error) {
-      console.error("Failed to log out", error);
+      console.error('Failed to log out:', error);
     }
   }, []);
 
-  const changePassword = useCallback(async (currentPass: string, newPass: string): Promise<{ success: boolean, messageKey?: string }> => {
-    const currentUser = auth.currentUser;
-    if (!currentUser || !currentUser.email) {
-      return { success: false, messageKey: 'unknownError' };
-    }
+  const changePassword = useCallback(
+    async (currentPass: string, newPass: string): Promise<AuthResult> => {
+      const currentUser = auth.currentUser;
+      if (!currentUser?.email) return { success: false, messageKey: 'unknownError' };
 
-    const credential = EmailAuthProvider.credential(currentUser.email, currentPass);
+      try {
+        const credential = EmailAuthProvider.credential(currentUser.email, currentPass);
+        await reauthenticateWithCredential(currentUser, credential);
+        await updatePassword(currentUser, newPass);
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, messageKey: formatFirebaseError(error?.code, 'changePassword') };
+      }
+    },
+    [],
+  );
 
+  const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
     try {
-      await reauthenticateWithCredential(currentUser, credential);
-      await updatePassword(currentUser, newPass);
+      await sendPasswordResetEmail(auth, email);
       return { success: true };
     } catch (error: any) {
-      return { success: false, messageKey: formatFirebaseError(error.code, 'changePassword') };
+      return { success: false, messageKey: formatFirebaseError(error?.code) };
     }
   }, []);
 
-  const importWorkoutLogs = useCallback(async (logs: WorkoutLog): Promise<{ success: boolean, messageKey?: string }> => {
-    if (!user) return { success: false, messageKey: 'notLoggedIn' };
-    try {
-      const workoutLogDocRef = doc(db, `users/${user.uid}/workout_logs/all`);
-      await setDoc(workoutLogDocRef, logs);
-      return { success: true };
-    } catch (error) {
-      console.error("Failed to import workout logs:", error);
-      return { success: false, messageKey: 'importFailed' };
-    }
-  }, [user]);
+  const value = useMemo(
+    () => ({ user, loading, login, signUp, signInWithGoogle, logout, changePassword, resetPassword }),
+    [user, loading, login, signUp, signInWithGoogle, logout, changePassword, resetPassword],
+  );
 
-  const importExercises = useCallback(async (exercises: (Omit<Exercise, 'emoji'>)[]): Promise<{ success: boolean, messageKey?: string }> => {
-    if (!user) return { success: false, messageKey: 'notLoggedIn' };
-    try {
-      const batch = writeBatch(db);
-      const exercisesCollectionRef = collection(db, `users/${user.uid}/exercises`);
-      
-      exercises.forEach(ex => {
-        const exerciseWithEmoji = {
-          ...ex,
-          id: ex.id || uuidv4(),
-          emoji: bodyPartEmojiMap.get(ex.bodyPart) || '💪',
-        } as Exercise;
-        const exDocRef = doc(exercisesCollectionRef, exerciseWithEmoji.id);
-        batch.set(exDocRef, exerciseWithEmoji);
-      });
-      
-      await batch.commit();
-      return { success: true };
-    } catch (error) {
-      console.error("Failed to import exercises:", error);
-      return { success: false, messageKey: 'importFailed' };
-    }
-  }, [user]);
-
-  const value = { user, loading, login, signUp, logout, changePassword, importWorkoutLogs, importExercises };
-  
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
