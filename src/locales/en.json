@@ -104,7 +104,7 @@
   "nextMonth": "Next month",
   "expandToMonth": "Show the whole month",
   "collapseToWeek": "Show only this week",
-  "back": "Back",
+  "goBack": "Back",
   "backToDashboard": "Back to dashboard",
 
   "createCustomExercise": "Create Custom Exercise",
@@ -200,6 +200,8 @@
 
   "restTimer": "Rest timer",
   "defaultRest": "Default rest time",
+  "restTimerEnabled": "Rest timer",
+  "restTimerEnabledHint": "Start a countdown automatically when you tick a set.",
   "restTimerSound": "Sound when rest ends",
   "restTimerNotifications": "Notification when rest ends",
   "notificationsDenied": "Notifications are blocked in your browser settings.",
@@ -237,10 +239,6 @@
   "consistency": "Consistency",
   "consistencyDescription": "Every day you completed at least one set.",
   "consistencyWorkouts": "{count} workouts in the last 12 months",
-  "stalledExercises": "Not progressing",
-  "stalledDescription": "Still training these, but your estimated 1RM hasn't moved.",
-  "noStalled": "Nothing is stalling. Every trained lift is still moving up.",
-  "weeksWithoutProgress": "{weeks} weeks without a new best",
   "balance": "Training balance",
   "balanceDescription": "Working sets by movement pattern. Arm work counts half toward push and half toward pull.",
   "push": "Push",

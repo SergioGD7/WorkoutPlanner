@@ -10,15 +10,22 @@ interface ShareWorkoutTicketProps {
   dailyExercises: WorkoutExercise[];
   exercises: Exercise[];
   unit: WeightUnit;
+  /** Output size in CSS pixels; defaults to a 9:16 story frame. */
+  width?: number;
+  height?: number;
 }
 
 /**
- * Rendered off-screen at a fixed 1080 px width and rasterised by html-to-image
- * for the native share sheet, so every size here is absolute rather than fluid.
+ * The layout is authored against a fixed 1080 px canvas (every size below is
+ * absolute, not fluid) and then scaled down to the requested output size, so the
+ * shared image matches the device's own screen dimensions without redesigning
+ * anything per screen size.
  */
+const DESIGN_WIDTH = 1080;
 const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
-  ({ dateStr, userName, dailyExercises, exercises, unit }, ref) => {
+  ({ dateStr, userName, dailyExercises, exercises, unit, width = 1080, height = 1920 }, ref) => {
     const { t } = useLanguage();
+    const scale = width / DESIGN_WIDTH;
 
     const completedSets = dailyExercises.reduce(
       (total, exercise) => total + exercise.sets.filter((set) => set.completed && isCountedSet(set)).length,
@@ -50,8 +57,19 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
         <div
           ref={ref}
           id="share-workout-ticket"
-          className="relative flex h-fit min-h-[1920px] w-[1080px] flex-col items-center justify-between overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black p-20 pb-24 font-sans text-white"
-          style={{ fontFamily: "'Inter', 'PT Sans', sans-serif" }}
+          className="relative overflow-hidden bg-black"
+          style={{ width, height }}
+        >
+        <div
+          className="relative flex flex-col items-center justify-between overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black p-20 pb-24 font-sans text-white"
+          style={{
+            fontFamily: "'Inter', 'PT Sans', sans-serif",
+            width: DESIGN_WIDTH,
+            // Fill the frame exactly, whatever aspect ratio the device has.
+            height: height / scale,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}
         >
           <div className="absolute left-[-20%] top-[-10%] h-[800px] w-[800px] rounded-full bg-primary/20 mix-blend-screen blur-[150px]" />
           <div className="absolute bottom-[-10%] right-[-20%] h-[1000px] w-[1000px] rounded-full bg-orange-600/20 mix-blend-screen blur-[150px]" />
@@ -169,6 +187,7 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
               </p>
             </div>
           </div>
+        </div>
         </div>
       </div>
     );

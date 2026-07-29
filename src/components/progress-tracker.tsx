@@ -35,7 +35,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { AlertTriangle, FileSpreadsheet, Loader2, Scale } from 'lucide-react';
+import { FileSpreadsheet, Loader2, Scale } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,7 +55,6 @@ import {
   epley1RM,
   fromKg,
   getBalanceStats,
-  getStalledExercises,
   isCountedSet,
   resolveBodyPart,
   resolveExerciseName,
@@ -218,8 +217,6 @@ export default function ProgressTracker() {
     () => getBalanceStats(workoutLog, exercises, isInSelectedRange),
     [workoutLog, exercises, isInSelectedRange],
   );
-
-  const stalled = useMemo(() => getStalledExercises(workoutLog, exercises), [workoutLog, exercises]);
 
   const getTimeRangeLabel = () => {
     switch (timeRange) {
@@ -566,41 +563,6 @@ export default function ProgressTracker() {
           )}
         </CardContent>
       </Card>
-
-      {stalled.length > 0 && (
-        <Card className="glass-effect border-amber-500/20">
-          <CardHeader className="p-4 pb-2 sm:p-6">
-            <CardTitle className="flex items-center gap-2 font-headline text-xl sm:text-2xl">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              {t('stalledExercises')}
-            </CardTitle>
-            <CardDescription>{t('stalledDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 p-4 sm:p-6">
-            {stalled.map((entry) => {
-              const definition = exercises.find((exercise) => exercise.id === entry.exerciseId);
-              return (
-                <button
-                  key={entry.exerciseId}
-                  type="button"
-                  onClick={() => setHistoryExerciseId(entry.exerciseId)}
-                  className="flex w-full items-center justify-between rounded-xl bg-secondary/10 p-3 text-left transition-colors hover:bg-secondary/20"
-                >
-                  <div>
-                    <p className="font-semibold">{definition ? t(definition.name) : t('deletedExercise')}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('weeksWithoutProgress', { weeks: entry.weeks })}
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold text-muted-foreground">
-                    {Math.round(fromKg(entry.best1RM, unit))} {unit}
-                  </p>
-                </button>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
 
       <Card>
         <CardHeader className="p-4 sm:p-6">

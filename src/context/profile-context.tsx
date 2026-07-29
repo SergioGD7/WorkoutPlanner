@@ -17,6 +17,7 @@ import type { BodyEntry, ProfileSettings } from '@/lib/types';
 
 export const DEFAULT_SETTINGS: ProfileSettings = {
   weightUnit: 'kg',
+  restTimerEnabled: true,
   defaultRestSeconds: 90,
   restTimerSound: true,
   restTimerNotifications: false,
