@@ -96,6 +96,8 @@ export interface BodyEntry {
 
 export interface ProfileSettings {
   weightUnit: WeightUnit;
+  /** When false, ticking a set never starts a countdown. */
+  restTimerEnabled: boolean;
   defaultRestSeconds: number;
   restTimerSound: boolean;
   restTimerNotifications: boolean;

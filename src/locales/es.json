@@ -104,7 +104,7 @@
   "nextMonth": "Mes siguiente",
   "expandToMonth": "Ver el mes completo",
   "collapseToWeek": "Ver solo esta semana",
-  "back": "Volver",
+  "goBack": "Volver",
   "backToDashboard": "Volver al panel",
 
   "createCustomExercise": "Crear Ejercicio Personalizado",
@@ -200,6 +200,8 @@
 
   "restTimer": "Temporizador de descanso",
   "defaultRest": "Descanso por defecto",
+  "restTimerEnabled": "Temporizador de descanso",
+  "restTimerEnabledHint": "Inicia una cuenta atrás automáticamente al marcar una serie.",
   "restTimerSound": "Sonido al terminar el descanso",
   "restTimerNotifications": "Notificación al terminar el descanso",
   "notificationsDenied": "Las notificaciones están bloqueadas en los ajustes del navegador.",
@@ -237,10 +239,6 @@
   "consistency": "Constancia",
   "consistencyDescription": "Cada día en el que completaste al menos una serie.",
   "consistencyWorkouts": "{count} entrenamientos en los últimos 12 meses",
-  "stalledExercises": "Sin progresar",
-  "stalledDescription": "Los sigues entrenando, pero tu 1RM estimado no se mueve.",
-  "noStalled": "Nada estancado. Todos los ejercicios que entrenas siguen subiendo.",
-  "weeksWithoutProgress": "{weeks} semanas sin un nuevo máximo",
   "balance": "Equilibrio del entrenamiento",
   "balanceDescription": "Series efectivas por patrón de movimiento. El trabajo de brazo cuenta mitad empuje y mitad tirón.",
   "push": "Empuje",

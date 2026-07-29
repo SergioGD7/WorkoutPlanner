@@ -60,6 +60,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [showPasteConfirm, setShowPasteConfirm] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
+  const [ticketSize, setTicketSize] = useState({ width: 1080, height: 1920 });
   const [historyExerciseId, setHistoryExerciseId] = useState<string | null>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
 
@@ -156,7 +157,9 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     if (!completed) return;
 
     const exerciseName = resolveExerciseName(target, allExercises, t);
-    startRest(target.restSeconds ?? settings.defaultRestSeconds, exerciseName);
+    if (settings.restTimerEnabled) {
+      startRest(target.restSeconds ?? settings.defaultRestSeconds, exerciseName);
+    }
 
     const pr = prMap.get(target.exerciseId);
     if (pr && detectPR(updatedSet, pr)) {
@@ -313,18 +316,25 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
 
     try {
       setIsSharing(true);
-      // Give the off-screen ticket a frame to lay out before rasterising.
-      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Match the device viewport so the image looks like a screenshot of the
+      // phone rather than a fixed 9:16 frame with letterboxing.
+      const width = Math.round(window.innerWidth);
+      const height = Math.round(window.innerHeight);
+      setTicketSize({ width, height });
+
+      // Let the resized ticket lay out before rasterising it.
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 80)));
 
       const blob = await toBlob(ticketRef.current, {
         quality: 0.95,
         cacheBust: true,
-        pixelRatio: 2,
+        // Render at the screen's real pixel density.
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 3),
         skipFonts: true,
         fontEmbedCSS: '',
-        width: 1080,
-        height: ticketRef.current.scrollHeight,
-        style: { transform: 'scale(1)', transformOrigin: 'top left' },
+        width,
+        height,
       });
 
       if (!blob) throw new Error('Failed to generate image');
@@ -557,6 +567,8 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         dailyExercises={dailyExercises}
         exercises={allExercises}
         unit={unit}
+        width={ticketSize.width}
+        height={ticketSize.height}
       />
     </>
   );

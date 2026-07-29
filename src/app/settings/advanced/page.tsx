@@ -62,7 +62,7 @@ export default function AdvancedSettingsPage() {
                 size="icon"
                 onClick={() => router.back()}
                 className="rounded-full"
-                aria-label={t("back")}
+                aria-label={t("goBack")}
               >
                 <ChevronLeft className="h-6 w-6" />
               </Button>
@@ -96,6 +96,29 @@ export default function AdvancedSettingsPage() {
                     </Select>
                   </div>
 
+                  <div className="flex items-center justify-between gap-4">
+                    <Label htmlFor="rest-enabled" className="pr-2">
+                      {t("restTimerEnabled")}
+                      <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                        {t("restTimerEnabledHint")}
+                      </span>
+                    </Label>
+                    <Switch
+                      id="rest-enabled"
+                      checked={settings.restTimerEnabled}
+                      onCheckedChange={(checked) =>
+                        void updateSettings({ restTimerEnabled: checked })
+                      }
+                    />
+                  </div>
+
+                  {/* The rest of the timer options are meaningless with it off. */}
+                  <div
+                    className={`space-y-4 transition-opacity ${
+                      settings.restTimerEnabled ? "" : "pointer-events-none opacity-40"
+                    }`}
+                    aria-hidden={!settings.restTimerEnabled}
+                  >
                   <div className="flex items-center justify-between gap-4">
                     <Label htmlFor="default-rest">{t("defaultRest")}</Label>
                     <Select
@@ -146,6 +169,7 @@ export default function AdvancedSettingsPage() {
                         void handleNotificationToggle(checked)
                       }
                     />
+                  </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-4">

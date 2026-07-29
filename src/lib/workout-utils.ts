@@ -1,4 +1,4 @@
-import { differenceInCalendarDays, format, isValid, parseISO, startOfDay, subWeeks } from 'date-fns';
+import { differenceInCalendarDays, isValid, parseISO, startOfDay } from 'date-fns';
 import type {
   BodyPart,
   Exercise,
@@ -250,55 +250,6 @@ export function suggestProgression(
   const topWeight = working.reduce((max, set) => Math.max(max, set.weight), 0);
   const stepKg = toKg(weightStep(unit), unit);
   return round(topWeight + stepKg, 2);
-}
-
-export interface StalledExercise {
-  exerciseId: string;
-  weeks: number;
-  best1RM: number;
-  lastImprovedDate: string;
-}
-
-/**
- * Exercises whose best estimated 1RM hasn't improved in `weeks` weeks despite
- * still being trained. Needs at least two sessions to say anything.
- */
-export function getStalledExercises(
-  log: WorkoutLog,
-  exercises: Exercise[],
-  weeks = 5,
-  today: Date = new Date(),
-): StalledExercise[] {
-  const cutoff = format(subWeeks(startOfDay(today), weeks), 'yyyy-MM-dd');
-  const stalled: StalledExercise[] = [];
-
-  exercises.forEach((exercise) => {
-    const sessions = getExerciseSessions(log, exercise.id).filter((session) => session.best1RM > 0);
-    if (sessions.length < 2) return;
-
-    // Trained recently? Otherwise it isn't stalled, it's abandoned.
-    if (sessions[0].date < cutoff) return;
-
-    let bestSoFar = 0;
-    let lastImprovedDate = sessions[sessions.length - 1].date;
-    [...sessions].reverse().forEach((session) => {
-      if (session.best1RM > bestSoFar + 0.01) {
-        bestSoFar = session.best1RM;
-        lastImprovedDate = session.date;
-      }
-    });
-
-    if (lastImprovedDate < cutoff) {
-      stalled.push({
-        exerciseId: exercise.id,
-        weeks: Math.floor(differenceInCalendarDays(startOfDay(today), parseISO(lastImprovedDate)) / 7),
-        best1RM: bestSoFar,
-        lastImprovedDate,
-      });
-    }
-  });
-
-  return stalled.sort((a, b) => b.weeks - a.weeks);
 }
 
 /* -------------------------------------------------------------------------- */

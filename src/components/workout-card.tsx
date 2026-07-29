@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { motion, useAnimation, type PanInfo } from 'framer-motion';
 import {
   ArrowUpRight,
   Calculator,
+  ChevronsDown,
+  Flame,
   GripVertical,
   History,
   StickyNote,
   Trash2,
   Trophy,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,11 +47,15 @@ const SET_TYPE_LABEL_KEYS: Record<SetType, string> = {
   dropset: 'dropsetSet',
 };
 
-const SET_TYPE_BADGE: Record<SetType, string> = {
-  normal: '',
-  warmup: 'text-amber-500',
-  failure: 'text-destructive',
-  dropset: 'text-purple-500',
+/**
+ * Non-standard set types are flagged with an icon rather than truncated text:
+ * the label column is far too narrow for a word like "Calentamiento".
+ */
+const SET_TYPE_ICON: Record<SetType, { Icon: typeof Flame; className: string } | null> = {
+  normal: null,
+  warmup: { Icon: Flame, className: 'text-amber-500' },
+  failure: { Icon: Zap, className: 'text-destructive' },
+  dropset: { Icon: ChevronsDown, className: 'text-purple-500' },
 };
 
 interface WorkoutCardProps {
@@ -261,8 +267,8 @@ function SetRow({
   onOpenPlates,
 }: SetRowProps) {
   const { t } = useLanguage();
-  const controls = useAnimation();
   const setType = set.type ?? 'normal';
+  const typeIcon = SET_TYPE_ICON[setType];
 
   // Text inputs keep their own state while focused so a half-typed value like
   // "0" or "82." is never rewritten from props mid-keystroke.
@@ -286,189 +292,180 @@ function SetRow({
     if (!durationFocused.current) setDurationText(numberToText(set.duration ?? 0));
   }, [set.duration]);
 
-  const handleDragEnd = async (_event: unknown, info: PanInfo) => {
-    if (info.offset.x < -80) {
-      await controls.start({ x: -1000, opacity: 0, transition: { duration: 0.2 } });
-      onRemove();
-    } else {
-      void controls.start({ x: 0, transition: { type: 'spring', bounce: 0.5 } });
-    }
-  };
-
   const setLabel = `${t('set')} ${index + 1}`;
 
+  /**
+   * Every field flexes and is allowed to shrink (`min-w-0`), so the row always
+   * fits the card instead of overflowing off the right edge on narrow phones.
+   */
+  const fieldClass =
+    'h-9 w-full min-w-0 rounded-md border border-transparent bg-secondary/30 text-center font-semibold text-foreground outline-none transition-colors hover:bg-secondary/50 focus:border-primary/50 focus:bg-secondary/70';
+
   return (
-    <div className="relative overflow-hidden rounded-lg">
-      <div
-        className="absolute inset-0 z-0 flex items-center justify-end rounded-lg bg-destructive/90 pr-4"
-        aria-hidden="true"
-      >
-        <Trash2 className="h-5 w-5 text-destructive-foreground" />
-      </div>
-
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={{ left: 0.2, right: 0 }}
-        onDragEnd={handleDragEnd}
-        animate={controls}
-        className={`relative z-10 flex items-center justify-between rounded-lg border p-2 pl-2 transition-all ${
-          set.completed ? 'border-primary/50 bg-muted' : 'border-border/50 bg-card hover:border-border'
-        }`}
-      >
-        <div className="flex flex-1 items-center gap-2 md:gap-3">
-          {/* Set number doubles as the set-type / RPE menu trigger. */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+    <div
+      className={`flex items-center gap-1.5 rounded-lg border p-1.5 transition-all ${
+        set.completed ? 'border-primary/50 bg-muted' : 'border-border/50 bg-card hover:border-border'
+      }`}
+    >
+      {/* Set number doubles as the set-type / RPE menu trigger. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="w-9 shrink-0 rounded-md px-1 py-1 text-xs font-medium leading-tight text-muted-foreground transition-colors hover:bg-secondary/50"
+            aria-label={`${setLabel} — ${
+              setType === 'normal' ? t('setType') : t(SET_TYPE_LABEL_KEYS[setType])
+            }`}
+            title={t(SET_TYPE_LABEL_KEYS[setType])}
+          >
+            <span className="flex items-center gap-0.5">
+              {index + 1}
+              {typeIcon && <typeIcon.Icon className={`h-3 w-3 ${typeIcon.className}`} />}
+            </span>
+            {set.rpe ? <span className="block text-[10px] opacity-70">@{set.rpe}</span> : null}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-52">
+          <DropdownMenuLabel>{t('setType')}</DropdownMenuLabel>
+          {SET_TYPES.map((type) => (
+            <DropdownMenuItem
+              key={type}
+              onClick={() => onUpdate({ type })}
+              className={type === setType ? 'font-bold text-primary' : ''}
+            >
+              {t(SET_TYPE_LABEL_KEYS[type])}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="flex items-center justify-between">
+            {t('rpe')}
+            <span className="text-[10px] font-normal text-muted-foreground">1-10</span>
+          </DropdownMenuLabel>
+          <div className="grid grid-cols-4 gap-1 p-2">
+            {[6, 7, 7.5, 8, 8.5, 9, 9.5, 10].map((rpe) => (
               <button
+                key={rpe}
                 type="button"
-                onPointerDown={(event) => event.stopPropagation()}
-                className={`w-14 shrink-0 rounded-md px-1 py-1 text-left text-sm font-medium transition-colors hover:bg-secondary/50 ${
-                  SET_TYPE_BADGE[setType] || 'text-muted-foreground'
+                onClick={() => onUpdate({ rpe: set.rpe === rpe ? undefined : rpe })}
+                className={`rounded-md py-1 text-xs font-semibold transition-colors ${
+                  set.rpe === rpe
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary/40 hover:bg-secondary/70'
                 }`}
-                aria-label={`${setLabel} — ${t('setType')}`}
               >
-                {setType === 'normal' ? setLabel : t(SET_TYPE_LABEL_KEYS[setType]).slice(0, 6)}
-                {set.rpe ? <span className="ml-1 text-[10px] opacity-70">@{set.rpe}</span> : null}
+                {rpe}
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
-              <DropdownMenuLabel>{t('setType')}</DropdownMenuLabel>
-              {SET_TYPES.map((type) => (
-                <DropdownMenuItem
-                  key={type}
-                  onClick={() => onUpdate({ type })}
-                  className={type === setType ? 'font-bold text-primary' : ''}
-                >
-                  {t(SET_TYPE_LABEL_KEYS[type])}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="flex items-center justify-between">
-                {t('rpe')}
-                <span className="text-[10px] font-normal text-muted-foreground">1-10</span>
-              </DropdownMenuLabel>
-              <div className="grid grid-cols-5 gap-1 p-2">
-                {[6, 7, 7.5, 8, 8.5, 9, 9.5, 10].map((rpe) => (
-                  <button
-                    key={rpe}
-                    type="button"
-                    onClick={() => onUpdate({ rpe: set.rpe === rpe ? undefined : rpe })}
-                    className={`rounded-md py-1 text-xs font-semibold transition-colors ${
-                      set.rpe === rpe
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary/40 hover:bg-secondary/70'
-                    }`}
-                  >
-                    {rpe}
-                  </button>
-                ))}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            ))}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-          <div className="flex items-center gap-2">
-            {tracking === 'duration' ? (
-              <div className="flex items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        {tracking === 'duration' ? (
+          <div className="relative min-w-0 flex-1">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={durationText}
+              aria-label={`${setLabel} — ${t('duration')}`}
+              onFocus={() => {
+                durationFocused.current = true;
+              }}
+              onBlur={() => {
+                durationFocused.current = false;
+                setDurationText(numberToText(set.duration ?? 0));
+              }}
+              onChange={(event) => {
+                const raw = event.target.value;
+                if (!/^\d*$/.test(raw)) return;
+                setDurationText(raw);
+                onUpdate({ duration: raw === '' ? 0 : Number(raw) });
+              }}
+              className={`${fieldClass} pr-6`}
+              placeholder="0"
+            />
+            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
+              {t('seconds')}
+            </span>
+          </div>
+        ) : (
+          <>
+            {tracking === 'weight' && (
+              <div className="relative min-w-0 flex-1">
                 <input
                   type="text"
-                  inputMode="numeric"
-                  value={durationText}
-                  aria-label={`${setLabel} — ${t('duration')}`}
+                  inputMode="decimal"
+                  value={weightText}
+                  aria-label={`${setLabel} — ${t('weightKg', { unit })}`}
                   onFocus={() => {
-                    durationFocused.current = true;
+                    weightFocused.current = true;
                   }}
                   onBlur={() => {
-                    durationFocused.current = false;
-                    setDurationText(numberToText(set.duration ?? 0));
+                    weightFocused.current = false;
+                    setWeightText(numberToText(fromKg(set.weight, unit)));
                   }}
                   onChange={(event) => {
                     const raw = event.target.value;
-                    if (!/^\d*$/.test(raw)) return;
-                    setDurationText(raw);
-                    onUpdate({ duration: raw === '' ? 0 : Number(raw) });
+                    if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) return;
+                    setWeightText(raw);
+                    const parsed = raw === '' ? 0 : Number(raw.replace(',', '.'));
+                    if (Number.isFinite(parsed)) onUpdate({ weight: toKg(parsed, unit) });
                   }}
-                  className="h-8 w-16 rounded-md border border-transparent bg-secondary/30 text-center font-semibold text-foreground outline-none transition-colors hover:bg-secondary/50 focus:border-primary/50 focus:bg-secondary/70"
+                  className={`${fieldClass} pr-7`}
                   placeholder="0"
                 />
-                <span className="ml-1.5 text-xs font-medium text-muted-foreground">{t('seconds')}</span>
+                {/* The unit label is the plate-calculator trigger, so it costs no width. */}
+                <button
+                  type="button"
+                  onClick={onOpenPlates}
+                  aria-label={t('plateCalculator')}
+                  className="absolute right-0.5 top-1/2 flex -translate-y-1/2 items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-primary"
+                >
+                  {unit}
+                  <Calculator className="ml-0.5 h-2.5 w-2.5" />
+                </button>
               </div>
-            ) : (
-              <>
-                {tracking === 'weight' && (
-                  <div className="flex items-center">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={weightText}
-                      aria-label={`${setLabel} — ${t('weightKg', { unit })}`}
-                      onFocus={() => {
-                        weightFocused.current = true;
-                      }}
-                      onBlur={() => {
-                        weightFocused.current = false;
-                        setWeightText(numberToText(fromKg(set.weight, unit)));
-                      }}
-                      onChange={(event) => {
-                        const raw = event.target.value;
-                        if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) return;
-                        setWeightText(raw);
-                        const parsed = raw === '' ? 0 : Number(raw.replace(',', '.'));
-                        if (Number.isFinite(parsed)) onUpdate({ weight: toKg(parsed, unit) });
-                      }}
-                      className="h-8 w-16 rounded-md border border-transparent bg-secondary/30 text-center font-semibold text-foreground outline-none transition-colors hover:bg-secondary/50 focus:border-primary/50 focus:bg-secondary/70"
-                      placeholder="0"
-                    />
-                    <button
-                      type="button"
-                      onClick={onOpenPlates}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      aria-label={t('plateCalculator')}
-                      className="ml-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-primary"
-                    >
-                      <Calculator className="h-3.5 w-3.5" />
-                    </button>
-                    <span className="ml-0.5 text-xs font-medium text-muted-foreground">{unit}</span>
-                  </div>
-                )}
-
-                <span className="mx-1 text-muted-foreground/50" aria-hidden="true">
-                  ×
-                </span>
-
-                <div className="flex items-center">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={repsText}
-                    aria-label={`${setLabel} — ${t('reps')}`}
-                    onFocus={() => {
-                      repsFocused.current = true;
-                    }}
-                    onBlur={() => {
-                      repsFocused.current = false;
-                      setRepsText(numberToText(set.reps));
-                    }}
-                    onChange={(event) => {
-                      const raw = event.target.value;
-                      if (!/^\d*$/.test(raw)) return;
-                      setRepsText(raw);
-                      onUpdate({ reps: raw === '' ? 0 : Number(raw) });
-                    }}
-                    className="h-8 w-14 rounded-md border border-transparent bg-secondary/30 text-center font-semibold text-foreground outline-none transition-colors hover:bg-secondary/50 focus:border-primary/50 focus:bg-secondary/70"
-                    placeholder="0"
-                  />
-                  <span className="ml-1.5 text-xs font-medium text-muted-foreground">{t('reps')}</span>
-                </div>
-              </>
             )}
-          </div>
 
+            <span className="shrink-0 text-xs text-muted-foreground/50" aria-hidden="true">
+              ×
+            </span>
+
+            <div className="relative min-w-0 flex-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={repsText}
+                aria-label={`${setLabel} — ${t('reps')}`}
+                onFocus={() => {
+                  repsFocused.current = true;
+                }}
+                onBlur={() => {
+                  repsFocused.current = false;
+                  setRepsText(numberToText(set.reps));
+                }}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  if (!/^\d*$/.test(raw)) return;
+                  setRepsText(raw);
+                  onUpdate({ reps: raw === '' ? 0 : Number(raw) });
+                }}
+                className={fieldClass}
+                placeholder="0"
+              />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex shrink-0 items-center">
+        {/* Fixed-width slot: rows stay aligned whether or not there is a PR. */}
+        <div className="w-4 shrink-0">
           {prKind && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="ml-1 shrink-0" aria-label={t('personalRecord')}>
+                  <span aria-label={t('personalRecord')}>
                     <Trophy className="h-4 w-4 text-amber-400" />
                   </span>
                 </TooltipTrigger>
@@ -480,28 +477,24 @@ function SetRow({
           )}
         </div>
 
-        <div className="flex items-center gap-1 pl-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            onClick={onRemove}
-            aria-label={`${t('removeSet')} — ${setLabel}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          onClick={onRemove}
+          aria-label={`${t('removeSet')} — ${setLabel}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
 
-          <div className="pointer-events-auto" onPointerDown={(event) => event.stopPropagation()}>
-            <Checkbox
-              id={`set-${index}`}
-              checked={set.completed}
-              onCheckedChange={(checked) => onToggle(Boolean(checked))}
-              aria-label={`${t('done')} — ${setLabel}`}
-              className="h-6 w-6 rounded-md transition-all data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-            />
-          </div>
-        </div>
-      </motion.div>
+        <Checkbox
+          id={`set-${index}`}
+          checked={set.completed}
+          onCheckedChange={(checked) => onToggle(Boolean(checked))}
+          aria-label={`${t('done')} — ${setLabel}`}
+          className="ml-0.5 h-6 w-6 shrink-0 rounded-md transition-all data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+        />
+      </div>
     </div>
   );
 }

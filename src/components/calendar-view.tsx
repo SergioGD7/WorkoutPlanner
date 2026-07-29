@@ -64,6 +64,11 @@ export default function CalendarView() {
   );
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
   const [isMonthView, setIsMonthView] = useState(true);
+  /**
+   * Expanding or collapsing from the title animates; collapsing because a day
+   * was picked switches instantly, so the tap feels immediate.
+   */
+  const [animateViewChange, setAnimateViewChange] = useState(true);
 
   const { t, language } = useLanguage();
   const { exercises } = useExercises();
@@ -118,6 +123,7 @@ export default function CalendarView() {
   const handleDayClick = (day: Date) => {
     setSelectedDate(day);
     setCurrentWeekStart(startOfWeek(day, { weekStartsOn: WEEK_STARTS_ON }));
+    setAnimateViewChange(false);
     setIsMonthView(false);
   };
 
@@ -135,7 +141,7 @@ export default function CalendarView() {
 
   return (
     <div className="space-y-6">
-      <motion.div layout className="overflow-hidden">
+      <motion.div layout={animateViewChange} className="overflow-hidden">
         <Card className="glass-effect overflow-hidden border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
             <Button
@@ -157,6 +163,7 @@ export default function CalendarView() {
               type="button"
               onClick={() => {
                 if (!isMonthView) setCurrentMonth(startOfMonth(selectedDate));
+                setAnimateViewChange(true);
                 setIsMonthView((previous) => !previous);
               }}
               className="group flex items-center gap-2 rounded-lg px-3 py-1.5 transition-colors hover:bg-muted/50"
@@ -194,7 +201,7 @@ export default function CalendarView() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : (
-              <motion.div layout>
+              <motion.div layout={animateViewChange}>
                 <AnimatePresence mode="popLayout">
                   {isMonthView ? (
                     <motion.div
@@ -202,7 +209,7 @@ export default function CalendarView() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
+                      transition={{ duration: animateViewChange ? 0.3 : 0 }}
                       className="mt-2"
                     >
                       <div className="mb-2 grid grid-cols-7">
@@ -256,7 +263,7 @@ export default function CalendarView() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
+                      transition={{ duration: animateViewChange ? 0.3 : 0 }}
                       className="mt-2 flex w-full items-center justify-between"
                     >
                       {weekDays.map((day) => {
