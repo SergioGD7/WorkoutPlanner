@@ -23,6 +23,7 @@ import {
 import { db } from '@/lib/firebase';
 import { useAuth } from './auth-context';
 import type { WorkoutExercise, WorkoutLog } from '@/lib/types';
+import { buildDemoWorkoutLog } from '@/lib/demo-data';
 
 /**
  * One Firestore document per training day (`users/{uid}/workout_days/{yyyy-MM-dd}`).
@@ -90,10 +91,16 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const pendingRef = useRef<Map<string, WorkoutExercise[]>>(new Map());
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const uidRef = useRef<string | null>(null);
+  const isDemoRef = useRef(false);
 
   uidRef.current = user?.uid ?? null;
+  isDemoRef.current = Boolean(user?.isDemo);
 
   const flushDay = useCallback(async (dateKey: string) => {
+    if (isDemoRef.current) {
+      pendingRef.current.delete(dateKey);
+      return;
+    }
     const uid = uidRef.current;
     const pending = pendingRef.current.get(dateKey);
     if (!uid || pending === undefined) return;
@@ -127,6 +134,13 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setWorkoutLog({});
+      setIsLoading(false);
+      return;
+    }
+
+    // Demo account: fixtures in memory, no reads and no writes.
+    if (user.isDemo) {
+      setWorkoutLog(buildDemoWorkoutLog());
       setIsLoading(false);
       return;
     }
@@ -223,7 +237,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const replaceLog = useCallback(
     async (log: WorkoutLog) => {
       const uid = uidRef.current;
-      if (!uid) return;
+      if (!uid || isDemoRef.current) return;
 
       const existing = await getDocs(daysCollection(uid));
       const existingIds = existing.docs.map((docSnap) => docSnap.id);

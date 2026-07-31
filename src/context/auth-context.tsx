@@ -3,13 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   EmailAuthProvider,
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  deleteUser,
   onAuthStateChanged,
   reauthenticateWithCredential,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
-  signInWithPopup,
   signOut,
   updatePassword,
   type User as FirebaseUser,
@@ -20,13 +19,27 @@ import { auth, db } from '@/lib/firebase';
 import { initialExercises as initialExercisesData, workoutTemplates as defaultTemplates } from '@/lib/data';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
 import type { Exercise, WorkoutLog } from '@/lib/types';
+import { deleteAllUserData } from '@/lib/account';
+import { DEMO_EMAIL, DEMO_UID } from '@/lib/demo-data';
 import { v4 as uuidv4 } from 'uuid';
 
-interface LoggedInUser {
+export interface LoggedInUser {
   uid: string;
   email: string | null;
   displayName?: string | null;
+  /**
+   * Read-only sample account. Every data provider serves fixtures instead of
+   * Firestore for this user, which is what App Store review is given access to.
+   */
+  isDemo?: boolean;
 }
+
+const DEMO_USER: LoggedInUser = {
+  uid: DEMO_UID,
+  email: DEMO_EMAIL,
+  displayName: 'Alex',
+  isDemo: true,
+};
 
 type AuthResult = { success: boolean; messageKey?: string };
 
@@ -35,10 +48,17 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthResult>;
   signUp: (email: string, password: string) => Promise<AuthResult>;
-  signInWithGoogle: () => Promise<AuthResult>;
   logout: () => void;
   changePassword: (currentPass: string, newPass: string) => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
+  /**
+   * Wipes the Firestore subtree and then the auth user. Both stores require an
+   * in-app way to do this.
+   */
+  deleteAccount: (currentPassword: string) => Promise<AuthResult>;
+  /** Enters the read-only sample account without contacting Firebase. */
+  enterDemoMode: () => void;
+  isDemo: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,11 +76,8 @@ const formatFirebaseError = (errorCode: string, context?: 'login' | 'changePassw
       return 'emailAlreadyInUse';
     case 'auth/weak-password':
       return 'passwordTooShort';
-    case 'auth/popup-closed-by-user':
-    case 'auth/cancelled-popup-request':
-      return 'popupClosed';
-    case 'auth/account-exists-with-different-credential':
-      return 'accountExistsWithDifferentCredential';
+    case 'auth/requires-recent-login':
+      return 'requiresRecentLogin';
     case 'auth/too-many-requests':
       return 'tooManyRequests';
     case 'auth/network-request-failed':
@@ -149,6 +166,7 @@ async function initializeDataForNewUser(userId: string, email: string | null) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<LoggedInUser | null>(null);
+  const [demoUser, setDemoUser] = useState<LoggedInUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -188,18 +206,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const credential = await signInWithPopup(auth, provider);
-      await initializeDataForNewUser(credential.user.uid, credential.user.email);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, messageKey: formatFirebaseError(error?.code) };
-    }
-  }, []);
+  const enterDemoMode = useCallback(() => setDemoUser(DEMO_USER), []);
 
   const logout = useCallback(async () => {
+    setDemoUser(null);
     try {
       await signOut(auth);
     } catch (error) {
@@ -224,6 +234,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const deleteAccount = useCallback(async (currentPassword: string): Promise<AuthResult> => {
+    const currentUser = auth.currentUser;
+    if (!currentUser?.email) return { success: false, messageKey: 'notLoggedIn' };
+
+    try {
+      // Re-authenticate first: if the password is wrong we must not have deleted
+      // any data yet, and `deleteUser` rejects a stale session anyway.
+      const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+
+      await deleteAllUserData(currentUser.uid);
+      await deleteUser(currentUser);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, messageKey: formatFirebaseError(error?.code, 'changePassword') };
+    }
+  }, []);
+
   const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
     try {
       await sendPasswordResetEmail(auth, email);
@@ -234,8 +262,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, signUp, signInWithGoogle, logout, changePassword, resetPassword }),
-    [user, loading, login, signUp, signInWithGoogle, logout, changePassword, resetPassword],
+    () => ({
+      // The demo account shadows any real session while it is active.
+      user: demoUser ?? user,
+      isDemo: demoUser !== null,
+      loading,
+      login,
+      signUp,
+      logout,
+      changePassword,
+      resetPassword,
+      deleteAccount,
+      enterDemoMode,
+    }),
+    [
+      demoUser,
+      user,
+      loading,
+      login,
+      signUp,
+      logout,
+      changePassword,
+      resetPassword,
+      deleteAccount,
+      enterDemoMode,
+    ],
   );
 
   if (loading) {

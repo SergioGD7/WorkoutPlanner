@@ -13,6 +13,7 @@ import { collection, deleteDoc, doc, onSnapshot, query, setDoc, writeBatch } fro
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/firebase';
 import { initialExercises as initialExercisesData } from '@/lib/data';
+import { DEMO_EXERCISES } from '@/lib/demo-data';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
 import type { Exercise } from '@/lib/types';
 import { useAuth } from './auth-context';
@@ -32,13 +33,19 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   const getExercisesCollectionRef = useCallback(() => {
-    if (!user) return null;
+    // Returning null makes every mutation a no-op, which is what demo needs.
+    if (!user || user.isDemo) return null;
     return collection(db, `users/${user.uid}/exercises`);
   }, [user]);
 
   useEffect(() => {
     if (!user) {
       setExercises(initialExercisesData);
+      return;
+    }
+
+    if (user.isDemo) {
+      setExercises(DEMO_EXERCISES);
       return;
     }
 

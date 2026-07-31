@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from './auth-context';
 import type { BodyEntry, ProfileSettings } from '@/lib/types';
+import { buildDemoBodyEntries } from '@/lib/demo-data';
 
 export const DEFAULT_SETTINGS: ProfileSettings = {
   weightUnit: 'kg',
@@ -116,6 +117,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (user.isDemo) {
+      setSettings(DEFAULT_SETTINGS);
+      setBodyEntries(buildDemoBodyEntries());
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
 
     const unsubSettings = onSnapshot(
@@ -151,7 +159,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const updateSettings = useCallback(
     async (patch: Partial<ProfileSettings>) => {
       setSettings((previous) => ({ ...previous, ...patch }));
-      if (!user) return;
+      if (!user || user.isDemo) return;
       try {
         await setDoc(doc(db, `users/${user.uid}/profile/settings`), patch, { merge: true });
       } catch (error) {
@@ -163,7 +171,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const saveBodyEntry = useCallback(
     async (entry: BodyEntry) => {
-      if (!user) return;
+      if (!user || user.isDemo) return;
       const payload: Record<string, unknown> = {};
       Object.entries(entry).forEach(([key, value]) => {
         if (key !== 'date' && value !== undefined && value !== null && !Number.isNaN(value)) {
@@ -181,7 +189,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const deleteBodyEntry = useCallback(
     async (date: string) => {
-      if (!user) return;
+      if (!user || user.isDemo) return;
       try {
         await deleteDoc(doc(bodyEntriesCollection(user.uid), date));
       } catch (error) {
@@ -193,7 +201,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const replaceBodyEntries = useCallback(
     async (entries: BodyEntry[]) => {
-      if (!user || entries.length === 0) return;
+      if (!user || user.isDemo || entries.length === 0) return;
       for (let i = 0; i < entries.length; i += 400) {
         const batch = writeBatch(db);
         entries.slice(i, i + 400).forEach((entry) => {

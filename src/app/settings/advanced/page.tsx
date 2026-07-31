@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import AuthGuard from "@/components/auth-guard";
 import BackupDataForm from "@/components/backup-data-form";
+import DeleteAccountDialog from "@/components/delete-account-dialog";
 import ChangePasswordForm from "@/components/change-password-form";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -54,7 +55,10 @@ export default function AdvancedSettingsPage() {
   return (
     <AuthGuard>
       <div className="flex min-h-screen w-full flex-col overflow-y-auto bg-background">
-        <main className="mx-auto w-full max-w-4xl flex-1 p-4 md:p-6">
+        <main
+          className="mx-auto w-full max-w-4xl flex-1 p-4 md:p-6"
+          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+        >
           <div className="space-y-6">
             <div className="mb-6 flex items-center gap-3">
               <Button
@@ -197,6 +201,14 @@ export default function AdvancedSettingsPage() {
                   {t("dataManagement")}
                 </h3>
                 <BackupDataForm />
+              </section>
+
+              {/* Both stores require an in-app route to account deletion. */}
+              <section className="rounded-xl border border-destructive/30 bg-card p-6 shadow-sm">
+                <h3 className="mb-4 font-headline text-lg font-semibold text-destructive">
+                  {t("dangerZone")}
+                </h3>
+                <DeleteAccountDialog />
               </section>
             </div>
           </div>

@@ -77,7 +77,11 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const dailyExercises = useMemo(() => workoutLog[formattedDate] ?? [], [workoutLog, formattedDate]);
 
   const locale = language === 'es' ? es : enUS;
-  const getFormattedDate = useCallback(() => format(date, 'EEEE, d', { locale }), [date, locale]);
+  const getFormattedDate = useCallback(() => {
+    const formatted = format(date, 'EEEE, d', { locale });
+    // date-fns lowercases Spanish weekdays; only the first letter needs raising.
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }, [date, locale]);
 
   /** Best ever per exercise, excluding today, so today's sets can beat it. */
   const prMap = useMemo(() => {
@@ -377,7 +381,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     <>
       <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-card sm:shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between px-2 sm:px-6">
-          <CardTitle className="font-headline text-2xl capitalize">
+          <CardTitle className="font-headline text-2xl">
             {t('workoutFor', { date: getFormattedDate() })}
           </CardTitle>
           <div className="flex items-center gap-1">

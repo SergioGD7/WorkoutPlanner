@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { addDays, eachWeekOfInterval, format, isSameMonth, parseISO, startOfWeek, subYears } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
@@ -29,6 +29,7 @@ function levelForSets(sets: number): number {
 }
 
 export default function ConsistencyHeatmap() {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { t, language } = useLanguage();
   const { workoutLog } = useWorkout();
   const locale = language === 'es' ? es : enUS;
@@ -72,6 +73,11 @@ export default function ConsistencyHeatmap() {
     return { weeks: grid, monthLabels: labels, totalWorkouts: total };
   }, [workoutLog, weekStartsOn, locale]);
 
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (node) node.scrollLeft = node.scrollWidth;
+  }, [weeks.length]);
+
   return (
     <Card className="glass-effect">
       <CardHeader className="pb-2">
@@ -83,12 +89,16 @@ export default function ConsistencyHeatmap() {
       </CardHeader>
       <CardContent>
         {/* Horizontal scroll keeps a full year readable on a phone. */}
-        <div className="overflow-x-auto pb-2">
+        <div ref={scrollRef} className="overflow-x-auto pb-2">
           <div className="inline-block min-w-full">
             <div className="mb-1 flex gap-[3px] pl-0">
               {monthLabels.map((label, index) => (
-                <div key={index} className="w-[11px] shrink-0 text-[9px] text-muted-foreground">
-                  {label ?? ''}
+                <div key={index} className="relative h-3 w-[11px] shrink-0">
+                  {label && (
+                    <span className="absolute left-0 top-0 whitespace-nowrap text-[9px] text-muted-foreground">
+                      {label}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

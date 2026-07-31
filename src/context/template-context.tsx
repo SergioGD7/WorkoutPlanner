@@ -13,6 +13,7 @@ import { collection, deleteDoc, doc, onSnapshot, query, setDoc, writeBatch } fro
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/firebase';
 import { workoutTemplates as defaultTemplatesData } from '@/lib/data';
+import { DEMO_TEMPLATES } from '@/lib/demo-data';
 import type { WorkoutTemplate } from '@/lib/types';
 import { useAuth } from './auth-context';
 
@@ -31,13 +32,18 @@ export function TemplateProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
   const getTemplatesCollectionRef = useCallback(() => {
-    if (!user) return null;
+    if (!user || user.isDemo) return null;
     return collection(db, `users/${user.uid}/templates`);
   }, [user]);
 
   useEffect(() => {
     if (!user) {
       setTemplates(defaultTemplatesData);
+      return;
+    }
+
+    if (user.isDemo) {
+      setTemplates(DEMO_TEMPLATES);
       return;
     }
 
