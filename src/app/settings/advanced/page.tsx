@@ -54,7 +54,10 @@ export default function AdvancedSettingsPage() {
   return (
     <AuthGuard>
       <div className="flex min-h-screen w-full flex-col overflow-y-auto bg-background">
-        <main className="mx-auto w-full max-w-4xl flex-1 p-4 md:p-6">
+        <main
+          className="mx-auto w-full max-w-4xl flex-1 p-4 md:p-6"
+          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+        >
           <div className="space-y-6">
             <div className="mb-6 flex items-center gap-3">
               <Button
