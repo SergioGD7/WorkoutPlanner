@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import AuthGuard from "@/components/auth-guard";
 import BackupDataForm from "@/components/backup-data-form";
+import DeleteAccountDialog from "@/components/delete-account-dialog";
 import ChangePasswordForm from "@/components/change-password-form";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -200,6 +201,14 @@ export default function AdvancedSettingsPage() {
                   {t("dataManagement")}
                 </h3>
                 <BackupDataForm />
+              </section>
+
+              {/* Both stores require an in-app route to account deletion. */}
+              <section className="rounded-xl border border-destructive/30 bg-card p-6 shadow-sm">
+                <h3 className="mb-4 font-headline text-lg font-semibold text-destructive">
+                  {t("dangerZone")}
+                </h3>
+                <DeleteAccountDialog />
               </section>
             </div>
           </div>
