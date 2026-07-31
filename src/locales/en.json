@@ -56,6 +56,10 @@
   "incorrectCurrentPassword": "The current password is not correct.",
   "emailAlreadyInUse": "An account with this email already exists.",
   "notLoggedIn": "You must be logged in to do that.",
+  "tryDemo": "Explore with sample data",
+  "demoMode": "Demo",
+  "demoBanner": "Sample account — changes are not saved.",
+  "exitDemo": "Exit demo",
   "loading": "Loading...",
 
   "workoutFor": "Workout for {date}",

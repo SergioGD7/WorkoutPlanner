@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean:sw": "rm -f public/sw.js public/sw.js.map public/workbox-*.js public/workbox-*.js.map public/swe-worker-*.js public/fallback-*.js",
+    "build:native": "npm run clean:sw && CAPACITOR_BUILD=1 next build"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",

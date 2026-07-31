@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Dumbbell, HomeIcon, BookOpen, BarChart3, LogOut, CalendarDays, User } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
@@ -27,7 +28,7 @@ const pageVariants: Variants = {
 export default function HomePage() {
   const [view, setView] = useState<View>("dashboard");
   const { t } = useLanguage();
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, isDemo } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background pb-16 md:pb-0">
+    <div className="flex min-h-screen w-full bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-16 items-center border-b px-6">
@@ -109,20 +110,40 @@ export default function HomePage() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Header */}
-        <header className="flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 shrink-0">
+        <header
+          className="flex items-center gap-4 border-b bg-card px-4 md:px-6 shrink-0"
+          style={{ minHeight: "4rem", paddingTop: "env(safe-area-inset-top)" }}
+        >
           <div className="flex items-center md:hidden">
             <Dumbbell className="h-6 w-6 text-primary mr-2" />
-            <h1 className="text-lg font-bold font-headline">Workout Planner</h1>
+            <h1 className="text-lg font-bold font-headline whitespace-nowrap">Workout Planner</h1>
           </div>
           <div className="flex-1 hidden md:block">
              <h2 className="text-xl font-semibold capitalize font-headline">{t(view)}</h2>
           </div>
           <div className="flex flex-1 md:flex-none justify-end items-center gap-2">
-            <LanguageSwitcher />
-            <ThemeSwitcher />
-            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label={t('logout')} className="rounded-full">
+            {isDemo && (
+              <Badge
+                variant="outline"
+                className="border-primary/40 bg-primary/10 text-[10px] uppercase text-primary"
+                title={t('demoBanner')}
+              >
+                {t('demoMode')}
+              </Badge>
+            )}
+            <div className="hidden sm:flex sm:items-center sm:gap-2">
+              <LanguageSwitcher />
+              <ThemeSwitcher />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              aria-label={isDemo ? t('exitDemo') : t('logout')}
+              className="rounded-full"
+            >
               <LogOut className="h-5 w-5" />
-              <span className="sr-only">{t('logout')}</span>
+              <span className="sr-only">{isDemo ? t('exitDemo') : t('logout')}</span>
             </Button>
           </div>
         </header>
@@ -148,7 +169,10 @@ export default function HomePage() {
       <RestTimer />
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t flex items-center justify-around px-2 z-50 glass-effect">
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t flex items-center justify-around px-2 z-50 glass-effect"
+        style={{ height: "calc(4rem + env(safe-area-inset-bottom))", paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         {navItems.map((item) => {
           const isActive = view === item.id;
           return (

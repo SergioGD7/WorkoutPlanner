@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
+import { supportsGooglePopupSignIn } from '@/lib/platform';
 import { useLanguage } from '@/context/language-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,13 +26,19 @@ export default function LoginPage() {
   const [isResetting, setIsResetting] = useState(false);
 
   const router = useRouter();
-  const { user, loading, login, signUp, signInWithGoogle, resetPassword } = useAuth();
+  const { user, loading, login, signUp, signInWithGoogle, resetPassword, enterDemoMode } = useAuth();
+  const [canUseGoogle, setCanUseGoogle] = useState(false);
   const { t } = useLanguage();
   const { toast } = useToast();
 
   useEffect(() => {
     if (!loading && user) router.push('/');
   }, [user, loading, router]);
+
+  // Evaluated after mount: `window.Capacitor` is not available during SSG.
+  useEffect(() => {
+    setCanUseGoogle(supportsGooglePopupSignIn());
+  }, []);
 
   const formSchema = useMemo(
     () =>
@@ -243,10 +250,24 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={isSubmitting}>
-            <GoogleIcon />
-            {t('continueWithGoogle')}
-          </Button>
+          <div className="space-y-2">
+            {/* Hidden in the native shells: a WebView has no popup to sign into. */}
+            {canUseGoogle && (
+              <Button variant="outline" className="w-full" onClick={handleGoogle} disabled={isSubmitting}>
+                <GoogleIcon />
+                {t('continueWithGoogle')}
+              </Button>
+            )}
+
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground"
+              onClick={enterDemoMode}
+              disabled={isSubmitting}
+            >
+              {t('tryDemo')}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
