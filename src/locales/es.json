@@ -73,6 +73,7 @@
   "deleteAccountDemoDisabled": "No disponible en la cuenta de ejemplo.",
   "accountDeleted": "Cuenta eliminada",
   "accountDeletedDescription": "Tu cuenta y todos sus datos han desaparecido.",
+  "privacyPolicy": "Política de privacidad",
   "loading": "Cargando...",
 
   "workoutFor": "Entrenamiento para el {date}",

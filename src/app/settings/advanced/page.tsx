@@ -203,6 +203,20 @@ export default function AdvancedSettingsPage() {
                 <BackupDataForm />
               </section>
 
+              <section className="rounded-xl border border-border/50 bg-card p-6 shadow-sm">
+                <h3 className="mb-2 font-headline text-lg font-semibold">{t("privacyPolicy")}</h3>
+                {/* Relative so it resolves under the GitHub Pages base path and
+                    inside the native WebView alike. */}
+                <a
+                  href="../privacy"
+                  className="text-sm text-primary underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t("privacyPolicy")}
+                </a>
+              </section>
+
               {/* Both stores require an in-app route to account deletion. */}
               <section className="rounded-xl border border-destructive/30 bg-card p-6 shadow-sm">
                 <h3 className="mb-4 font-headline text-lg font-semibold text-destructive">
