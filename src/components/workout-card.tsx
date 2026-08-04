@@ -145,8 +145,9 @@ export default function WorkoutCard({
             )}
           </div>
 
-          {/* What you did last time — the number you actually want in the gym. */}
-          <p className="mt-2 text-xs text-muted-foreground">
+          {/* What you did last time — the number you actually want in the gym.
+              Kept to one line: a long set list truncates rather than wrapping. */}
+          <p className="mt-2 truncate text-xs text-muted-foreground">
             {lastTimeSummary ? (
               <>
                 <span className="font-semibold uppercase tracking-wider">{t('lastTime')}:</span>{' '}
@@ -179,12 +180,19 @@ export default function WorkoutCard({
         </div>
 
         <div className="flex shrink-0 items-center">
-          <Button variant="ghost" size="icon" onClick={onOpenHistory} aria-label={t('viewHistory')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onOpenHistory}
+            aria-label={t('viewHistory')}
+          >
             <History className="h-4 w-4 text-muted-foreground transition-colors hover:text-primary" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
+            className="h-8 w-8"
             onClick={() => setShowNotes((previous) => !previous)}
             aria-label={t('notes')}
             aria-pressed={showNotes}
@@ -195,7 +203,13 @@ export default function WorkoutCard({
               }`}
             />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onDelete} aria-label={t('deleteExercise')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onDelete}
+            aria-label={t('deleteExercise')}
+          >
             <Trash2 className="h-4 w-4 text-muted-foreground transition-colors hover:text-destructive" />
           </Button>
         </div>

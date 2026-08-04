@@ -86,7 +86,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="flex min-h-screen w-full bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-16 items-center border-b px-6">
@@ -149,7 +149,7 @@ export default function HomePage() {
         </header>
 
         {/* Main Content Area with Animations */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 relative">
+        <main className="flex-1 overflow-y-auto p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={view}
@@ -168,26 +168,34 @@ export default function HomePage() {
       {/* Rest timer lives at the shell level so it survives navigation between views. */}
       <RestTimer />
 
-      {/* Mobile Bottom Navigation Bar */}
+      {/* Floating pill navigation, iOS style: detached from the bottom edge,
+          icons only, with the active item marked by a filled capsule. */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t flex items-center justify-around px-2 z-50 glass-effect"
-        style={{ height: "calc(4rem + env(safe-area-inset-bottom))", paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="md:hidden fixed left-1/2 z-50 -translate-x-1/2"
+        style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        aria-label={t('dashboard')}
       >
-        {navItems.map((item) => {
-          const isActive = view === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleViewChange(item.id)}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
-                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <item.icon className={`h-6 w-6 ${isActive ? 'fill-primary/20' : ''}`} />
-              <span className="text-[10px] font-medium leading-none">{item.label}</span>
-            </button>
-          );
-        })}
+        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/80 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl">
+          {navItems.map((item) => {
+            const isActive = view === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleViewChange(item.id)}
+                aria-label={item.label}
+                aria-current={isActive ? 'page' : undefined}
+                title={item.label}
+                className={`flex h-12 w-14 items-center justify-center rounded-full transition-colors ${
+                  isActive
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                }`}
+              >
+                <item.icon className="h-6 w-6" />
+              </button>
+            );
+          })}
+        </div>
       </nav>
     </div>
   );

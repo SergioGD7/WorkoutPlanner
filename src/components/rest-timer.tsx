@@ -28,7 +28,10 @@ export default function RestTimer() {
           exit={{ opacity: 0, y: 50, scale: 0.9 }}
           role="timer"
           aria-live="off"
-          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 md:bottom-6"
+          className="fixed left-1/2 z-50 -translate-x-1/2"
+          // Clears the floating nav pill on phones. An inline value is needed
+          // because it has to compose with the safe-area inset.
+          style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))' }}
         >
           <div className="relative overflow-hidden rounded-full border border-primary/20 bg-background/90 px-4 py-2 shadow-2xl shadow-primary/10 backdrop-blur-xl">
             {/* Depleting progress track behind the controls. */}

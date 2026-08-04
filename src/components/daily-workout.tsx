@@ -380,11 +380,16 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   return (
     <>
       <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-card sm:shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between px-2 sm:px-6">
-          <CardTitle className="font-headline text-2xl">
-            {t('workoutFor', { date: getFormattedDate() })}
+        <CardHeader className="flex flex-row items-center justify-between gap-2 px-2 sm:px-6">
+          {/* On a phone there is only room for the date itself next to the
+              actions; the full phrase would truncate to "Entrenamiento pa...". */}
+          <CardTitle className="min-w-0 truncate font-headline text-lg capitalize sm:text-xl md:text-2xl">
+            <span className="sm:hidden">{getFormattedDate()}</span>
+            <span className="hidden sm:inline">
+              {t('workoutFor', { date: getFormattedDate() })}
+            </span>
           </CardTitle>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {dailyExercises.length > 0 && (
               <Button
                 variant="outline"

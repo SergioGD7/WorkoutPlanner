@@ -67,14 +67,16 @@ export default function ExerciseLibrary() {
       <div className="mb-4 flex items-center justify-between">
         <h2 className="font-headline text-xl font-bold tracking-tight md:text-2xl">{t('exerciseLibrary')}</h2>
         <Button
+          size="icon"
+          className="rounded-full"
+          aria-label={t('createCustomExercise')}
+          title={t('createCustomExercise')}
           onClick={() => {
             setExerciseToEdit(null);
             setIsDialogOpen(true);
           }}
         >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          <span className="hidden sm:inline">{t('createCustomExercise')}</span>
-          <span className="sm:hidden">{t('create')}</span>
+          <PlusCircle className="h-5 w-5" />
         </Button>
       </div>
 
