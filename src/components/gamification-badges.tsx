@@ -52,18 +52,22 @@ export default function GamificationBadges({ workoutLog }: GamificationBadgesPro
   }, [streak]);
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 items-stretch gap-4">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Card className="glass-effect cursor-help border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-red-500/10">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className="rounded-full bg-orange-500/20 p-3">
+            <Card className="glass-effect h-full cursor-help border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-red-500/10">
+              <CardContent className="flex h-full items-center gap-3 p-4">
+                <div className="shrink-0 rounded-full bg-orange-500/20 p-3">
                   <Flame className="h-6 w-6 text-orange-500" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">{t('currentStreak')}</p>
-                  <h3 className="font-headline text-2xl font-bold">
+                <div className="min-w-0">
+                  {/* Two lines are reserved so both cards' values sit on the same
+                      baseline even when one label wraps and the other doesn't. */}
+                  <p className="flex min-h-[2.25rem] items-center text-xs font-medium leading-tight text-muted-foreground sm:text-sm">
+                    {t('currentStreak')}
+                  </p>
+                  <h3 className="font-headline text-2xl font-bold leading-none">
                     {streak} {t('days')}
                   </h3>
                 </div>
@@ -76,14 +80,16 @@ export default function GamificationBadges({ workoutLog }: GamificationBadgesPro
         </Tooltip>
       </TooltipProvider>
 
-      <Card className="glass-effect border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-purple-500/10">
-        <CardContent className="flex items-center gap-4 p-4">
-          <div className="rounded-full bg-blue-500/20 p-3">
+      <Card className="glass-effect h-full border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-purple-500/10">
+        <CardContent className="flex h-full items-center gap-3 p-4">
+          <div className="shrink-0 rounded-full bg-blue-500/20 p-3">
             <Trophy className="h-6 w-6 text-blue-500" />
           </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{t('totalWorkouts')}</p>
-            <h3 className="font-headline text-2xl font-bold">{totalWorkouts}</h3>
+          <div className="min-w-0">
+            <p className="flex min-h-[2.25rem] items-center text-xs font-medium leading-tight text-muted-foreground sm:text-sm">
+              {t('totalWorkouts')}
+            </p>
+            <h3 className="font-headline text-2xl font-bold leading-none">{totalWorkouts}</h3>
           </div>
         </CardContent>
       </Card>
