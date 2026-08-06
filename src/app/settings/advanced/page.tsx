@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import AuthGuard from "@/components/auth-guard";
+import { withBasePath } from "@/lib/base-path";
 import BackupDataForm from "@/components/backup-data-form";
 import DeleteAccountDialog from "@/components/delete-account-dialog";
 import ChangePasswordForm from "@/components/change-password-form";
@@ -205,10 +206,13 @@ export default function AdvancedSettingsPage() {
 
               <section className="rounded-xl border border-border/50 bg-card p-6 shadow-sm">
                 <h3 className="mb-2 font-headline text-lg font-semibold">{t("privacyPolicy")}</h3>
-                {/* Relative so it resolves under the GitHub Pages base path and
-                    inside the native WebView alike. */}
+                {/* A relative href resolved to /settings/privacy inside the
+                    native WebView, which does not exist: the native build uses
+                    trailing slashes, so the page URL is /settings/advanced/ and
+                    ".." only climbs to /settings/. An absolute path with the
+                    deploy prefix is correct in both places. */}
                 <a
-                  href="../privacy"
+                  href={withBasePath('/privacy')}
                   className="text-sm text-primary underline"
                   target="_blank"
                   rel="noreferrer"

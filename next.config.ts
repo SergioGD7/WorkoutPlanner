@@ -13,15 +13,22 @@ import { basePath } from './src/lib/base-path';
  */
 const isNativeBuild = process.env.CAPACITOR_BUILD === '1';
 
+/** Empty for the native shells, which serve the bundle from the device root. */
+const effectiveBasePath = isNativeBuild ? '' : basePath;
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Deployed as a static site to GitHub Pages and embedded in the native shells.
   output: 'export',
   // Pages serves the app from a subdirectory; empty locally and on native.
-  ...(basePath && !isNativeBuild && { basePath }),
+  ...(effectiveBasePath && { basePath: effectiveBasePath }),
   trailingSlash: isNativeBuild,
   env: {
     NEXT_PUBLIC_NATIVE: isNativeBuild ? '1' : '0',
+    // Client components cannot read GITHUB_ACTIONS: Next only inlines
+    // NEXT_PUBLIC_*. Without this an <a href> built by `withBasePath` would drop
+    // the prefix and 404 on Pages.
+    NEXT_PUBLIC_BASE_PATH: effectiveBasePath,
   },
 };
 
