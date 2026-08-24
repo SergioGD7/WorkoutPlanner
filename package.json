@@ -14,6 +14,8 @@
     "build:native": "npm run clean:sw && CAPACITOR_BUILD=1 next build"
   },
   "dependencies": {
+    "@capacitor/core": "^7.6.8",
+    "@capacitor/local-notifications": "^7.0.7",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@genkit-ai/googleai": "^1.13.0",
     "@genkit-ai/next": "^1.13.0",
