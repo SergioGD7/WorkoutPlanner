@@ -116,15 +116,22 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     if (firedRef.current) return;
     firedRef.current = true;
 
-    triggerHaptic('heavy');
-    setTimeout(() => triggerHaptic('success'), 400);
+    // Whether our tick reached zero is not the same question as whether the
+    // user is looking at the phone: Android often keeps the WebView running for
+    // a while after it goes to the background. Key the decision off visibility.
+    const isVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
 
-    if (settingsRef.current.restTimerSound) playChime();
+    if (isVisible) {
+      triggerHaptic('heavy');
+      setTimeout(() => triggerHaptic('success'), 400);
+      if (settingsRef.current.restTimerSound) playChime();
 
-    // The countdown reached zero with the app awake, so the chime and haptic
-    // above already did the job. Withdraw the notification booked with the OS
-    // rather than letting it fire on top of them.
-    void cancelRestNotification();
+      // On screen, so the chime and haptic did the job; withdraw the alert
+      // booked with the OS rather than letting it arrive on top of them.
+      void cancelRestNotification();
+    }
+    // Hidden: leave the scheduled notification alone. It is the only thing that
+    // will actually reach a phone sitting in a pocket.
 
     setEndsAt(null);
     setRemaining(0);

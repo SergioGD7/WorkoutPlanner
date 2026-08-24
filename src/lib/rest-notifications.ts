@@ -20,14 +20,27 @@ const REST_NOTIFICATION_ID = 1;
 
 type LocalNotificationsPlugin = typeof import('@capacitor/local-notifications')['LocalNotifications'];
 
-let pluginPromise: Promise<LocalNotificationsPlugin | null> | null = null;
+/**
+ * The plugin is kept boxed inside an object, and never resolved from a promise
+ * on its own. Capacitor plugins are Proxies that turn *any* property access into
+ * a native call, including `.then`. Resolving one directly makes the promise
+ * machinery treat it as a thenable and invoke `LocalNotifications.then()`, which
+ * fails with "not implemented on android" and the plugin never arrives. Boxing
+ * it keeps the awaited value a plain object.
+ */
+type PluginBox = { plugin: LocalNotificationsPlugin };
 
-async function getPlugin(): Promise<LocalNotificationsPlugin | null> {
-  if (typeof window === 'undefined') return null;
+let pluginPromise: Promise<PluginBox | null> | null = null;
+
+function getPlugin(): Promise<PluginBox | null> {
+  if (typeof window === 'undefined') return Promise.resolve(null);
 
   pluginPromise ??= import('@capacitor/local-notifications')
-    .then((module) => module.LocalNotifications)
-    .catch(() => null);
+    .then((module): PluginBox => ({ plugin: module.LocalNotifications }))
+    .catch((error) => {
+      console.error('Local notifications plugin unavailable:', error);
+      return null;
+    });
 
   return pluginPromise;
 }
@@ -37,17 +50,18 @@ async function getPlugin(): Promise<LocalNotificationsPlugin | null> {
  * Must be called from a user gesture: both browsers and iOS require it.
  */
 export async function requestRestNotificationPermission(): Promise<boolean> {
-  const plugin = await getPlugin();
-  if (!plugin) return false;
+  const box = await getPlugin();
+  if (!box) return false;
 
   try {
-    const current = await plugin.checkPermissions();
+    const current = await box.plugin.checkPermissions();
     if (current.display === 'granted') return true;
     if (current.display === 'denied') return false;
 
-    const requested = await plugin.requestPermissions();
+    const requested = await box.plugin.requestPermissions();
     return requested.display === 'granted';
-  } catch {
+  } catch (error) {
+    console.error('Could not obtain notification permission:', error);
     return false;
   }
 }
@@ -64,15 +78,15 @@ export async function scheduleRestNotification(
   // Nothing to deliver if the moment has already passed.
   if (endsAt <= Date.now()) return;
 
-  const plugin = await getPlugin();
-  if (!plugin) return;
+  const box = await getPlugin();
+  if (!box) return;
 
   try {
-    const permission = await plugin.checkPermissions();
+    const permission = await box.plugin.checkPermissions();
     if (permission.display !== 'granted') return;
 
-    await plugin.cancel({ notifications: [{ id: REST_NOTIFICATION_ID }] });
-    await plugin.schedule({
+    await box.plugin.cancel({ notifications: [{ id: REST_NOTIFICATION_ID }] });
+    await box.plugin.schedule({
       notifications: [
         {
           id: REST_NOTIFICATION_ID,
@@ -87,19 +101,20 @@ export async function scheduleRestNotification(
         },
       ],
     });
-  } catch {
+  } catch (error) {
     // Permission revoked mid-session, or the platform refused to schedule.
     // The in-app chime still covers the foreground case.
+    console.error('Could not schedule the rest notification:', error);
   }
 }
 
 /** Withdraws a pending alert: the rest was skipped, or ended with the app open. */
 export async function cancelRestNotification(): Promise<void> {
-  const plugin = await getPlugin();
-  if (!plugin) return;
+  const box = await getPlugin();
+  if (!box) return;
 
   try {
-    await plugin.cancel({ notifications: [{ id: REST_NOTIFICATION_ID }] });
+    await box.plugin.cancel({ notifications: [{ id: REST_NOTIFICATION_ID }] });
   } catch {
     // Nothing pending, or the platform has no scheduler. Either way, done.
   }
