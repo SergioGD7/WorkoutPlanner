@@ -15,6 +15,7 @@ import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { triggerHaptic } from "@/utils/haptics";
 import RestTimer from "@/components/rest-timer";
+import WorkTimer from "@/components/work-timer";
 import { AnimatePresence, motion, Variants } from "framer-motion";
 
 type View = "dashboard" | "library" | "progress" | "calendar";
@@ -167,6 +168,7 @@ export default function HomePage() {
 
       {/* Rest timer lives at the shell level so it survives navigation between views. */}
       <RestTimer />
+      <WorkTimer />
 
       {/* Floating pill navigation, iOS style: detached from the bottom edge,
           icons only, with the active item marked by a filled capsule. */}

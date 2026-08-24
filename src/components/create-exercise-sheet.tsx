@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
@@ -34,6 +35,7 @@ const formSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   bodyPart: z.enum(bodyParts as unknown as [string, ...string[]]),
   tracking: z.enum(["weight", "bodyweight", "duration"]),
+  perSide: z.boolean(),
 });
 
 interface CreateExerciseSheetProps {
@@ -59,6 +61,7 @@ export default function CreateExerciseSheet({
       description: "",
       bodyPart: "Chest",
       tracking: "weight",
+      perSide: false,
     },
   });
 
@@ -70,6 +73,7 @@ export default function CreateExerciseSheet({
           description: exerciseToEdit.description,
           bodyPart: exerciseToEdit.bodyPart,
           tracking: exerciseToEdit.tracking ?? "weight",
+          perSide: exerciseToEdit.perSide ?? false,
         });
       } else {
         form.reset({
@@ -77,6 +81,7 @@ export default function CreateExerciseSheet({
           description: "",
           bodyPart: "Chest",
           tracking: "weight",
+          perSide: false,
         });
       }
     }
@@ -247,6 +252,26 @@ export default function CreateExerciseSheet({
                           </div>
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* The set still records the total; this only asks the app to
+                      show how it splits between the two sides. */}
+                  <FormField
+                    control={form.control}
+                    name="perSide"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between gap-4">
+                        <FormLabel className="pr-2 text-base font-semibold">
+                          {t("perSide")}
+                          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                            {t("perSideHint")}
+                          </span>
+                        </FormLabel>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
                       </FormItem>
                     )}
                   />

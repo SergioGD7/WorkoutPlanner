@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ArrowDownRight,
   ArrowUpRight,
   Calculator,
   ChevronsDown,
   Flame,
   GripVertical,
   History,
+  Play,
+  Square,
   StickyNote,
   Trash2,
   Trophy,
@@ -28,10 +31,13 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useLanguage } from '@/context/language-context';
+import { useWorkTimer, workTimerKey } from '@/context/work-timer-context';
 import type { ExerciseTracking, Set, SetType, WeightUnit, WorkoutExercise } from '@/lib/types';
+import type { ProgressionSuggestion } from '@/lib/progression';
 import {
   detectPR,
   fromKg,
+  perSideWeight,
   toKg,
   trimZeros,
   type ExercisePR,
@@ -64,12 +70,14 @@ interface WorkoutCardProps {
   bodyPartLabel?: string;
   emoji?: string;
   tracking: ExerciseTracking;
+  /** Unilateral work: the row shows how the logged total splits by side. */
+  perSide?: boolean;
   unit: WeightUnit;
   /** Best ever, excluding the day being edited, so today's sets can beat it. */
   pr: ExercisePR;
   lastSession: ExerciseSession | null;
-  /** Suggested next working weight in kg, or null. */
-  suggestion: number | null;
+  /** Next target and the reason behind it, or null when no rule applies. */
+  suggestion: ProgressionSuggestion | null;
   isOrphaned: boolean;
   /** Starts a reorder drag; provided by the parent's Reorder.Item. */
   onDragHandlePointerDown?: (event: React.PointerEvent) => void;
@@ -90,6 +98,7 @@ export default function WorkoutCard({
   bodyPartLabel,
   emoji,
   tracking,
+  perSide,
   unit,
   pr,
   lastSession,
@@ -138,6 +147,13 @@ export default function WorkoutCard({
           </CardTitle>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {bodyPartLabel && <p className="text-sm text-muted-foreground">{bodyPartLabel}</p>}
+            {perSide && (
+              // Worth flagging on the card too: it changes how you read every
+              // number below it.
+              <Badge variant="outline" className="h-5 text-[10px] uppercase">
+                {t('perSide')}
+              </Badge>
+            )}
             {isOrphaned && (
               <Badge variant="outline" className="h-5 border-dashed text-[10px] uppercase">
                 {t('deletedExercise')}
@@ -158,24 +174,29 @@ export default function WorkoutCard({
             )}
           </p>
 
-          {suggestion !== null && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onApplySuggestion}
-                    className="mt-2 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-                  >
-                    <ArrowUpRight className="h-3 w-3" />
-                    {t('suggestedWeight', { weight: `${trimZeros(fromKg(suggestion, unit))} ${unit}` })}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-[220px] text-center">
-                  <p className="text-xs">{t('progressionHint')}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          {suggestion && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={onApplySuggestion}
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                  suggestion.isDeload
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                    : 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20'
+                }`}
+              >
+                {suggestion.isDeload ? (
+                  <ArrowDownRight className="h-3 w-3" />
+                ) : (
+                  <ArrowUpRight className="h-3 w-3" />
+                )}
+                {formatSuggestion(suggestion, unit, t)}
+              </button>
+              {/* The number is worth nothing if you can't see where it came from. */}
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                {t(suggestion.reasonKey, suggestion.reasonValues)}
+              </p>
+            </div>
           )}
         </div>
 
@@ -222,7 +243,10 @@ export default function WorkoutCard({
               key={`${workoutExercise.id}-${index}`}
               set={set}
               index={index}
+              timerKey={workTimerKey(workoutExercise.id, index)}
+              exerciseName={exerciseName}
               tracking={tracking}
+              perSide={perSide}
               unit={unit}
               prKind={detectPR(set, pr)}
               onToggle={(completed) => onSetToggle(index, completed)}
@@ -260,7 +284,11 @@ export default function WorkoutCard({
 interface SetRowProps {
   set: Set;
   index: number;
+  /** Identifies this exact set to the work timer. */
+  timerKey: string;
+  exerciseName: string;
   tracking: ExerciseTracking;
+  perSide?: boolean;
   unit: WeightUnit;
   prKind: 'weight' | 'oneRm' | null;
   onToggle: (completed: boolean) => void;
@@ -272,7 +300,10 @@ interface SetRowProps {
 function SetRow({
   set,
   index,
+  timerKey,
+  exerciseName,
   tracking,
+  perSide,
   unit,
   prKind,
   onToggle,
@@ -281,8 +312,35 @@ function SetRow({
   onOpenPlates,
 }: SetRowProps) {
   const { t } = useLanguage();
+  const { activeKey, elapsed, target, start, bindCommit, stop } = useWorkTimer();
   const setType = set.type ?? 'normal';
   const typeIcon = SET_TYPE_ICON[setType];
+
+  const isTiming = activeKey === timerKey;
+  /** Past the target the number turns green: the hold is already banked. */
+  const reachedTarget = isTiming && target !== null && elapsed >= target;
+
+  // Whatever was actually held is what gets logged, target or not. Reading the
+  // patcher through a ref keeps the callback identity stable across renders.
+  const updateRef = useRef(onUpdate);
+  updateRef.current = onUpdate;
+  const commitDuration = useCallback((seconds: number) => {
+    updateRef.current({ duration: seconds });
+  }, []);
+
+  // A hold restored from a reload was started before this row existed, so it has
+  // to be told again where its result belongs.
+  useEffect(() => {
+    if (isTiming) bindCommit(timerKey, commitDuration);
+  }, [isTiming, timerKey, bindCommit, commitDuration]);
+
+  const toggleTimer = () => {
+    if (isTiming) {
+      stop();
+      return;
+    }
+    start(timerKey, set.duration ?? undefined, exerciseName, commitDuration);
+  };
 
   // Text inputs keep their own state while focused so a half-typed value like
   // "0" or "82." is never rewritten from props mid-keystroke.
@@ -307,6 +365,20 @@ function SetRow({
   }, [set.duration]);
 
   const setLabel = `${t('set')} ${index + 1}`;
+
+  /**
+   * What goes on each side, under the weight field. Reps are not split: you do
+   * the same number on both sides, so only the load divides.
+   */
+  const perSideLine =
+    perSide && set.weight > 0 ? (
+      // No unit here: the field already carries one, and the column is narrow
+      // enough that repeating it wraps the line.
+      <span className="mt-1 block whitespace-nowrap text-center text-[10px] leading-none text-muted-foreground">
+        {t('perSideSplit', { weight: trimZeros(fromKg(perSideWeight(set.weight), unit)) })}
+      </span>
+    ) : null;
+
 
   /**
    * Every field flexes and is allowed to shrink (`min-w-0`), so the row always
@@ -376,32 +448,60 @@ function SetRow({
 
       <div className="flex min-w-0 flex-1 items-center gap-1">
         {tracking === 'duration' ? (
-          <div className="relative min-w-0 flex-1">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={durationText}
-              aria-label={`${setLabel} — ${t('duration')}`}
-              onFocus={() => {
-                durationFocused.current = true;
-              }}
-              onBlur={() => {
-                durationFocused.current = false;
-                setDurationText(numberToText(set.duration ?? 0));
-              }}
-              onChange={(event) => {
-                const raw = event.target.value;
-                if (!/^\d*$/.test(raw)) return;
-                setDurationText(raw);
-                onUpdate({ duration: raw === '' ? 0 : Number(raw) });
-              }}
-              className={`${fieldClass} pr-6`}
-              placeholder="0"
-            />
-            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
-              {t('seconds')}
-            </span>
-          </div>
+          <>
+            <div className="relative min-w-0 flex-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                // While the clock runs the field mirrors it, so there is one
+                // number on screen instead of a stale target beside a stopwatch.
+                value={isTiming ? String(elapsed) : durationText}
+                readOnly={isTiming}
+                aria-label={
+                  isTiming
+                    ? t('workTimerRunning', { index: index + 1 })
+                    : `${setLabel} — ${t('duration')}`
+                }
+                onFocus={() => {
+                  durationFocused.current = true;
+                }}
+                onBlur={() => {
+                  durationFocused.current = false;
+                  setDurationText(numberToText(set.duration ?? 0));
+                }}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  if (!/^\d*$/.test(raw)) return;
+                  setDurationText(raw);
+                  onUpdate({ duration: raw === '' ? 0 : Number(raw) });
+                }}
+                className={`${fieldClass} pr-6 ${
+                  reachedTarget ? 'text-green-500' : isTiming ? 'text-primary' : ''
+                }`}
+                placeholder="0"
+              />
+              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
+                {t('seconds')}
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleTimer}
+              aria-label={isTiming ? t('stopWorkTimer') : t('startWorkTimer')}
+              className={`h-9 w-9 shrink-0 ${
+                isTiming ? 'text-primary hover:text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              {isTiming ? (
+                <Square className="h-3.5 w-3.5 fill-current" />
+              ) : (
+                <Play className="h-4 w-4 fill-current" />
+              )}
+            </Button>
+          </>
         ) : (
           <>
             {tracking === 'weight' && (
@@ -438,6 +538,7 @@ function SetRow({
                   {unit}
                   <Calculator className="ml-0.5 h-2.5 w-2.5" />
                 </button>
+                {perSideLine}
               </div>
             )}
 
@@ -511,6 +612,27 @@ function SetRow({
       </div>
     </div>
   );
+}
+
+/** Renders the target itself: weight, reps or a hold, whichever the rule moved. */
+function formatSuggestion(
+  suggestion: ProgressionSuggestion,
+  unit: WeightUnit,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  if (suggestion.duration !== undefined) {
+    return t('suggestedTime', { time: `${suggestion.duration}${t('seconds')}` });
+  }
+  if (suggestion.weight !== null) {
+    const weight = `${trimZeros(fromKg(suggestion.weight, unit))} ${unit}`;
+    return suggestion.reps !== undefined
+      ? t('suggestedWeightReps', { weight, reps: suggestion.reps })
+      : t('suggestedWeight', { weight });
+  }
+  if (suggestion.reps !== undefined) {
+    return t('suggestedReps', { reps: suggestion.reps });
+  }
+  return '';
 }
 
 /** Empty string for zero so the field shows its placeholder instead of "0". */

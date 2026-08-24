@@ -9,6 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -22,7 +29,8 @@ import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
 import { useTemplates } from '@/context/template-context';
 import { DEFAULT_TEMPLATE_REPS, DEFAULT_TEMPLATE_SETS } from '@/lib/data';
-import type { TemplateDay, WorkoutTemplate } from '@/lib/types';
+import { PROGRESSION_LABELS, PROGRESSION_RULES } from '@/lib/progression';
+import type { ProgressionRule, TemplateDay, WorkoutTemplate } from '@/lib/types';
 import { templateDays, templateExerciseCount } from '@/lib/workout-utils';
 
 interface ManageTemplatesSheetProps {
@@ -40,6 +48,8 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
   const [templateToDelete, setTemplateToDelete] = useState<WorkoutTemplate | null>(null);
 
   const [name, setName] = useState('');
+  /** 'inherit' keeps the routine on whatever the profile default happens to be. */
+  const [progressionRule, setProgressionRule] = useState<ProgressionRule | 'inherit'>('inherit');
   const [days, setDays] = useState<TemplateDay[]>([]);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
 
@@ -55,6 +65,7 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
   const handleCreateNew = () => {
     setEditingTemplate(null);
     setName('');
+    setProgressionRule('inherit');
     setDays([{ id: uuidv4(), name: t('templateFullBodyDayA'), exercises: [] }]);
     setActiveDayIndex(0);
     setView('edit');
@@ -66,6 +77,7 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
     // user edits words rather than an identifier.
     const translated = t(template.nameKey);
     setName(translated !== template.nameKey ? translated : template.nameKey);
+    setProgressionRule(template.progression?.rule ?? 'inherit');
     setDays(
       templateDays(template).map((day) => ({
         ...day,
@@ -82,6 +94,10 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
     const payload = {
       nameKey: name.trim(),
       days: days.map((day) => ({ ...day, name: day.name.trim() || t('dayName') })),
+      // Only the rule is stored. Undefined for "use my default" so the routine
+      // follows the profile if that default later changes, and no copy of the
+      // rep range or the increment, so those keep coming from Settings too.
+      progression: progressionRule === 'inherit' ? undefined : { rule: progressionRule },
     };
 
     if (editingTemplate) await updateTemplate({ ...editingTemplate, ...payload, exercises: undefined });
@@ -266,6 +282,35 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
                       placeholder={t('routineNamePlaceholder')}
                       className="bg-secondary/20"
                     />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="routine-progression" className="mb-1 block text-sm font-semibold">
+                      {t('progressionRule')}
+                    </Label>
+                    <Select
+                      value={progressionRule}
+                      onValueChange={(value) =>
+                        setProgressionRule(value as ProgressionRule | 'inherit')
+                      }
+                    >
+                      <SelectTrigger id="routine-progression" className="bg-secondary/20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inherit">{t('ruleInherit')}</SelectItem>
+                        {PROGRESSION_RULES.map((rule) => (
+                          <SelectItem key={rule} value={rule}>
+                            {t(PROGRESSION_LABELS[rule].name)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {progressionRule === 'inherit'
+                        ? t('progressionRuleHint')
+                        : t(PROGRESSION_LABELS[progressionRule].description)}
+                    </p>
                   </div>
 
                   {/* Day chips: a routine can hold an A/B split or a full mesocycle. */}

@@ -35,18 +35,27 @@ import { useProfile } from '@/context/profile-context';
 import { useRestTimer } from '@/context/rest-timer-context';
 import { useToast } from '@/hooks/use-toast';
 import { triggerHaptic } from '@/utils/haptics';
-import type { Set as WorkoutSet, TemplateExercise, WorkoutExercise } from '@/lib/types';
+import type {
+  ProgressionConfig,
+  Set as WorkoutSet,
+  TemplateExercise,
+  WorkoutExercise,
+} from '@/lib/types';
+import type { ProgressionSuggestion } from '@/lib/progression';
+import { DEFAULT_PROGRESSION, resolveProgression, suggestNextTarget } from '@/lib/progression';
 import {
   detectPR,
   fromKg,
   getExercisePR,
+  getExerciseSessions,
   getLastSession,
   isCountedSet,
   resolveBodyPart,
   resolveExerciseName,
+  resolvePerSide,
   resolveTracking,
-  suggestProgression,
   trimZeros,
+  type ExerciseSession,
 } from '@/lib/workout-utils';
 
 interface DailyWorkoutProps {
@@ -89,6 +98,22 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     dailyExercises.forEach((workoutExercise) => {
       if (!map.has(workoutExercise.exerciseId)) {
         map.set(workoutExercise.exerciseId, getExercisePR(workoutLog, workoutExercise.exerciseId, formattedDate));
+      }
+    });
+    return map;
+  }, [dailyExercises, workoutLog, formattedDate]);
+
+  /** Full history per exercise: the progression rules read more than one session. */
+  const historyMap = useMemo(() => {
+    const map = new Map<string, ExerciseSession[]>();
+    dailyExercises.forEach((workoutExercise) => {
+      if (!map.has(workoutExercise.exerciseId)) {
+        map.set(
+          workoutExercise.exerciseId,
+          getExerciseSessions(workoutLog, workoutExercise.exerciseId).filter(
+            (session) => session.date < formattedDate,
+          ),
+        );
       }
     });
     return map;
@@ -220,15 +245,23 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     }));
   };
 
-  const handleApplySuggestion = (workoutExerciseId: string, weightKg: number) => {
+  const handleApplySuggestion = (workoutExerciseId: string, suggestion: ProgressionSuggestion) => {
     triggerHaptic('light');
     updateExerciseAt(
       workoutExerciseId,
       (exercise) => ({
         ...exercise,
-        sets: exercise.sets.map((set) =>
-          isCountedSet(set) && !set.completed ? { ...set, weight: weightKg } : set,
-        ),
+        // Only sets still to be done: a completed set is a record of what
+        // happened and must not be rewritten by a target.
+        sets: exercise.sets.map((set) => {
+          if (!isCountedSet(set) || set.completed) return set;
+          return {
+            ...set,
+            ...(suggestion.weight !== null ? { weight: suggestion.weight } : {}),
+            ...(suggestion.reps !== undefined ? { reps: suggestion.reps } : {}),
+            ...(suggestion.duration !== undefined ? { duration: suggestion.duration } : {}),
+          };
+        }),
       }),
       true,
     );
@@ -254,7 +287,10 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     setIsAddSheetOpen(false);
   };
 
-  const handleLoadTemplate = (templateExercises: TemplateExercise[]) => {
+  const handleLoadTemplate = (
+    templateExercises: TemplateExercise[],
+    routineProgression?: ProgressionConfig,
+  ) => {
     const existingIds = dailyExercises.map((exercise) => exercise.exerciseId);
     const toAdd = templateExercises.filter((entry) => !existingIds.includes(entry.exerciseId));
 
@@ -267,6 +303,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
           exerciseName: definition ? t(definition.name) : undefined,
           bodyPart: definition?.bodyPart,
           restSeconds: entry.restSeconds,
+          progression: entry.progression ?? routineProgression,
           sets: buildSets(entry.exerciseId, entry.sets, entry.reps || undefined, entry.weight),
         };
       });
@@ -465,6 +502,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                   bodyPart={resolveBodyPart(workoutExercise, allExercises)}
                   emoji={allExercises.find((exercise) => exercise.id === workoutExercise.exerciseId)?.emoji}
                   tracking={resolveTracking(workoutExercise, allExercises)}
+                  perSide={resolvePerSide(workoutExercise, allExercises)}
                   unit={unit}
                   pr={prMap.get(workoutExercise.exerciseId) ?? {
                     maxWeight: 0,
@@ -473,6 +511,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                     date: null,
                   }}
                   lastSession={lastSessionMap.get(workoutExercise.exerciseId) ?? null}
+                  history={historyMap.get(workoutExercise.exerciseId) ?? []}
                   isOrphaned={!allExercises.some((exercise) => exercise.id === workoutExercise.exerciseId)}
                   onSetToggle={(setIndex, completed) =>
                     handleSetToggle(workoutExercise.id, setIndex, completed)
@@ -481,7 +520,9 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                   onAddSet={() => handleAddSet(workoutExercise.id)}
                   onRemoveSet={(setIndex) => handleRemoveSet(workoutExercise.id, setIndex)}
                   onNotesChange={(notes) => handleNotesChange(workoutExercise.id, notes)}
-                  onApplySuggestion={(weightKg) => handleApplySuggestion(workoutExercise.id, weightKg)}
+                  onApplySuggestion={(suggestion) =>
+                    handleApplySuggestion(workoutExercise.id, suggestion)
+                  }
                   onOpenHistory={() => setHistoryExerciseId(workoutExercise.exerciseId)}
                   onOpenPlates={(weightKg) => setPlateTarget(weightKg)}
                   onDelete={() => setExerciseToConfirmDelete(workoutExercise)}
@@ -588,7 +629,9 @@ type ReorderableExerciseProps = Omit<
   'suggestion' | 'bodyPartLabel' | 'onApplySuggestion' | 'onDragHandlePointerDown'
 > & {
   bodyPart?: string;
-  onApplySuggestion: (weightKg: number) => void;
+  /** Every session of this exercise, newest first: the rules read history. */
+  history: ExerciseSession[];
+  onApplySuggestion: (suggestion: ProgressionSuggestion) => void;
 };
 
 /**
@@ -596,12 +639,25 @@ type ReorderableExerciseProps = Omit<
  * is limited to the grip handle, otherwise it would fight the swipe-to-delete
  * gesture on the set rows.
  */
-function ReorderableExercise({ bodyPart, onApplySuggestion, ...cardProps }: ReorderableExerciseProps) {
+function ReorderableExercise({
+  bodyPart,
+  history,
+  onApplySuggestion,
+  ...cardProps
+}: ReorderableExerciseProps) {
   const { t } = useLanguage();
   const { settings } = useProfile();
   const dragControls = useDragControls();
 
-  const suggestion = suggestProgression(cardProps.lastSession, settings.weightUnit);
+  // A template stamps its rule onto each exercise as it is loaded, so there is
+  // only one field to consult here.
+  const config = resolveProgression(
+    cardProps.workoutExercise.progression,
+    undefined,
+    settings.defaultProgression ?? DEFAULT_PROGRESSION,
+    cardProps.tracking,
+  );
+  const suggestion = suggestNextTarget(history, config, settings.weightUnit, cardProps.tracking);
 
   return (
     <Reorder.Item
@@ -614,7 +670,7 @@ function ReorderableExercise({ bodyPart, onApplySuggestion, ...cardProps }: Reor
         {...cardProps}
         bodyPartLabel={bodyPart ? t(bodyPart.toLowerCase()) : undefined}
         suggestion={suggestion}
-        onApplySuggestion={() => suggestion !== null && onApplySuggestion(suggestion)}
+        onApplySuggestion={() => suggestion && onApplySuggestion(suggestion)}
         onDragHandlePointerDown={(event) => dragControls.start(event)}
       />
     </Reorder.Item>

@@ -232,28 +232,6 @@ export function detectPR(set: Set, pr: ExercisePR): PRKind {
   return null;
 }
 
-/**
- * Double-progression: once every working set of the last session was completed
- * at or above the rep target, suggest adding one small plate pair.
- */
-export function suggestProgression(
-  session: ExerciseSession | null,
-  unit: WeightUnit,
-  repTarget = 8,
-): number | null {
-  if (!session) return null;
-
-  const working = session.sets.filter(isCountedSet);
-  if (working.length === 0) return null;
-  if (!working.every((set) => set.completed && set.reps >= repTarget && set.weight > 0)) return null;
-
-  const topWeight = working.reduce((max, set) => Math.max(max, set.weight), 0);
-  const stepKg = toKg(weightStep(unit), unit);
-  return round(topWeight + stepKg, 2);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Balance                                                                     */
 /* -------------------------------------------------------------------------- */
 
 export interface BalanceStats {
@@ -345,6 +323,24 @@ export function resolveTracking(
 ): 'weight' | 'duration' | 'bodyweight' {
   const definition = exercises.find((exercise) => exercise.id === workoutExercise.exerciseId);
   return definition?.tracking ?? 'weight';
+}
+
+/** Whether the logged total is split across two sides. */
+export function resolvePerSide(workoutExercise: WorkoutExercise, exercises: Exercise[]): boolean {
+  const definition = exercises.find((exercise) => exercise.id === workoutExercise.exerciseId);
+  return definition?.perSide ?? false;
+}
+
+/**
+ * What goes on each side of a unilateral lift. The set records the total, so
+ * volume and 1RM stay honest; this is only the number you pick off the rack.
+ *
+ * Halving is exact and deliberately not rounded to a plate size: with 1.25 kg
+ * plates around, a target that lands on an awkward number is still a target you
+ * can load, and rounding it away would quietly change the weight.
+ */
+export function perSideWeight(totalKg: number): number {
+  return round(totalKg / 2, 3);
 }
 
 /* -------------------------------------------------------------------------- */
