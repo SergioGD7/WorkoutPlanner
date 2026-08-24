@@ -11,6 +11,12 @@ import {
   type ReactNode,
 } from 'react';
 import { triggerHaptic } from '@/utils/haptics';
+import {
+  cancelRestNotification,
+  requestRestNotificationPermission,
+  scheduleRestNotification,
+} from '@/lib/rest-notifications';
+import { useLanguage } from './language-context';
 import { useProfile } from './profile-context';
 
 /**
@@ -69,6 +75,7 @@ function playChime() {
 
 export function RestTimerProvider({ children }: { children: ReactNode }) {
   const { settings } = useProfile();
+  const { t } = useLanguage();
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [total, setTotal] = useState(settings.defaultRestSeconds);
   const [label, setLabel] = useState<string | null>(null);
@@ -77,6 +84,10 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+
+  // Read inside callbacks that must not be re-created when the language changes.
+  const translateRef = useRef(t);
+  translateRef.current = t;
 
   // Restore an in-flight rest after a reload.
   useEffect(() => {
@@ -98,6 +109,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     setLabel(null);
     firedRef.current = true;
     window.localStorage.removeItem(STORAGE_KEY);
+    void cancelRestNotification();
   }, []);
 
   const finish = useCallback(() => {
@@ -109,25 +121,15 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
 
     if (settingsRef.current.restTimerSound) playChime();
 
-    if (
-      settingsRef.current.restTimerNotifications &&
-      typeof Notification !== 'undefined' &&
-      Notification.permission === 'granted'
-    ) {
-      try {
-        new Notification('Workout Planner', {
-          body: label ? `${label} — rest over` : 'Rest over',
-          tag: 'rest-timer',
-        });
-      } catch {
-        // Some browsers require a service worker registration for this.
-      }
-    }
+    // The countdown reached zero with the app awake, so the chime and haptic
+    // above already did the job. Withdraw the notification booked with the OS
+    // rather than letting it fire on top of them.
+    void cancelRestNotification();
 
     setEndsAt(null);
     setRemaining(0);
     window.localStorage.removeItem(STORAGE_KEY);
-  }, [label]);
+  }, []);
 
   // Recompute from the wall clock every 250 ms; drift-free by construction.
   useEffect(() => {
@@ -160,6 +162,19 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       setEndsAt(end);
       setRemaining(duration);
       window.localStorage.setItem(STORAGE_KEY, String(end));
+
+      // Hand the alert to the OS now: by the time the rest ends the WebView may
+      // be suspended in a pocket and no timer of ours will be running.
+      if (settingsRef.current.restTimerNotifications) {
+        const translate = translateRef.current;
+        void scheduleRestNotification(
+          end,
+          translate('restOverTitle'),
+          nextLabel
+            ? translate('restOverBodyExercise', { exercise: nextLabel })
+            : translate('restOverBody'),
+        );
+      }
     },
     [],
   );
@@ -170,17 +185,25 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       const next = Math.max(Date.now(), previous + delta * 1000);
       window.localStorage.setItem(STORAGE_KEY, String(next));
       firedRef.current = false;
+
+      // The scheduled alert is keyed by a fixed id, so this replaces it.
+      if (settingsRef.current.restTimerNotifications) {
+        const translate = translateRef.current;
+        void scheduleRestNotification(
+          next,
+          translate('restOverTitle'),
+          translate('restOverBody'),
+        );
+      }
+
       return next;
     });
   }, []);
 
-  const requestNotificationPermission = useCallback(async () => {
-    if (typeof Notification === 'undefined') return false;
-    if (Notification.permission === 'granted') return true;
-    if (Notification.permission === 'denied') return false;
-    const result = await Notification.requestPermission();
-    return result === 'granted';
-  }, []);
+  const requestNotificationPermission = useCallback(
+    () => requestRestNotificationPermission(),
+    [],
+  );
 
   const value = useMemo(
     () => ({
