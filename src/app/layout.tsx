@@ -7,10 +7,12 @@ import { ExerciseProvider } from '@/context/exercise-context';
 import { TemplateProvider } from '@/context/template-context';
 import { ProfileProvider } from '@/context/profile-context';
 import { RestTimerProvider } from '@/context/rest-timer-context';
+import { WorkTimerProvider } from '@/context/work-timer-context';
 import { Providers } from '@/components/providers';
 import { AuthProvider } from '@/context/auth-context';
 import { WorkoutProvider } from '@/context/workout-context';
 import ErrorBoundary from '@/components/error-boundary';
+import WorkoutReminderSync from '@/components/workout-reminder-sync';
 import { withBasePath } from '@/lib/base-path';
 
 // Self-hosted by Next: no runtime request to Google Fonts, which also means the
@@ -70,8 +72,11 @@ export default function RootLayout({
                     <TemplateProvider>
                       <WorkoutProvider>
                         <RestTimerProvider>
-                          {children}
-                          <Toaster />
+                          <WorkTimerProvider>
+                            {children}
+                            <WorkoutReminderSync />
+                            <Toaster />
+                          </WorkTimerProvider>
                         </RestTimerProvider>
                       </WorkoutProvider>
                     </TemplateProvider>

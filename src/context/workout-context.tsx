@@ -43,6 +43,8 @@ interface WorkoutContextType {
   saveDay: (dateKey: string, exercises: WorkoutExercise[], immediate?: boolean) => void;
   /** Overwrites many days at once (import / restore). */
   replaceLog: (log: WorkoutLog) => Promise<void>;
+  /** Writes days without touching any that are not in `log`. */
+  mergeDays: (log: WorkoutLog) => Promise<void>;
   copiedWorkout: WorkoutExercise[] | null;
   setCopiedWorkout: (workout: WorkoutExercise[] | null) => void;
 }
@@ -274,9 +276,36 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  /**
+   * Additive counterpart to `replaceLog`, used by the third-party importers:
+   * a restore is meant to leave you with exactly the backup, but an import is
+   * meant to leave everything you already had in place.
+   */
+  const mergeDays = useCallback(async (log: WorkoutLog) => {
+    const uid = uidRef.current;
+    if (!uid || isDemoRef.current) return;
+
+    const dateKeys = Object.keys(log).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key));
+
+    for (let i = 0; i < dateKeys.length; i += 400) {
+      const batch = writeBatch(db);
+      let count = 0;
+      dateKeys.slice(i, i + 400).forEach((dateKey) => {
+        const exercises = log[dateKey];
+        if (!Array.isArray(exercises) || exercises.length === 0) return;
+        batch.set(doc(daysCollection(uid), dateKey), {
+          exercises,
+          updatedAt: new Date().toISOString(),
+        });
+        count += 1;
+      });
+      if (count > 0) await batch.commit();
+    }
+  }, []);
+
   const value = useMemo(
-    () => ({ workoutLog, isLoading, saveDay, replaceLog, copiedWorkout, setCopiedWorkout }),
-    [workoutLog, isLoading, saveDay, replaceLog, copiedWorkout],
+    () => ({ workoutLog, isLoading, saveDay, replaceLog, mergeDays, copiedWorkout, setCopiedWorkout }),
+    [workoutLog, isLoading, saveDay, replaceLog, mergeDays, copiedWorkout],
   );
 
   return <WorkoutContext.Provider value={value}>{children}</WorkoutContext.Provider>;

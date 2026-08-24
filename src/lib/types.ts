@@ -36,6 +36,12 @@ export interface WorkoutExercise {
   notes?: string;
   /** Per-exercise rest target in seconds; falls back to the profile default. */
   restSeconds?: number;
+  /**
+   * Stamped from the routine when the workout is loaded, so the rule that
+   * produced today's targets travels with the log rather than being re-derived
+   * from a template that may have changed since.
+   */
+  progression?: ProgressionConfig;
 }
 
 export interface WorkoutLog {
@@ -55,6 +61,28 @@ export interface Exercise {
   tracking?: ExerciseTracking;
 }
 
+/**
+ * How the next target is worked out for an exercise.
+ *
+ * - `linear`   adds a fixed step every time the session is completed.
+ * - `double`   climbs reps inside a range first, then adds weight and drops
+ *              back to the bottom of the range.
+ * - `greyskull` last set is taken to failure; beating the target by a margin
+ *              earns a double jump, and two failures trigger a deload.
+ * - `time`     adds seconds, for planks and holds.
+ * - `none`     no suggestion at all.
+ */
+export type ProgressionRule = 'linear' | 'double' | 'greyskull' | 'time' | 'none';
+
+export interface ProgressionConfig {
+  rule: ProgressionRule;
+  /** Rep range for `double`; the bottom is where you restart after a jump. */
+  repMin?: number;
+  repMax?: number;
+  /** Increment in kg, or seconds for `time`. Defaults to one small plate pair. */
+  step?: number;
+}
+
 export interface TemplateExercise {
   exerciseId: string;
   sets: number;
@@ -62,6 +90,8 @@ export interface TemplateExercise {
   /** Target weight in kg. Omitted means "use last session / 0". */
   weight?: number;
   restSeconds?: number;
+  /** Overrides the routine's rule for this exercise only. */
+  progression?: ProgressionConfig;
 }
 
 export interface TemplateDay {
@@ -78,6 +108,8 @@ export interface WorkoutTemplate {
   exercises?: string[] | TemplateExercise[];
   /** Current shape: one or more named days. */
   days?: TemplateDay[];
+  /** Applies to every exercise in the routine unless one overrides it. */
+  progression?: ProgressionConfig;
 }
 
 export interface BodyEntry {
@@ -101,6 +133,14 @@ export interface ProfileSettings {
   defaultRestSeconds: number;
   restTimerSound: boolean;
   restTimerNotifications: boolean;
+  /** Reminds you on days with a routine planned and nothing logged yet. */
+  workoutReminderEnabled: boolean;
+  /** Local time of day for that reminder, as "HH:mm". */
+  workoutReminderTime: string;
+  /** Body-weight target in kg. The chart draws a line at it. */
+  bodyWeightGoal?: number;
+  /** Fallback rule for routines and exercises that don't specify one. */
+  defaultProgression: ProgressionConfig;
   /** Bar weight in kg used by the plate calculator. */
   barWeight: number;
   /** Weekly set target per muscle group, shown as a band on the volume chart. */

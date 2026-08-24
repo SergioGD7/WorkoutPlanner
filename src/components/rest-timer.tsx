@@ -23,12 +23,16 @@ export default function RestTimer() {
     <AnimatePresence>
       {isActive && (
         <motion.div
-          initial={{ opacity: 0, y: 50, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 50, scale: 0.9 }}
+          // The horizontal centring is an animated value, not a class: framer
+          // writes the element's `transform` outright, so a Tailwind
+          // `-translate-x-1/2` would be wiped the moment the entry animation
+          // settled and the pill would sit half a width to the right.
+          initial={{ opacity: 0, y: 50, scale: 0.9, x: '-50%' }}
+          animate={{ opacity: 1, y: 0, scale: 1, x: '-50%' }}
+          exit={{ opacity: 0, y: 50, scale: 0.9, x: '-50%' }}
           role="timer"
           aria-live="off"
-          className="fixed left-1/2 z-50 -translate-x-1/2"
+          className="fixed left-1/2 z-50"
           // Clears the floating nav pill on phones. An inline value is needed
           // because it has to compose with the safe-area inset.
           style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom))' }}

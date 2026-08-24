@@ -4,8 +4,17 @@ import { useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Plus, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { Plus, Target, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -40,6 +49,24 @@ export default function BodyMetricsCard() {
         .reverse(),
     [bodyEntries, unit],
   );
+
+  const goal = settings.bodyWeightGoal;
+  const goalDisplay = goal !== undefined ? Number(fromKg(goal, unit).toFixed(1)) : null;
+
+  /**
+   * Distance to the target, and whether the last move went toward it. Direction
+   * matters more than sign: losing 300 g is progress on a cut and a setback on a
+   * bulk, so the colour follows the goal, not the arrow.
+   */
+  const goalProgress = useMemo(() => {
+    if (goalDisplay === null || weightSeries.length === 0) return null;
+    const current = weightSeries[weightSeries.length - 1].weight;
+    const remaining = Number(Math.abs(current - goalDisplay).toFixed(1));
+    const previous = weightSeries.length > 1 ? weightSeries[weightSeries.length - 2].weight : null;
+    const closer =
+      previous === null ? null : Math.abs(current - goalDisplay) < Math.abs(previous - goalDisplay);
+    return { remaining, closer, reached: remaining < 0.15 };
+  }, [goalDisplay, weightSeries]);
 
   const change = useMemo(() => {
     if (weightSeries.length < 2) return null;
@@ -87,7 +114,20 @@ export default function BodyMetricsCard() {
           <div>
             <CardTitle className="font-headline text-lg">{t('bodyMetrics')}</CardTitle>
             <CardDescription>
-              {change ? (
+              {goalProgress ? (
+                <span className="flex items-center gap-1">
+                  {goalProgress.reached ? (
+                    <Target className="h-3.5 w-3.5 text-green-500" />
+                  ) : goalProgress.closer === false ? (
+                    <TrendingUp className="h-3.5 w-3.5 text-orange-500" />
+                  ) : (
+                    <TrendingDown className="h-3.5 w-3.5 text-green-500" />
+                  )}
+                  {goalProgress.reached
+                    ? t('goalReached')
+                    : t('toGoal', { amount: `${goalProgress.remaining} ${unit}` })}
+                </span>
+              ) : change ? (
                 <span className="flex items-center gap-1">
                   {change.delta <= 0 ? (
                     <TrendingDown className="h-3.5 w-3.5 text-green-500" />
@@ -154,7 +194,14 @@ export default function BodyMetricsCard() {
                       <YAxis
                         stroke="hsl(var(--muted-foreground))"
                         tick={{ fontSize: 10 }}
-                        domain={['dataMin - 2', 'dataMax + 2']}
+                        domain={
+                          goalDisplay !== null
+                            ? [
+                                (min: number) => Math.min(min, goalDisplay) - 2,
+                                (max: number) => Math.max(max, goalDisplay) + 2,
+                              ]
+                            : ['dataMin - 2', 'dataMax + 2']
+                        }
                       />
                       <Tooltip
                         contentStyle={{
@@ -165,6 +212,20 @@ export default function BodyMetricsCard() {
                         labelFormatter={(label) => format(parseISO(String(label)), 'PPP', { locale })}
                         formatter={(value) => [`${value} ${unit}`, t('bodyWeight')]}
                       />
+                      {goalDisplay !== null && (
+                        <ReferenceLine
+                          y={goalDisplay}
+                          stroke="#22c55e"
+                          strokeDasharray="5 4"
+                          strokeWidth={1.6}
+                          label={{
+                            value: t('goalShort', { weight: `${goalDisplay} ${unit}` }),
+                            position: 'insideBottomLeft',
+                            fill: '#22c55e',
+                            fontSize: 10,
+                          }}
+                        />
+                      )}
                       <Area
                         type="monotone"
                         dataKey="weight"

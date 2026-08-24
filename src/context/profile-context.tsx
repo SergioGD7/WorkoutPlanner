@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from './auth-context';
 import type { BodyEntry, ProfileSettings } from '@/lib/types';
+import { DEFAULT_PROGRESSION } from '@/lib/progression';
 import { buildDemoBodyEntries } from '@/lib/demo-data';
 
 export const DEFAULT_SETTINGS: ProfileSettings = {
@@ -22,6 +23,9 @@ export const DEFAULT_SETTINGS: ProfileSettings = {
   defaultRestSeconds: 90,
   restTimerSound: true,
   restTimerNotifications: false,
+  workoutReminderEnabled: false,
+  workoutReminderTime: '18:30',
+  defaultProgression: DEFAULT_PROGRESSION,
   barWeight: 20,
   weeklySetTargetMin: 10,
   weeklySetTargetMax: 20,

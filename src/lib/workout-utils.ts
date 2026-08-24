@@ -232,28 +232,6 @@ export function detectPR(set: Set, pr: ExercisePR): PRKind {
   return null;
 }
 
-/**
- * Double-progression: once every working set of the last session was completed
- * at or above the rep target, suggest adding one small plate pair.
- */
-export function suggestProgression(
-  session: ExerciseSession | null,
-  unit: WeightUnit,
-  repTarget = 8,
-): number | null {
-  if (!session) return null;
-
-  const working = session.sets.filter(isCountedSet);
-  if (working.length === 0) return null;
-  if (!working.every((set) => set.completed && set.reps >= repTarget && set.weight > 0)) return null;
-
-  const topWeight = working.reduce((max, set) => Math.max(max, set.weight), 0);
-  const stepKg = toKg(weightStep(unit), unit);
-  return round(topWeight + stepKg, 2);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Balance                                                                     */
 /* -------------------------------------------------------------------------- */
 
 export interface BalanceStats {

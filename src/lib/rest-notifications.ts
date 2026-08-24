@@ -1,5 +1,5 @@
 /**
- * Rest-timer notifications.
+ * Scheduled local notifications: the rest timer's chime and the workout reminder.
  *
  * The in-app chime only reaches you while the app is on screen and awake. In a
  * gym you put the phone in a pocket, the WebView gets suspended and the timer
@@ -15,8 +15,13 @@
  * and importing it eagerly would run Capacitor's bootstrap during SSG.
  */
 
-/** Fixed id: there is only ever one rest running, so scheduling replaces it. */
-const REST_NOTIFICATION_ID = 1;
+/**
+ * Fixed ids, one per kind of alert. Scheduling with the same id replaces the
+ * pending one, and cancelling one never disturbs the other.
+ */
+export const REST_NOTIFICATION_ID = 1;
+export const REMINDER_NOTIFICATION_ID = 2;
+export const WORK_NOTIFICATION_ID = 3;
 
 type LocalNotificationsPlugin = typeof import('@capacitor/local-notifications')['LocalNotifications'];
 
@@ -67,16 +72,17 @@ export async function requestRestNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * Books the alert with the OS for `endsAt`. Safe to call repeatedly: the fixed
- * id means a reschedule (say, after "+15s") replaces the pending one.
+ * Books an alert with the OS for `at`. Safe to call repeatedly: the fixed id
+ * means a reschedule (say, after "+15s") replaces the pending one.
  */
-export async function scheduleRestNotification(
-  endsAt: number,
+export async function scheduleNotification(
+  id: number,
+  at: number,
   title: string,
   body: string,
 ): Promise<void> {
   // Nothing to deliver if the moment has already passed.
-  if (endsAt <= Date.now()) return;
+  if (at <= Date.now()) return;
 
   const box = await getPlugin();
   if (!box) return;
@@ -85,15 +91,15 @@ export async function scheduleRestNotification(
     const permission = await box.plugin.checkPermissions();
     if (permission.display !== 'granted') return;
 
-    await box.plugin.cancel({ notifications: [{ id: REST_NOTIFICATION_ID }] });
+    await box.plugin.cancel({ notifications: [{ id }] });
     await box.plugin.schedule({
       notifications: [
         {
-          id: REST_NOTIFICATION_ID,
+          id,
           title,
           body,
           schedule: {
-            at: new Date(endsAt),
+            at: new Date(at),
             // Fire at the exact second rather than in a batched wake-up window;
             // a rest timer that goes off a minute late is useless.
             allowWhileIdle: true,
@@ -104,18 +110,24 @@ export async function scheduleRestNotification(
   } catch (error) {
     // Permission revoked mid-session, or the platform refused to schedule.
     // The in-app chime still covers the foreground case.
-    console.error('Could not schedule the rest notification:', error);
+    console.error('Could not schedule the notification:', error);
   }
 }
 
-/** Withdraws a pending alert: the rest was skipped, or ended with the app open. */
-export async function cancelRestNotification(): Promise<void> {
+/** Withdraws a pending alert: the rest was skipped, or the day got logged. */
+export async function cancelNotification(id: number): Promise<void> {
   const box = await getPlugin();
   if (!box) return;
 
   try {
-    await box.plugin.cancel({ notifications: [{ id: REST_NOTIFICATION_ID }] });
+    await box.plugin.cancel({ notifications: [{ id }] });
   } catch {
     // Nothing pending, or the platform has no scheduler. Either way, done.
   }
 }
+
+/** Convenience wrappers so callers don't juggle ids. */
+export const scheduleRestNotification = (at: number, title: string, body: string) =>
+  scheduleNotification(REST_NOTIFICATION_ID, at, title, body);
+
+export const cancelRestNotification = () => cancelNotification(REST_NOTIFICATION_ID);

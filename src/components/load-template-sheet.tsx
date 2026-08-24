@@ -8,13 +8,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import ManageTemplatesSheet from '@/components/manage-templates-sheet';
 import { useLanguage } from '@/context/language-context';
 import { useTemplates } from '@/context/template-context';
-import type { TemplateExercise, WorkoutTemplate } from '@/lib/types';
+import type { ProgressionConfig, TemplateExercise, WorkoutTemplate } from '@/lib/types';
 import { templateDays, templateExerciseCount } from '@/lib/workout-utils';
 
 interface LoadTemplateSheetProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoadTemplate: (exercises: TemplateExercise[]) => void;
+  /** The routine's progression rule travels with its exercises onto the log. */
+  onLoadTemplate: (exercises: TemplateExercise[], progression?: ProgressionConfig) => void;
 }
 
 export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: LoadTemplateSheetProps) {
@@ -34,7 +35,7 @@ export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: L
       setDayPickerFor(template);
       return;
     }
-    onLoadTemplate(days[0]?.exercises ?? []);
+    onLoadTemplate(days[0]?.exercises ?? [], template.progression);
   };
 
   return (
@@ -101,7 +102,7 @@ export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: L
                       key={day.id}
                       type="button"
                       onClick={() => {
-                        onLoadTemplate(day.exercises);
+                        onLoadTemplate(day.exercises, dayPickerFor.progression);
                         setDayPickerFor(null);
                       }}
                       className="flex w-full items-center justify-between rounded-2xl border border-transparent bg-secondary/10 p-4 text-left transition-all hover:border-border/50 hover:bg-secondary/30 active:scale-[0.98]"
