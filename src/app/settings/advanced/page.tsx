@@ -27,7 +27,7 @@ import { useProfile } from "@/context/profile-context";
 import { useRestTimer } from "@/context/rest-timer-context";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_PROGRESSION, PROGRESSION_LABELS, PROGRESSION_RULES } from "@/lib/progression";
-import { fromKg, toKg } from "@/lib/workout-utils";
+import { fromKg, toKg, trimZeros, weightStep } from "@/lib/workout-utils";
 import type { ProgressionRule, WeightUnit } from "@/lib/types";
 
 const REST_PRESETS = [45, 60, 90, 120, 180, 240];
@@ -64,6 +64,30 @@ export default function AdvancedSettingsPage() {
   };
 
   const progression = settings.defaultProgression ?? DEFAULT_PROGRESSION;
+
+  // The increment is optional: empty means "whatever a standard plate pair is",
+  // which is what most gyms have. Typed freely for the same reason as the goal.
+  const defaultStep = weightStep(unit);
+  const [stepInput, setStepInput] = useState("");
+  useEffect(() => {
+    setStepInput(
+      progression.step === undefined
+        ? ""
+        : trimZeros(fromKg(progression.step, unit)),
+    );
+  }, [progression.step, unit]);
+
+  const commitStep = () => {
+    const next = { ...progression };
+    if (stepInput.trim() === "") {
+      delete next.step;
+    } else {
+      const parsed = Number(stepInput.replace(",", "."));
+      if (!Number.isFinite(parsed) || parsed <= 0) return;
+      next.step = toKg(parsed, unit);
+    }
+    void updateSettings({ defaultProgression: next });
+  };
 
   const handleReminderToggle = async (enabled: boolean) => {
     if (!enabled) {
@@ -321,6 +345,37 @@ export default function AdvancedSettingsPage() {
                   <p className="-mt-2 text-xs text-muted-foreground">
                     {t(PROGRESSION_LABELS[progression.rule].description)}
                   </p>
+
+                  {/* Meaningless for rules that never touch the load. */}
+                  {progression.rule !== "none" && progression.rule !== "time" && (
+                    <div className="flex items-center justify-between gap-4">
+                      <Label htmlFor="progression-step" className="pr-2">
+                        {t("progressionStep")}
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                          {t("progressionStepHint", {
+                            default: `${trimZeros(defaultStep)} ${unit}`,
+                          })}
+                        </span>
+                      </Label>
+                      <div className="relative w-[170px] shrink-0">
+                        <Input
+                          id="progression-step"
+                          type="number"
+                          inputMode="decimal"
+                          step="0.25"
+                          min="0"
+                          value={stepInput}
+                          placeholder={trimZeros(defaultStep)}
+                          onChange={(event) => setStepInput(event.target.value)}
+                          onBlur={commitStep}
+                          className="pr-10"
+                        />
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                          {unit}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between gap-4">
                     <Label>{t("language")}</Label>

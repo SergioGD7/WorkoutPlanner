@@ -59,6 +59,12 @@ export interface Exercise {
   emoji: string;
   /** Defaults to 'weight' when absent. */
   tracking?: ExerciseTracking;
+  /**
+   * Unilateral work — lunges, one-arm rows, single-leg curls. The set still
+   * records the total across both sides, so volume and 1RM are unchanged; the
+   * flag only makes the app show how that total splits.
+   */
+  perSide?: boolean;
 }
 
 /**
@@ -79,7 +85,11 @@ export interface ProgressionConfig {
   /** Rep range for `double`; the bottom is where you restart after a jump. */
   repMin?: number;
   repMax?: number;
-  /** Increment in kg, or seconds for `time`. Defaults to one small plate pair. */
+  /**
+   * Increment in kg, or seconds for `time`. Defaults to one small plate pair,
+   * but gyms differ: set it to 1.25 if you have the plates for it, and targets
+   * will climb in those steps instead.
+   */
   step?: number;
 }
 

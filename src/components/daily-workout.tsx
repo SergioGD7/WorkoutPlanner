@@ -52,6 +52,7 @@ import {
   isCountedSet,
   resolveBodyPart,
   resolveExerciseName,
+  resolvePerSide,
   resolveTracking,
   trimZeros,
   type ExerciseSession,
@@ -501,6 +502,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                   bodyPart={resolveBodyPart(workoutExercise, allExercises)}
                   emoji={allExercises.find((exercise) => exercise.id === workoutExercise.exerciseId)?.emoji}
                   tracking={resolveTracking(workoutExercise, allExercises)}
+                  perSide={resolvePerSide(workoutExercise, allExercises)}
                   unit={unit}
                   pr={prMap.get(workoutExercise.exerciseId) ?? {
                     maxWeight: 0,

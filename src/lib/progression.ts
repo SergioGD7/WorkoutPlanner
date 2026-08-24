@@ -73,9 +73,16 @@ export const DEFAULT_PROGRESSION: ProgressionConfig = {
 };
 
 /**
- * The rule that applies to an exercise: its own override, else the routine's,
- * else the profile default. Timed exercises fall back to the time rule, since
- * adding weight to a plank is not what most people mean.
+ * The config that applies to an exercise, layered: the profile default first,
+ * then the routine, then the exercise itself.
+ *
+ * Layering rather than picking one whole config matters for the fields nobody
+ * sets twice. A routine that only names a rule should still climb in the
+ * increment you configured once in Settings, instead of silently falling back
+ * to a standard plate pair.
+ *
+ * Timed exercises fall back to the time rule, since adding weight to a plank is
+ * not what most people mean.
  */
 export function resolveProgression(
   exerciseOverride: ProgressionConfig | undefined,
@@ -83,7 +90,11 @@ export function resolveProgression(
   profileDefault: ProgressionConfig,
   tracking: ExerciseTracking,
 ): ProgressionConfig {
-  const resolved = exerciseOverride ?? routineRule ?? profileDefault;
+  const resolved: ProgressionConfig = {
+    ...profileDefault,
+    ...(routineRule ?? {}),
+    ...(exerciseOverride ?? {}),
+  };
   if (tracking === 'duration' && resolved.rule !== 'none' && resolved.rule !== 'time') {
     return { ...resolved, rule: 'time' };
   }

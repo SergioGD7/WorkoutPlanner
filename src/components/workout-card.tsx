@@ -37,6 +37,7 @@ import type { ProgressionSuggestion } from '@/lib/progression';
 import {
   detectPR,
   fromKg,
+  perSideWeight,
   toKg,
   trimZeros,
   type ExercisePR,
@@ -69,6 +70,8 @@ interface WorkoutCardProps {
   bodyPartLabel?: string;
   emoji?: string;
   tracking: ExerciseTracking;
+  /** Unilateral work: the row shows how the logged total splits by side. */
+  perSide?: boolean;
   unit: WeightUnit;
   /** Best ever, excluding the day being edited, so today's sets can beat it. */
   pr: ExercisePR;
@@ -95,6 +98,7 @@ export default function WorkoutCard({
   bodyPartLabel,
   emoji,
   tracking,
+  perSide,
   unit,
   pr,
   lastSession,
@@ -143,6 +147,13 @@ export default function WorkoutCard({
           </CardTitle>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             {bodyPartLabel && <p className="text-sm text-muted-foreground">{bodyPartLabel}</p>}
+            {perSide && (
+              // Worth flagging on the card too: it changes how you read every
+              // number below it.
+              <Badge variant="outline" className="h-5 text-[10px] uppercase">
+                {t('perSide')}
+              </Badge>
+            )}
             {isOrphaned && (
               <Badge variant="outline" className="h-5 border-dashed text-[10px] uppercase">
                 {t('deletedExercise')}
@@ -235,6 +246,7 @@ export default function WorkoutCard({
               timerKey={workTimerKey(workoutExercise.id, index)}
               exerciseName={exerciseName}
               tracking={tracking}
+              perSide={perSide}
               unit={unit}
               prKind={detectPR(set, pr)}
               onToggle={(completed) => onSetToggle(index, completed)}
@@ -276,6 +288,7 @@ interface SetRowProps {
   timerKey: string;
   exerciseName: string;
   tracking: ExerciseTracking;
+  perSide?: boolean;
   unit: WeightUnit;
   prKind: 'weight' | 'oneRm' | null;
   onToggle: (completed: boolean) => void;
@@ -290,6 +303,7 @@ function SetRow({
   timerKey,
   exerciseName,
   tracking,
+  perSide,
   unit,
   prKind,
   onToggle,
@@ -351,6 +365,20 @@ function SetRow({
   }, [set.duration]);
 
   const setLabel = `${t('set')} ${index + 1}`;
+
+  /**
+   * What goes on each side, under the weight field. Reps are not split: you do
+   * the same number on both sides, so only the load divides.
+   */
+  const perSideLine =
+    perSide && set.weight > 0 ? (
+      // No unit here: the field already carries one, and the column is narrow
+      // enough that repeating it wraps the line.
+      <span className="mt-1 block whitespace-nowrap text-center text-[10px] leading-none text-muted-foreground">
+        {t('perSideSplit', { weight: trimZeros(fromKg(perSideWeight(set.weight), unit)) })}
+      </span>
+    ) : null;
+
 
   /**
    * Every field flexes and is allowed to shrink (`min-w-0`), so the row always
@@ -510,6 +538,7 @@ function SetRow({
                   {unit}
                   <Calculator className="ml-0.5 h-2.5 w-2.5" />
                 </button>
+                {perSideLine}
               </div>
             )}
 

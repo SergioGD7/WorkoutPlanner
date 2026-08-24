@@ -325,6 +325,24 @@ export function resolveTracking(
   return definition?.tracking ?? 'weight';
 }
 
+/** Whether the logged total is split across two sides. */
+export function resolvePerSide(workoutExercise: WorkoutExercise, exercises: Exercise[]): boolean {
+  const definition = exercises.find((exercise) => exercise.id === workoutExercise.exerciseId);
+  return definition?.perSide ?? false;
+}
+
+/**
+ * What goes on each side of a unilateral lift. The set records the total, so
+ * volume and 1RM stay honest; this is only the number you pick off the rack.
+ *
+ * Halving is exact and deliberately not rounded to a plate size: with 1.25 kg
+ * plates around, a target that lands on an awkward number is still a target you
+ * can load, and rounding it away would quietly change the weight.
+ */
+export function perSideWeight(totalKg: number): number {
+  return round(totalKg / 2, 3);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Plate calculator                                                            */
 /* -------------------------------------------------------------------------- */

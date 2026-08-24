@@ -29,7 +29,7 @@ import { useLanguage } from '@/context/language-context';
 import { useExercises } from '@/context/exercise-context';
 import { useTemplates } from '@/context/template-context';
 import { DEFAULT_TEMPLATE_REPS, DEFAULT_TEMPLATE_SETS } from '@/lib/data';
-import { DEFAULT_PROGRESSION, PROGRESSION_LABELS, PROGRESSION_RULES } from '@/lib/progression';
+import { PROGRESSION_LABELS, PROGRESSION_RULES } from '@/lib/progression';
 import type { ProgressionRule, TemplateDay, WorkoutTemplate } from '@/lib/types';
 import { templateDays, templateExerciseCount } from '@/lib/workout-utils';
 
@@ -94,12 +94,10 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
     const payload = {
       nameKey: name.trim(),
       days: days.map((day) => ({ ...day, name: day.name.trim() || t('dayName') })),
-      // Undefined rather than a stored copy of the default, so a routine left on
-      // "use my default" follows the profile if that default later changes.
-      progression:
-        progressionRule === 'inherit'
-          ? undefined
-          : { ...DEFAULT_PROGRESSION, rule: progressionRule },
+      // Only the rule is stored. Undefined for "use my default" so the routine
+      // follows the profile if that default later changes, and no copy of the
+      // rep range or the increment, so those keep coming from Settings too.
+      progression: progressionRule === 'inherit' ? undefined : { rule: progressionRule },
     };
 
     if (editingTemplate) await updateTemplate({ ...editingTemplate, ...payload, exercises: undefined });
