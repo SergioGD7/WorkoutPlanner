@@ -477,6 +477,20 @@ export default function AdvancedSettingsPage() {
               </section>
 
               <section className="rounded-xl border border-border/50 bg-card p-6 shadow-sm">
+                <h3 className="mb-2 font-headline text-lg font-semibold">{t("licenses")}</h3>
+                <p className="mb-3 text-xs text-muted-foreground">{t("licensesHint")}</p>
+                {/* A route, not a modal: the artwork's licence requires this to
+                    be reachable, and a link is what "reachable" means. */}
+                <button
+                  type="button"
+                  onClick={() => router.push("/settings/licenses")}
+                  className="text-sm text-primary underline"
+                >
+                  {t("licenses")}
+                </button>
+              </section>
+
+              <section className="rounded-xl border border-border/50 bg-card p-6 shadow-sm">
                 <h3 className="mb-2 font-headline text-lg font-semibold">{t("privacyPolicy")}</h3>
                 {/* A relative href resolved to /settings/privacy inside the
                     native WebView, which does not exist: the native build uses

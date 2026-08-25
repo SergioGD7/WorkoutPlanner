@@ -65,6 +65,11 @@ export interface Exercise {
    * flag only makes the app show how that total splits.
    */
   perSide?: boolean;
+  /**
+   * Slug into the illustration set in `public/exercises`. Absent for anything
+   * the user created or imported, which falls back to the emoji.
+   */
+  illustration?: string;
 }
 
 /**

@@ -10,8 +10,10 @@ import { Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLanguage } from '@/context/language-context';
+import ExerciseIllustration from '@/components/exercise-illustration';
 import { useOverlayLock } from '@/context/overlay-context';
 import { useProfile } from '@/context/profile-context';
+import { useExercises } from '@/context/exercise-context';
 import { useWorkout } from '@/context/workout-context';
 import {
   epley1RM,
@@ -48,8 +50,14 @@ export default function ExerciseHistorySheet({
   useOverlayLock(isOpen);
   const { settings } = useProfile();
   const { workoutLog } = useWorkout();
+  const { exercises } = useExercises();
   const unit = settings.weightUnit;
   const locale = language === 'es' ? es : enUS;
+
+  const definition = useMemo(
+    () => exercises.find((exercise) => exercise.id === exerciseId),
+    [exercises, exerciseId],
+  );
 
   const sessions = useMemo(
     () => (exerciseId ? getExerciseSessions(workoutLog, exerciseId) : []),
@@ -121,8 +129,16 @@ export default function ExerciseHistorySheet({
               <div className="h-1.5 w-12 rounded-full bg-muted" />
             </div>
 
-            <div className="flex items-center justify-between px-6 pb-4">
-              <div className="min-w-0">
+            <div className="flex items-center justify-between gap-3 px-6 pb-4">
+              {/* Animated here and nowhere else: this is the one screen you open
+                  to look at an exercise rather than to log it. */}
+              <ExerciseIllustration
+                exercise={definition}
+                name={exerciseName}
+                size="lg"
+                animated
+              />
+              <div className="min-w-0 flex-1">
                 <h2 className="truncate font-headline text-2xl font-bold">{exerciseName}</h2>
                 <p className="text-xs text-muted-foreground">
                   {t('sessionsCount', { count: sessions.length })}

@@ -13,6 +13,7 @@ import { collection, deleteDoc, doc, onSnapshot, query, setDoc, writeBatch } fro
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/firebase';
 import { initialExercises as initialExercisesData } from '@/lib/data';
+import { LIBRARY_EXERCISES } from '@/lib/exercise-catalog';
 import { DEMO_EXERCISES } from '@/lib/demo-data';
 import { bodyPartEmojiMap } from '@/lib/style-utils';
 import type { Exercise } from '@/lib/types';
@@ -28,8 +29,29 @@ interface ExerciseContextType {
 
 const ExerciseContext = createContext<ExerciseContextType | undefined>(undefined);
 
+/**
+ * The catalogue plus whatever the account holds, with the account winning.
+ *
+ * The 287 catalogue exercises are *not* written to Firestore. They are identical
+ * for everyone, so storing them per account would mean 287 duplicated documents
+ * each and — worse — the collection is seeded once at sign-in, so anyone who
+ * already has an account would never see a catalogue that grew afterwards.
+ * Shipping them in the bundle and merging at read time means an app update is
+ * all it takes.
+ *
+ * Firestore overlays by id, so editing a catalogue exercise saves an override
+ * and that override wins.
+ */
+function mergeWithLibrary(stored: Exercise[]): Exercise[] {
+  const byId = new Map<string, Exercise>();
+  LIBRARY_EXERCISES.forEach((exercise) => byId.set(exercise.id, exercise));
+  stored.forEach((exercise) => byId.set(exercise.id, exercise));
+
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function ExerciseProvider({ children }: { children: ReactNode }) {
-  const [exercises, setExercises] = useState<Exercise[]>(initialExercisesData);
+  const [exercises, setExercises] = useState<Exercise[]>(() => mergeWithLibrary(initialExercisesData));
   const { user } = useAuth();
 
   const getExercisesCollectionRef = useCallback(() => {
@@ -40,12 +62,12 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-      setExercises(initialExercisesData);
+      setExercises(mergeWithLibrary(initialExercisesData));
       return;
     }
 
     if (user.isDemo) {
-      setExercises(DEMO_EXERCISES);
+      setExercises(mergeWithLibrary(DEMO_EXERCISES));
       return;
     }
 
@@ -55,18 +77,14 @@ export function ExerciseProvider({ children }: { children: ReactNode }) {
       (querySnapshot) => {
         if (querySnapshot.empty) {
           // Seeding happens at sign-in; show the defaults until it lands.
-          setExercises(initialExercisesData);
+          setExercises(mergeWithLibrary(initialExercisesData));
           return;
         }
-        setExercises(
-          querySnapshot.docs
-            .map((docSnap) => docSnap.data() as Exercise)
-            .sort((a, b) => a.name.localeCompare(b.name)),
-        );
+        setExercises(mergeWithLibrary(querySnapshot.docs.map((docSnap) => docSnap.data() as Exercise)));
       },
       (error) => {
         console.error('Error fetching exercises from Firestore:', error);
-        setExercises(initialExercisesData);
+        setExercises(mergeWithLibrary(initialExercisesData));
       },
     );
 

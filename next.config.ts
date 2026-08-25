@@ -39,9 +39,39 @@ const withPWA = withPWAInit({
   register: true,
   reloadOnOnline: true,
   cacheOnFrontEndNav: true,
+  /**
+   * Keep the exercise artwork out of the precache.
+   *
+   * There are 906 of these and they total ~25 MB. Precaching means downloading
+   * every one the first time someone opens the app, to show a handful — and no
+   * routine touches 302 exercises. They are cached on the way past instead, by
+   * the CacheFirst rule below.
+   *
+   * The default entry is repeated because this replaces the list rather than
+   * adding to it.
+   */
+  publicExcludes: ['!noprecache/**/*', '!exercises/**/*'],
   aggressiveFrontEndNavCaching: true,
   workboxOptions: {
     disableDevLogs: true,
+    runtimeCaching: [
+      {
+        // Immutable by construction: the files are copied byte-for-byte and a
+        // change would arrive under a new path, so served-from-cache is always
+        // correct and never needs revalidating.
+        urlPattern: /\/exercises\/.*\.svg$/,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'exercise-illustrations',
+          expiration: {
+            // Comfortably more than any real routine, and far less than all 906.
+            maxEntries: 300,
+            maxAgeSeconds: 60 * 60 * 24 * 365,
+          },
+          cacheableResponse: { statuses: [0, 200] },
+        },
+      },
+    ],
   },
 });
 

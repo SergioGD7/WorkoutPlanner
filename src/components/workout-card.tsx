@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import ExerciseIllustration from '@/components/exercise-illustration';
 import { useLanguage } from '@/context/language-context';
 import { useWorkTimer, workTimerKey } from '@/context/work-timer-context';
 import type { ExerciseTracking, Set, SetType, WeightUnit, WorkoutExercise } from '@/lib/types';
@@ -69,6 +70,8 @@ interface WorkoutCardProps {
   exerciseName: string;
   bodyPartLabel?: string;
   emoji?: string;
+  /** Slug for the artwork, from the exercise definition. */
+  illustration?: string;
   tracking: ExerciseTracking;
   /** Unilateral work: the row shows how the logged total splits by side. */
   perSide?: boolean;
@@ -97,6 +100,7 @@ export default function WorkoutCard({
   exerciseName,
   bodyPartLabel,
   emoji,
+  illustration,
   tracking,
   perSide,
   unit,
@@ -142,7 +146,12 @@ export default function WorkoutCard({
             >
               <GripVertical className="h-4 w-4" />
             </span>
-            {emoji && <span aria-hidden="true">{emoji}</span>}
+            <ExerciseIllustration
+              exercise={{ illustration, emoji }}
+              name={exerciseName}
+              size="sm"
+              bare
+            />
             <span className="truncate">{exerciseName}</span>
           </CardTitle>
           <div className="mt-1 flex flex-wrap items-center gap-2">
