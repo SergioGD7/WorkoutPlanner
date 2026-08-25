@@ -24,6 +24,7 @@ export default function WorkoutReminderSync() {
     void syncWorkoutReminder(
       workoutLog,
       settings.workoutReminderEnabled,
+      settings.workoutReminderDays,
       settings.workoutReminderTime,
       {
         title: (routine) =>
@@ -32,7 +33,21 @@ export default function WorkoutReminderSync() {
       },
     );
     // `language` is a dependency in spirit: the texts change with it.
-  }, [workoutLog, isLoading, settings.workoutReminderEnabled, settings.workoutReminderTime, t, language]);
+    //
+    // This fires on every Firestore snapshot, since both the log and the
+    // settings arrive as fresh objects each time. Deduplicating here would mean
+    // memoising every dependency; `syncWorkoutReminder` compares the plan it
+    // computes against the one already booked instead, which catches the churn
+    // whatever caused it.
+  }, [
+    workoutLog,
+    isLoading,
+    settings.workoutReminderEnabled,
+    settings.workoutReminderDays,
+    settings.workoutReminderTime,
+    t,
+    language,
+  ]);
 
   return null;
 }

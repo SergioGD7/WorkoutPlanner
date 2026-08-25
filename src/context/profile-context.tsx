@@ -24,6 +24,9 @@ export const DEFAULT_SETTINGS: ProfileSettings = {
   restTimerSound: true,
   restTimerNotifications: false,
   workoutReminderEnabled: false,
+  // Mon/Wed/Fri: the most common split, and the picker sits right below the
+  // toggle so anyone on a different rhythm changes it in the same breath.
+  workoutReminderDays: [1, 3, 5],
   workoutReminderTime: '18:30',
   defaultProgression: DEFAULT_PROGRESSION,
   barWeight: 20,
