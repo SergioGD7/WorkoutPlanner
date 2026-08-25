@@ -373,10 +373,18 @@ function SetRow({
    * It sits *below* the row rather than inside a field, so the weight and rep
    * inputs stay on the same baseline whether or not a set has a split to show —
    * putting it in the column made every per-side row taller than its neighbours.
+   *
+   * The empty leading box repeats the set-number column's width and the row's
+   * gap, which lands the chip exactly under the weight field it describes
+   * without hard-coding an offset that would drift if the row ever changed.
    */
   const perSideChip =
     perSide && set.weight > 0 ? (
-      <div className="flex justify-end pr-0.5">
+      // The transparent border is not decoration: it mirrors the row's own
+      // border so both content boxes start at the same x, which is what puts the
+      // chip flush with the field above it rather than a pixel to its left.
+      <div className="flex items-center gap-1.5 border border-transparent px-1.5">
+        <div className="w-9 shrink-0" aria-hidden="true" />
         <span className="whitespace-nowrap rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
           {t('perSideSplit', {
             weight: `${trimZeros(fromKg(perSideWeight(set.weight), unit))} ${unit}`,
