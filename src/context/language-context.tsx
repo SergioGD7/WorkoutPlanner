@@ -11,11 +11,25 @@ import {
 } from 'react';
 import en from '@/locales/en.json';
 import es from '@/locales/es.json';
+import exercisesEn from '@/locales/exercises-en.json';
+import exercisesEs from '@/locales/exercises-es.json';
 
 type Language = 'en' | 'es';
 type Translations = { [key: string]: string };
 
-const translations: Record<Language, Translations> = { en, es };
+/**
+ * UI strings and exercise names are kept in separate files and merged here.
+ *
+ * The exercise catalogue is content, not chrome: 574 generated names and
+ * descriptions per language, rewritten wholesale by
+ * `scripts/import-exercise-library.mjs`. Mixing them into the hand-written UI
+ * strings would mean a generated file nobody can review and a merge conflict
+ * every time either side changes.
+ */
+const translations: Record<Language, Translations> = {
+  en: { ...en, ...exercisesEn },
+  es: { ...es, ...exercisesEs },
+};
 
 const STORAGE_KEY = 'workoutPlanner.language';
 

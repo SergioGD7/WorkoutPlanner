@@ -165,6 +165,17 @@ const POLICIES: Record<Lang, Policy> = {
         ),
       },
       {
+        title: 'Las ilustraciones',
+        body: (
+          <p>
+            Los dibujos de los ejercicios viajan dentro de la app. No se piden a
+            ningún servidor al mostrarlos, así que verlos no genera ninguna petición ni
+            revela qué ejercicios consultas. Sus autores y licencias están en Ajustes →
+            Licencias.
+          </p>
+        ),
+      },
+      {
         title: 'El modo de ejemplo',
         body: (
           <p>
@@ -350,6 +361,17 @@ const POLICIES: Record<Lang, Policy> = {
             <strong>on your device</strong> and its contents become your history in your account,
             treated exactly like the rest of your data. The file is not sent anywhere else, and we
             do not contact those apps or their servers.
+          </p>
+        ),
+      },
+      {
+        title: 'The illustrations',
+        body: (
+          <p>
+            The exercise drawings ship inside the app. Nothing is requested from a
+            server to display them, so looking at them makes no network request and
+            reveals nothing about which exercises you view. Their authors and licences
+            are listed under Settings → Licences.
           </p>
         ),
       },

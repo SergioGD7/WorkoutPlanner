@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { Exercise } from "@/lib/types";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
+import ExerciseIllustration from '@/components/exercise-illustration';
 import { useOverlayLock } from "@/context/overlay-context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -143,9 +144,11 @@ export default function AddExerciseSheet({ isOpen, onClose, onAddExercise, exist
                                 : "bg-secondary/10 hover:bg-secondary/30 active:bg-secondary/50 cursor-pointer hover:border-border/50"
                               }`}
                             >
-                              <div className={`flex items-center justify-center w-12 h-12 rounded-lg bg-background text-2xl shadow-sm shrink-0 ${isAdded ? 'grayscale' : ''}`}>
-                                {exercise.emoji}
-                              </div>
+                              <ExerciseIllustration
+                                exercise={exercise}
+                                name={t(exercise.name)}
+                                className={`bg-background shadow-sm ${isAdded ? 'grayscale' : ''}`}
+                              />
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-foreground truncate">
                                   {t(exercise.name)}

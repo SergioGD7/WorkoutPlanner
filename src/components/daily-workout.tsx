@@ -501,6 +501,9 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                   exerciseName={resolveExerciseName(workoutExercise, allExercises, t)}
                   bodyPart={resolveBodyPart(workoutExercise, allExercises)}
                   emoji={allExercises.find((exercise) => exercise.id === workoutExercise.exerciseId)?.emoji}
+                  illustration={
+                    allExercises.find((exercise) => exercise.id === workoutExercise.exerciseId)?.illustration
+                  }
                   tracking={resolveTracking(workoutExercise, allExercises)}
                   perSide={resolvePerSide(workoutExercise, allExercises)}
                   unit={unit}

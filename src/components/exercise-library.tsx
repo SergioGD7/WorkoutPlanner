@@ -14,6 +14,7 @@ import DeleteExerciseDialog from '@/components/delete-exercise-dialog';
 import ExerciseHistorySheet from '@/components/exercise-history-sheet';
 import { useExercises } from '@/context/exercise-context';
 import { useLanguage } from '@/context/language-context';
+import ExerciseIllustration from '@/components/exercise-illustration';
 import { useProfile } from '@/context/profile-context';
 import { useWorkout } from '@/context/workout-context';
 import { bodyParts as allBodyParts } from '@/lib/data';
@@ -154,9 +155,12 @@ export default function ExerciseLibrary() {
                       </div>
 
                       <CardHeader className="flex flex-col items-start justify-between pb-2">
-                        <CardTitle className="w-full pr-28 font-headline text-lg">
-                          {exercise.emoji} {t(exercise.name)}
-                        </CardTitle>
+                        <div className="flex w-full items-center gap-3 pr-28">
+                          <ExerciseIllustration exercise={exercise} name={t(exercise.name)} />
+                          <CardTitle className="min-w-0 font-headline text-lg">
+                            {t(exercise.name)}
+                          </CardTitle>
+                        </div>
                         <div className="mt-2 flex w-full items-center justify-between gap-2">
                           <Badge className="border-transparent bg-accent/20 capitalize text-accent hover:bg-accent/30">
                             {t(exercise.bodyPart.toLowerCase())}

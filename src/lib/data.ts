@@ -4,31 +4,31 @@ export const bodyParts = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'] 
 
 export const initialExercises: Exercise[] = [
   // Chest
-  { id: 'ex1', name: 'benchPress', bodyPart: 'Chest', description: 'benchPressDescription', emoji: '🏋️', tracking: 'weight' },
-  { id: 'ex2', name: 'dumbbellFlyes', bodyPart: 'Chest', description: 'dumbbellFlyesDescription', emoji: '🏋️', tracking: 'weight' },
-  { id: 'ex3', name: 'pushups', bodyPart: 'Chest', description: 'pushupsDescription', emoji: '🏋️', tracking: 'bodyweight' },
+  { id: 'ex1', name: 'benchPress', bodyPart: 'Chest', description: 'benchPressDescription', emoji: '🏋️', tracking: 'weight', illustration: 'bench-press' },
+  { id: 'ex2', name: 'dumbbellFlyes', bodyPart: 'Chest', description: 'dumbbellFlyesDescription', emoji: '🏋️', tracking: 'weight', illustration: 'dumbbell-fly' },
+  { id: 'ex3', name: 'pushups', bodyPart: 'Chest', description: 'pushupsDescription', emoji: '🏋️', tracking: 'bodyweight', illustration: 'push-up' },
 
   // Back
-  { id: 'ex4', name: 'pullups', bodyPart: 'Back', description: 'pullupsDescription', emoji: '🧗', tracking: 'bodyweight' },
-  { id: 'ex5', name: 'bentoverRows', bodyPart: 'Back', description: 'bentoverRowsDescription', emoji: '🧗', tracking: 'weight' },
-  { id: 'ex6', name: 'deadlifts', bodyPart: 'Back', description: 'deadliftsDescription', emoji: '🧗', tracking: 'weight' },
+  { id: 'ex4', name: 'pullups', bodyPart: 'Back', description: 'pullupsDescription', emoji: '🧗', tracking: 'bodyweight', illustration: 'pull-up' },
+  { id: 'ex5', name: 'bentoverRows', bodyPart: 'Back', description: 'bentoverRowsDescription', emoji: '🧗', tracking: 'weight', illustration: 'barbell-row' },
+  { id: 'ex6', name: 'deadlifts', bodyPart: 'Back', description: 'deadliftsDescription', emoji: '🧗', tracking: 'weight', illustration: 'deadlift' },
 
   // Legs
-  { id: 'ex7', name: 'squats', bodyPart: 'Legs', description: 'squatsDescription', emoji: '🏃', tracking: 'weight' },
-  { id: 'ex8', name: 'legPress', bodyPart: 'Legs', description: 'legPressDescription', emoji: '🏃', tracking: 'weight' },
-  { id: 'ex9', name: 'lunges', bodyPart: 'Legs', description: 'lungesDescription', emoji: '🏃', tracking: 'weight', perSide: true },
+  { id: 'ex7', name: 'squats', bodyPart: 'Legs', description: 'squatsDescription', emoji: '🏃', tracking: 'weight', illustration: 'squat' },
+  { id: 'ex8', name: 'legPress', bodyPart: 'Legs', description: 'legPressDescription', emoji: '🏃', tracking: 'weight', illustration: 'leg-press' },
+  { id: 'ex9', name: 'lunges', bodyPart: 'Legs', description: 'lungesDescription', emoji: '🏃', tracking: 'weight', perSide: true, illustration: 'forward-lunge' },
 
   // Shoulders
-  { id: 'ex10', name: 'overheadPress', bodyPart: 'Shoulders', description: 'overheadPressDescription', emoji: '🤷', tracking: 'weight' },
-  { id: 'ex11', name: 'lateralRaises', bodyPart: 'Shoulders', description: 'lateralRaisesDescription', emoji: '🤷', tracking: 'weight' },
+  { id: 'ex10', name: 'overheadPress', bodyPart: 'Shoulders', description: 'overheadPressDescription', emoji: '🤷', tracking: 'weight', illustration: 'overhead-press' },
+  { id: 'ex11', name: 'lateralRaises', bodyPart: 'Shoulders', description: 'lateralRaisesDescription', emoji: '🤷', tracking: 'weight', illustration: 'lateral-raise' },
 
   // Arms
-  { id: 'ex12', name: 'bicepCurls', bodyPart: 'Arms', description: 'bicepCurlsDescription', emoji: '💪', tracking: 'weight' },
-  { id: 'ex13', name: 'tricepDips', bodyPart: 'Arms', description: 'tricepDipsDescription', emoji: '💪', tracking: 'bodyweight' },
+  { id: 'ex12', name: 'bicepCurls', bodyPart: 'Arms', description: 'bicepCurlsDescription', emoji: '💪', tracking: 'weight', illustration: 'bicep-curl' },
+  { id: 'ex13', name: 'tricepDips', bodyPart: 'Arms', description: 'tricepDipsDescription', emoji: '💪', tracking: 'bodyweight', illustration: 'bench-dip' },
 
   // Core
-  { id: 'ex14', name: 'plank', bodyPart: 'Core', description: 'plankDescription', emoji: '🧘', tracking: 'duration' },
-  { id: 'ex15', name: 'crunches', bodyPart: 'Core', description: 'crunchesDescription', emoji: '🧘', tracking: 'bodyweight' },
+  { id: 'ex14', name: 'plank', bodyPart: 'Core', description: 'plankDescription', emoji: '🧘', tracking: 'duration', illustration: 'plank' },
+  { id: 'ex15', name: 'crunches', bodyPart: 'Core', description: 'crunchesDescription', emoji: '🧘', tracking: 'bodyweight', illustration: 'crunch' },
 ];
 
 export const DEFAULT_TEMPLATE_REPS = 10;
