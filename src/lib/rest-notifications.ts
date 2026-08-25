@@ -20,9 +20,27 @@
  * pending one, and cancelling one never disturbs the other.
  */
 export const REST_NOTIFICATION_ID = 1;
-export const REMINDER_NOTIFICATION_ID = 2;
 export const WORK_NOTIFICATION_ID = 3;
-export const TEST_NOTIFICATION_ID = 9;
+
+/**
+ * Workout reminders get a block of their own, one id per upcoming training day.
+ *
+ * A single pending reminder only survives until it fires, and re-arming it takes
+ * the app being opened — which is exactly what someone who needs reminding has
+ * not done. Booking the whole horizon up front means the reminders keep coming
+ * for a fortnight of silence.
+ *
+ * Id 2 was the old single reminder. It is still cancelled on every sync so a
+ * stale one from a previous version cannot outlive its own feature.
+ */
+export const LEGACY_REMINDER_ID = 2;
+export const REMINDER_ID_BASE = 100;
+export const REMINDER_HORIZON_DAYS = 14;
+
+export const REMINDER_IDS = Array.from(
+  { length: REMINDER_HORIZON_DAYS },
+  (_, index) => REMINDER_ID_BASE + index,
+);
 
 type LocalNotificationsPlugin = typeof import('@capacitor/local-notifications')['LocalNotifications'];
 
@@ -166,6 +184,73 @@ export async function scheduleNotification(
   }
 }
 
+/** One alert in a batch. */
+export interface PendingNotification {
+  id: number;
+  at: number;
+  title: string;
+  body: string;
+}
+
+/**
+ * Books several alerts in one call, replacing every id it is given.
+ *
+ * Batched rather than looped because the reminder horizon re-arms on every log
+ * change: a fortnight of training days is a dozen alerts, and a dozen round
+ * trips through the native bridge on every Firestore snapshot is not free.
+ * Passing an empty list still clears the ids, which is how the horizon shrinks.
+ */
+export async function scheduleNotifications(
+  ids: number[],
+  pending: PendingNotification[],
+): Promise<void> {
+  const box = await getPlugin();
+  if (!box) return;
+
+  const due = pending.filter((item) => item.at > Date.now());
+
+  try {
+    const permission = await box.plugin.checkPermissions();
+    if (permission.display !== 'granted') return;
+
+    await ensureChannel(box);
+
+    // Clear the whole block first: yesterday's horizon may have used ids that
+    // today's does not, and those would otherwise fire on their own.
+    try {
+      await box.plugin.cancel({ notifications: ids.map((id) => ({ id })) });
+    } catch {
+      // Nothing was pending. Carry on and book the new set.
+    }
+
+    if (due.length === 0) return;
+
+    await box.plugin.schedule({
+      notifications: due.map((item) => ({
+        id: item.id,
+        title: item.title,
+        body: item.body,
+        channelId: CHANNEL_ID,
+        schedule: { at: new Date(item.at), allowWhileIdle: true },
+      })),
+    });
+  } catch (error) {
+    console.error('Could not schedule the notifications:', error);
+  }
+}
+
+/** Withdraws pending alerts by id. Ids with nothing pending are ignored. */
+export async function cancelNotifications(ids: number[]): Promise<void> {
+  const box = await getPlugin();
+  if (!box || ids.length === 0) return;
+
+  try {
+    await box.plugin.cancel({ notifications: ids.map((id) => ({ id })) });
+  } catch {
+    // Nothing pending, or the platform has no scheduler. Either way, done.
+  }
+}
+
 /** Withdraws a pending alert: the rest was skipped, or the day got logged. */
 export async function cancelNotification(id: number): Promise<void> {
   const box = await getPlugin();
@@ -184,35 +269,3 @@ export const scheduleRestNotification = (at: number, title: string, body: string
 
 export const cancelRestNotification = () => cancelNotification(REST_NOTIFICATION_ID);
 
-/** What happened when we tried to book an alert. */
-export type NotificationCheck = 'scheduled' | 'denied' | 'unavailable' | 'failed';
-
-/**
- * Books an alert a few seconds out and reports what the OS actually said.
- *
- * "The notification never arrived" has half a dozen causes that look identical
- * from inside the app — permission never granted, exact alarms switched off, the
- * manufacturer's battery saver killing the process — and none of them are
- * visible in a rest timer that ends three minutes from now. This is the short
- * loop: press it, leave the app, and either it lands or it does not.
- */
-export async function scheduleTestNotification(
-  delaySeconds: number,
-  title: string,
-  body: string,
-): Promise<NotificationCheck> {
-  const box = await getPlugin();
-  if (!box) return 'unavailable';
-
-  try {
-    const permission = await box.plugin.checkPermissions();
-    if (permission.display !== 'granted') return 'denied';
-
-    await ensureChannel(box);
-    await scheduleNotification(TEST_NOTIFICATION_ID, Date.now() + delaySeconds * 1000, title, body);
-    return 'scheduled';
-  } catch (error) {
-    console.error('Test notification failed:', error);
-    return 'failed';
-  }
-}

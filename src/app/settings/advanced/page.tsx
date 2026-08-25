@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { addDays, format, startOfWeek } from "date-fns";
+import { es } from "date-fns/locale/es";
+import { enUS } from "date-fns/locale/en-US";
 import { useRouter } from "next/navigation";
-import { Bell, BellRing, CalendarClock, ChevronLeft, Target, TrendingUp } from "lucide-react";
+import { Bell, CalendarClock, ChevronLeft, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,11 +30,13 @@ import { useProfile } from "@/context/profile-context";
 import { useRestTimer } from "@/context/rest-timer-context";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_PROGRESSION, PROGRESSION_LABELS, PROGRESSION_RULES } from "@/lib/progression";
-import { scheduleTestNotification } from "@/lib/rest-notifications";
 import { fromKg, toKg, trimZeros, weightStep } from "@/lib/workout-utils";
 import type { ProgressionRule, WeightUnit } from "@/lib/types";
 
 const REST_PRESETS = [45, 60, 90, 120, 180, 240];
+
+/** `Date.getDay()` numbers, ordered Monday first the way the calendar shows them. */
+const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
 
 
 export default function AdvancedSettingsPage() {
@@ -66,6 +71,27 @@ export default function AdvancedSettingsPage() {
 
   const progression = settings.defaultProgression ?? DEFAULT_PROGRESSION;
 
+  // Weekday names come from date-fns rather than seven more translation keys:
+  // it already ships both locales and gets the abbreviations right.
+  const weekdayLabel = useMemo(() => {
+    const locale = language === "es" ? es : enUS;
+    const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const labels = new Map(
+      WEEKDAYS.map((_, index) => {
+        const day = addDays(monday, index);
+        return [day.getDay(), format(day, "EEE", { locale })];
+      }),
+    );
+    return (weekday: number) => labels.get(weekday) ?? String(weekday);
+  }, [language]);
+
+  const toggleReminderDay = (weekday: number) => {
+    const days = settings.workoutReminderDays.includes(weekday)
+      ? settings.workoutReminderDays.filter((day) => day !== weekday)
+      : [...settings.workoutReminderDays, weekday].sort((a, b) => a - b);
+    return updateSettings({ workoutReminderDays: days });
+  };
+
   // The increment is optional: empty means "whatever a standard plate pair is",
   // which is what most gyms have. Typed freely for the same reason as the goal.
   const defaultStep = weightStep(unit);
@@ -88,30 +114,6 @@ export default function AdvancedSettingsPage() {
       next.step = toKg(parsed, unit);
     }
     void updateSettings({ defaultProgression: next });
-  };
-
-  const handleTestNotification = async () => {
-    const result = await scheduleTestNotification(
-      5,
-      t("testNotificationTitle"),
-      t("testNotificationBody"),
-    );
-
-    if (result === "scheduled") {
-      toast({ title: t("testNotification"), description: t("testNotificationScheduled") });
-      return;
-    }
-
-    toast({
-      variant: "destructive",
-      title: t("error"),
-      description:
-        result === "denied"
-          ? t("notificationsDenied")
-          : result === "unavailable"
-            ? t("testNotificationUnavailable")
-            : t("testNotificationFailed"),
-    });
   };
 
   const handleReminderToggle = async (enabled: boolean) => {
@@ -273,27 +275,6 @@ export default function AdvancedSettingsPage() {
                       }
                     />
                   </div>
-
-                  {/* Whether an alert survives being backgrounded depends on
-                      permissions, exact-alarm access and the manufacturer's
-                      battery saver — none of which are visible from in here.
-                      This is the short loop for finding out. */}
-                  {settings.restTimerNotifications && (
-                    <div className="flex items-center justify-between gap-4">
-                      <Label className="pr-2 font-normal text-muted-foreground">
-                        {t("testNotificationHint")}
-                      </Label>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void handleTestNotification()}
-                        className="shrink-0"
-                      >
-                        <BellRing className="mr-2 h-4 w-4" />
-                        {t("testNotification")}
-                      </Button>
-                    </div>
-                  )}
                   </div>
 
                   <div className="flex items-center justify-between gap-4">
@@ -317,18 +298,60 @@ export default function AdvancedSettingsPage() {
                   </div>
 
                   {settings.workoutReminderEnabled && (
-                    <div className="flex items-center justify-between gap-4">
-                      <Label htmlFor="reminder-time">{t("workoutReminderTime")}</Label>
-                      <Input
-                        id="reminder-time"
-                        type="time"
-                        value={settings.workoutReminderTime}
-                        onChange={(event) =>
-                          void updateSettings({ workoutReminderTime: event.target.value })
-                        }
-                        className="w-[170px] shrink-0"
-                      />
-                    </div>
+                    <>
+                      <div className="flex items-center justify-between gap-4">
+                        <Label htmlFor="reminder-time">{t("workoutReminderTime")}</Label>
+                        <Input
+                          id="reminder-time"
+                          type="time"
+                          value={settings.workoutReminderTime}
+                          onChange={(event) =>
+                            void updateSettings({ workoutReminderTime: event.target.value })
+                          }
+                          className="w-[170px] shrink-0"
+                        />
+                      </div>
+
+                      {/* The log records what happened, never what you intend:
+                          a routine only lands on a day when you load it that
+                          day. So the days you train have to be said out loud. */}
+                      <div>
+                        <Label className="block">
+                          {t("workoutReminderDays")}
+                          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                            {t("workoutReminderDaysHint")}
+                          </span>
+                        </Label>
+                        {/* Seven equal columns rather than a wrapping row: at
+                            375px the last chip fell to a second line on its own,
+                            which read like it belonged to something else. */}
+                        <div className="mt-2 grid grid-cols-7 gap-1">
+                          {WEEKDAYS.map((weekday) => {
+                            const isOn = settings.workoutReminderDays.includes(weekday);
+                            return (
+                              <button
+                                key={weekday}
+                                type="button"
+                                aria-pressed={isOn}
+                                onClick={() => void toggleReminderDay(weekday)}
+                                className={`h-9 rounded-full text-[11px] font-semibold capitalize transition-colors ${
+                                  isOn
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-secondary/40 text-muted-foreground hover:bg-secondary/70"
+                                }`}
+                              >
+                                {weekdayLabel(weekday)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {settings.workoutReminderDays.length === 0 && (
+                          <p className="mt-2 text-xs text-amber-500">
+                            {t("workoutReminderNoDays")}
+                          </p>
+                        )}
+                      </div>
+                    </>
                   )}
 
                   <div className="flex items-center justify-between gap-4">

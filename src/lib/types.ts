@@ -143,8 +143,16 @@ export interface ProfileSettings {
   defaultRestSeconds: number;
   restTimerSound: boolean;
   restTimerNotifications: boolean;
-  /** Reminds you on days with a routine planned and nothing logged yet. */
+  /** Reminds you on your training days when nothing has been logged yet. */
   workoutReminderEnabled: boolean;
+  /**
+   * Which days you train, as `Date.getDay()` numbers — 0 is Sunday.
+   *
+   * The log cannot answer this: it records what happened, and a routine only
+   * lands on a day when you load it *that* day, so there is nothing on a future
+   * date to reason about. Training days have to be stated.
+   */
+  workoutReminderDays: number[];
   /** Local time of day for that reminder, as "HH:mm". */
   workoutReminderTime: string;
   /** Body-weight target in kg. The chart draws a line at it. */
