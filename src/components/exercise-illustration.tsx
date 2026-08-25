@@ -43,6 +43,14 @@ interface ExerciseIllustrationProps {
   /** Shown to assistive tech; the drawing adds nothing a screen reader needs. */
   name: string;
   size?: Size;
+  /**
+   * Drops the tile behind the drawing, so it sits directly on the card.
+   *
+   * The tile earns its place in a list, where it aligns rows that may or may not
+   * have artwork. Beside a single heading it just draws a box around the one
+   * thing that did not need one.
+   */
+  bare?: boolean;
   /** Cycles the three frames. Off by default: a grid of them would be a fairground. */
   animated?: boolean;
   /** Pins a single frame. Ignored while `animated`. */
@@ -54,6 +62,7 @@ export default function ExerciseIllustration({
   exercise,
   name,
   size = 'md',
+  bare = false,
   animated = false,
   frame = 1,
   className = '',
@@ -61,7 +70,17 @@ export default function ExerciseIllustration({
   const slug = exercise?.illustration;
   const current = useFrameCycle(animated, slug);
 
-  const box = `flex shrink-0 items-center justify-center overflow-hidden bg-secondary/30 ${BOX[size]} ${className}`;
+  const box = [
+    'flex shrink-0 items-center justify-center overflow-hidden',
+    bare ? '' : 'bg-secondary/30',
+    BOX[size],
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  // Without a tile there is no padding to respect, so the drawing fills the box.
+  const art = size === 'hero' || bare ? 'h-full w-full' : 'h-[88%] w-[88%]';
 
   if (!hasIllustration(slug)) {
     return (
@@ -83,7 +102,7 @@ export default function ExerciseIllustration({
         loading="lazy"
         decoding="async"
         draggable={false}
-        className={`${size === 'hero' ? 'w-full' : 'h-[88%] w-[88%]'} invert dark:invert-0`}
+        className={`${art} invert dark:invert-0`}
       />
     </div>
   );

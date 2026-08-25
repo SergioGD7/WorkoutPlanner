@@ -149,7 +149,8 @@ export default function WorkoutCard({
             <ExerciseIllustration
               exercise={{ illustration, emoji }}
               name={exerciseName}
-              size="lg"
+              size="sm"
+              bare
             />
             <span className="truncate">{exerciseName}</span>
           </CardTitle>
