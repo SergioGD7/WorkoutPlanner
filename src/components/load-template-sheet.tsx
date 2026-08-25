@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ManageTemplatesSheet from '@/components/manage-templates-sheet';
 import { useLanguage } from '@/context/language-context';
+import { useOverlayLock } from '@/context/overlay-context';
 import { useTemplates } from '@/context/template-context';
 import type { ProgressionConfig, TemplateExercise, WorkoutTemplate } from '@/lib/types';
 import { templateDays, templateExerciseCount } from '@/lib/workout-utils';
@@ -20,6 +21,8 @@ interface LoadTemplateSheetProps {
 
 export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: LoadTemplateSheetProps) {
   const { t } = useLanguage();
+  // Stand the floating nav down while this sheet covers the screen.
+  useOverlayLock(isOpen);
   const { templates } = useTemplates();
   const [isManageOpen, setIsManageOpen] = useState(false);
   /** Set when a multi-day routine is tapped: the user still has to pick a day. */

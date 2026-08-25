@@ -367,18 +367,23 @@ function SetRow({
   const setLabel = `${t('set')} ${index + 1}`;
 
   /**
-   * What goes on each side, under the weight field. Reps are not split: you do
-   * the same number on both sides, so only the load divides.
+   * What goes on each side. Reps are not split: you do the same number on both
+   * sides, so only the load divides.
+   *
+   * It sits *below* the row rather than inside a field, so the weight and rep
+   * inputs stay on the same baseline whether or not a set has a split to show —
+   * putting it in the column made every per-side row taller than its neighbours.
    */
-  const perSideLine =
+  const perSideChip =
     perSide && set.weight > 0 ? (
-      // No unit here: the field already carries one, and the column is narrow
-      // enough that repeating it wraps the line.
-      <span className="mt-1 block whitespace-nowrap text-center text-[10px] leading-none text-muted-foreground">
-        {t('perSideSplit', { weight: trimZeros(fromKg(perSideWeight(set.weight), unit)) })}
-      </span>
+      <div className="flex justify-end pr-0.5">
+        <span className="whitespace-nowrap rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+          {t('perSideSplit', {
+            weight: `${trimZeros(fromKg(perSideWeight(set.weight), unit))} ${unit}`,
+          })}
+        </span>
+      </div>
     ) : null;
-
 
   /**
    * Every field flexes and is allowed to shrink (`min-w-0`), so the row always
@@ -388,228 +393,230 @@ function SetRow({
     'h-9 w-full min-w-0 rounded-md border border-transparent bg-secondary/30 text-center font-semibold text-foreground outline-none transition-colors hover:bg-secondary/50 focus:border-primary/50 focus:bg-secondary/70';
 
   return (
-    <div
-      className={`flex items-center gap-1.5 rounded-lg border p-1.5 transition-all ${
-        set.completed ? 'border-primary/50 bg-muted' : 'border-border/50 bg-card hover:border-border'
-      }`}
-    >
-      {/* Set number doubles as the set-type / RPE menu trigger. */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="w-9 shrink-0 rounded-md px-1 py-1 text-xs font-medium leading-tight text-muted-foreground transition-colors hover:bg-secondary/50"
-            aria-label={`${setLabel} — ${
-              setType === 'normal' ? t('setType') : t(SET_TYPE_LABEL_KEYS[setType])
-            }`}
-            title={t(SET_TYPE_LABEL_KEYS[setType])}
-          >
-            <span className="flex items-center gap-0.5">
-              {index + 1}
-              {typeIcon && <typeIcon.Icon className={`h-3 w-3 ${typeIcon.className}`} />}
-            </span>
-            {set.rpe ? <span className="block text-[10px] opacity-70">@{set.rpe}</span> : null}
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
-          <DropdownMenuLabel>{t('setType')}</DropdownMenuLabel>
-          {SET_TYPES.map((type) => (
-            <DropdownMenuItem
-              key={type}
-              onClick={() => onUpdate({ type })}
-              className={type === setType ? 'font-bold text-primary' : ''}
-            >
-              {t(SET_TYPE_LABEL_KEYS[type])}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel className="flex items-center justify-between">
-            {t('rpe')}
-            <span className="text-[10px] font-normal text-muted-foreground">1-10</span>
-          </DropdownMenuLabel>
-          <div className="grid grid-cols-4 gap-1 p-2">
-            {[6, 7, 7.5, 8, 8.5, 9, 9.5, 10].map((rpe) => (
-              <button
-                key={rpe}
-                type="button"
-                onClick={() => onUpdate({ rpe: set.rpe === rpe ? undefined : rpe })}
-                className={`rounded-md py-1 text-xs font-semibold transition-colors ${
-                  set.rpe === rpe
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary/40 hover:bg-secondary/70'
-                }`}
-              >
-                {rpe}
-              </button>
-            ))}
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <div className="flex min-w-0 flex-1 items-center gap-1">
-        {tracking === 'duration' ? (
-          <>
-            <div className="relative min-w-0 flex-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                // While the clock runs the field mirrors it, so there is one
-                // number on screen instead of a stale target beside a stopwatch.
-                value={isTiming ? String(elapsed) : durationText}
-                readOnly={isTiming}
-                aria-label={
-                  isTiming
-                    ? t('workTimerRunning', { index: index + 1 })
-                    : `${setLabel} — ${t('duration')}`
-                }
-                onFocus={() => {
-                  durationFocused.current = true;
-                }}
-                onBlur={() => {
-                  durationFocused.current = false;
-                  setDurationText(numberToText(set.duration ?? 0));
-                }}
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  if (!/^\d*$/.test(raw)) return;
-                  setDurationText(raw);
-                  onUpdate({ duration: raw === '' ? 0 : Number(raw) });
-                }}
-                className={`${fieldClass} pr-6 ${
-                  reachedTarget ? 'text-green-500' : isTiming ? 'text-primary' : ''
-                }`}
-                placeholder="0"
-              />
-              <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
-                {t('seconds')}
-              </span>
-            </div>
-
-            <Button
+    <div className="space-y-1">
+      <div
+        className={`flex items-center gap-1.5 rounded-lg border p-1.5 transition-all ${
+          set.completed ? 'border-primary/50 bg-muted' : 'border-border/50 bg-card hover:border-border'
+        }`}
+      >
+        {/* Set number doubles as the set-type / RPE menu trigger. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
               type="button"
-              variant="ghost"
-              size="icon"
-              onClick={toggleTimer}
-              aria-label={isTiming ? t('stopWorkTimer') : t('startWorkTimer')}
-              className={`h-9 w-9 shrink-0 ${
-                isTiming ? 'text-primary hover:text-primary' : 'text-muted-foreground'
+              className="w-9 shrink-0 rounded-md px-1 py-1 text-xs font-medium leading-tight text-muted-foreground transition-colors hover:bg-secondary/50"
+              aria-label={`${setLabel} — ${
+                setType === 'normal' ? t('setType') : t(SET_TYPE_LABEL_KEYS[setType])
               }`}
+              title={t(SET_TYPE_LABEL_KEYS[setType])}
             >
-              {isTiming ? (
-                <Square className="h-3.5 w-3.5 fill-current" />
-              ) : (
-                <Play className="h-4 w-4 fill-current" />
-              )}
-            </Button>
-          </>
-        ) : (
-          <>
-            {tracking === 'weight' && (
+              <span className="flex items-center gap-0.5">
+                {index + 1}
+                {typeIcon && <typeIcon.Icon className={`h-3 w-3 ${typeIcon.className}`} />}
+              </span>
+              {set.rpe ? <span className="block text-[10px] opacity-70">@{set.rpe}</span> : null}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuLabel>{t('setType')}</DropdownMenuLabel>
+            {SET_TYPES.map((type) => (
+              <DropdownMenuItem
+                key={type}
+                onClick={() => onUpdate({ type })}
+                className={type === setType ? 'font-bold text-primary' : ''}
+              >
+                {t(SET_TYPE_LABEL_KEYS[type])}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="flex items-center justify-between">
+              {t('rpe')}
+              <span className="text-[10px] font-normal text-muted-foreground">1-10</span>
+            </DropdownMenuLabel>
+            <div className="grid grid-cols-4 gap-1 p-2">
+              {[6, 7, 7.5, 8, 8.5, 9, 9.5, 10].map((rpe) => (
+                <button
+                  key={rpe}
+                  type="button"
+                  onClick={() => onUpdate({ rpe: set.rpe === rpe ? undefined : rpe })}
+                  className={`rounded-md py-1 text-xs font-semibold transition-colors ${
+                    set.rpe === rpe
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary/40 hover:bg-secondary/70'
+                  }`}
+                >
+                  {rpe}
+                </button>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          {tracking === 'duration' ? (
+            <>
               <div className="relative min-w-0 flex-1">
                 <input
                   type="text"
-                  inputMode="decimal"
-                  value={weightText}
-                  aria-label={`${setLabel} — ${t('weightKg', { unit })}`}
+                  inputMode="numeric"
+                  // While the clock runs the field mirrors it, so there is one
+                  // number on screen instead of a stale target beside a stopwatch.
+                  value={isTiming ? String(elapsed) : durationText}
+                  readOnly={isTiming}
+                  aria-label={
+                    isTiming
+                      ? t('workTimerRunning', { index: index + 1 })
+                      : `${setLabel} — ${t('duration')}`
+                  }
                   onFocus={() => {
-                    weightFocused.current = true;
+                    durationFocused.current = true;
                   }}
                   onBlur={() => {
-                    weightFocused.current = false;
-                    setWeightText(numberToText(fromKg(set.weight, unit)));
+                    durationFocused.current = false;
+                    setDurationText(numberToText(set.duration ?? 0));
                   }}
                   onChange={(event) => {
                     const raw = event.target.value;
-                    if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) return;
-                    setWeightText(raw);
-                    const parsed = raw === '' ? 0 : Number(raw.replace(',', '.'));
-                    if (Number.isFinite(parsed)) onUpdate({ weight: toKg(parsed, unit) });
+                    if (!/^\d*$/.test(raw)) return;
+                    setDurationText(raw);
+                    onUpdate({ duration: raw === '' ? 0 : Number(raw) });
                   }}
-                  className={`${fieldClass} pr-7`}
+                  className={`${fieldClass} pr-6 ${
+                    reachedTarget ? 'text-green-500' : isTiming ? 'text-primary' : ''
+                  }`}
                   placeholder="0"
                 />
-                {/* The unit label is the plate-calculator trigger, so it costs no width. */}
-                <button
-                  type="button"
-                  onClick={onOpenPlates}
-                  aria-label={t('plateCalculator')}
-                  className="absolute right-0.5 top-1/2 flex -translate-y-1/2 items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-primary"
-                >
-                  {unit}
-                  <Calculator className="ml-0.5 h-2.5 w-2.5" />
-                </button>
-                {perSideLine}
+                <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">
+                  {t('seconds')}
+                </span>
               </div>
-            )}
 
-            <span className="shrink-0 text-xs text-muted-foreground/50" aria-hidden="true">
-              ×
-            </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={toggleTimer}
+                aria-label={isTiming ? t('stopWorkTimer') : t('startWorkTimer')}
+                className={`h-9 w-9 shrink-0 ${
+                  isTiming ? 'text-primary hover:text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                {isTiming ? (
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                ) : (
+                  <Play className="h-4 w-4 fill-current" />
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              {tracking === 'weight' && (
+                <div className="relative min-w-0 flex-1">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={weightText}
+                    aria-label={`${setLabel} — ${t('weightKg', { unit })}`}
+                    onFocus={() => {
+                      weightFocused.current = true;
+                    }}
+                    onBlur={() => {
+                      weightFocused.current = false;
+                      setWeightText(numberToText(fromKg(set.weight, unit)));
+                    }}
+                    onChange={(event) => {
+                      const raw = event.target.value;
+                      if (!/^[0-9]*[.,]?[0-9]*$/.test(raw)) return;
+                      setWeightText(raw);
+                      const parsed = raw === '' ? 0 : Number(raw.replace(',', '.'));
+                      if (Number.isFinite(parsed)) onUpdate({ weight: toKg(parsed, unit) });
+                    }}
+                    className={`${fieldClass} pr-7`}
+                    placeholder="0"
+                  />
+                  {/* The unit label is the plate-calculator trigger, so it costs no width. */}
+                  <button
+                    type="button"
+                    onClick={onOpenPlates}
+                    aria-label={t('plateCalculator')}
+                    className="absolute right-0.5 top-1/2 flex -translate-y-1/2 items-center rounded px-1 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-primary"
+                  >
+                    {unit}
+                    <Calculator className="ml-0.5 h-2.5 w-2.5" />
+                  </button>
+                </div>
+              )}
 
-            <div className="relative min-w-0 flex-1">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={repsText}
-                aria-label={`${setLabel} — ${t('reps')}`}
-                onFocus={() => {
-                  repsFocused.current = true;
-                }}
-                onBlur={() => {
-                  repsFocused.current = false;
-                  setRepsText(numberToText(set.reps));
-                }}
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  if (!/^\d*$/.test(raw)) return;
-                  setRepsText(raw);
-                  onUpdate({ reps: raw === '' ? 0 : Number(raw) });
-                }}
-                className={fieldClass}
-                placeholder="0"
-              />
-            </div>
-          </>
-        )}
-      </div>
+              <span className="shrink-0 text-xs text-muted-foreground/50" aria-hidden="true">
+                ×
+              </span>
 
-      <div className="flex shrink-0 items-center">
-        {/* Fixed-width slot: rows stay aligned whether or not there is a PR. */}
-        <div className="w-4 shrink-0">
-          {prKind && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span aria-label={t('personalRecord')}>
-                    <Trophy className="h-4 w-4 text-amber-400" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p className="text-xs font-semibold">{t('newPR')}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <div className="relative min-w-0 flex-1">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={repsText}
+                  aria-label={`${setLabel} — ${t('reps')}`}
+                  onFocus={() => {
+                    repsFocused.current = true;
+                  }}
+                  onBlur={() => {
+                    repsFocused.current = false;
+                    setRepsText(numberToText(set.reps));
+                  }}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    if (!/^\d*$/.test(raw)) return;
+                    setRepsText(raw);
+                    onUpdate({ reps: raw === '' ? 0 : Number(raw) });
+                  }}
+                  className={fieldClass}
+                  placeholder="0"
+                />
+              </div>
+            </>
           )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          onClick={onRemove}
-          aria-label={`${t('removeSet')} — ${setLabel}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex shrink-0 items-center">
+          {/* Fixed-width slot: rows stay aligned whether or not there is a PR. */}
+          <div className="w-4 shrink-0">
+            {prKind && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span aria-label={t('personalRecord')}>
+                      <Trophy className="h-4 w-4 text-amber-400" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs font-semibold">{t('newPR')}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
 
-        <Checkbox
-          id={`set-${index}`}
-          checked={set.completed}
-          onCheckedChange={(checked) => onToggle(Boolean(checked))}
-          aria-label={`${t('done')} — ${setLabel}`}
-          className="ml-0.5 h-6 w-6 shrink-0 rounded-md transition-all data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-        />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            onClick={onRemove}
+            aria-label={`${t('removeSet')} — ${setLabel}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+
+          <Checkbox
+            id={`set-${index}`}
+            checked={set.completed}
+            onCheckedChange={(checked) => onToggle(Boolean(checked))}
+            aria-label={`${t('done')} — ${setLabel}`}
+            className="ml-0.5 h-6 w-6 shrink-0 rounded-md transition-all data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+          />
+        </div>
       </div>
+      {perSideChip}
     </div>
   );
 }

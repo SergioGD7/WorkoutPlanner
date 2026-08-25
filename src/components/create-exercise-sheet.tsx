@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
+import { useOverlayLock } from "@/context/overlay-context";
 import { bodyParts } from "@/lib/data";
 import type { Exercise, BodyPart, ExerciseTracking } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -51,6 +52,8 @@ export default function CreateExerciseSheet({
 }: CreateExerciseSheetProps) {
   const { addExercise, updateExercise } = useExercises();
   const { t } = useLanguage();
+  // Stand the floating nav down while this sheet covers the screen.
+  useOverlayLock(isOpen);
 
   const isEditing = !!exerciseToEdit;
 

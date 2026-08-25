@@ -8,6 +8,7 @@ import { TemplateProvider } from '@/context/template-context';
 import { ProfileProvider } from '@/context/profile-context';
 import { RestTimerProvider } from '@/context/rest-timer-context';
 import { WorkTimerProvider } from '@/context/work-timer-context';
+import { OverlayProvider } from '@/context/overlay-context';
 import { Providers } from '@/components/providers';
 import { AuthProvider } from '@/context/auth-context';
 import { WorkoutProvider } from '@/context/workout-context';
@@ -73,9 +74,11 @@ export default function RootLayout({
                       <WorkoutProvider>
                         <RestTimerProvider>
                           <WorkTimerProvider>
-                            {children}
-                            <WorkoutReminderSync />
-                            <Toaster />
+                            <OverlayProvider>
+                              {children}
+                              <WorkoutReminderSync />
+                              <Toaster />
+                            </OverlayProvider>
                           </WorkTimerProvider>
                         </RestTimerProvider>
                       </WorkoutProvider>
