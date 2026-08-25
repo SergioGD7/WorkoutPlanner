@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { Exercise } from "@/lib/types";
 import { useExercises } from "@/context/exercise-context";
 import { useLanguage } from "@/context/language-context";
+import { useOverlayLock } from "@/context/overlay-context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AddExerciseSheetProps {
@@ -20,6 +21,8 @@ interface AddExerciseSheetProps {
 export default function AddExerciseSheet({ isOpen, onClose, onAddExercise, existingExerciseIds = [] }: AddExerciseSheetProps) {
   const { exercises } = useExercises();
   const { t } = useLanguage();
+  // Stand the floating nav down while this sheet covers the screen.
+  useOverlayLock(isOpen);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {

@@ -11,6 +11,7 @@ import ExerciseLibrary from "@/components/exercise-library";
 import ProgressTracker from "@/components/progress-tracker";
 import CalendarView from "@/components/calendar-view";
 import { useLanguage } from "@/context/language-context";
+import { useIsOverlayOpen } from "@/context/overlay-context";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { triggerHaptic } from "@/utils/haptics";
@@ -30,6 +31,7 @@ export default function HomePage() {
   const [view, setView] = useState<View>("dashboard");
   const { t } = useLanguage();
   const { user, loading, logout, isDemo } = useAuth();
+  const isOverlayOpen = useIsOverlayOpen();
   const router = useRouter();
 
   useEffect(() => {
@@ -171,34 +173,49 @@ export default function HomePage() {
       <WorkTimer />
 
       {/* Floating pill navigation, iOS style: detached from the bottom edge,
-          icons only, with the active item marked by a filled capsule. */}
-      <nav
-        className="md:hidden fixed left-1/2 z-50 -translate-x-1/2"
-        style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-        aria-label={t('dashboard')}
-      >
-        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/80 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl">
-          {navItems.map((item) => {
-            const isActive = view === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleViewChange(item.id)}
-                aria-label={item.label}
-                aria-current={isActive ? 'page' : undefined}
-                title={item.label}
-                className={`flex h-12 w-14 items-center justify-center rounded-full transition-colors ${
-                  isActive
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
-                }`}
-              >
-                <item.icon className="h-6 w-6" />
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+          icons only, with the active item marked by a filled capsule.
+
+          It drops out of the way whenever a sheet is up: floating above
+          everything is what makes it reachable while scrolling, and also what
+          made it cover a sheet's own buttons and eat taps meant for them. */}
+      <AnimatePresence>
+        {!isOverlayOpen && (
+          <motion.nav
+            // `x` is animated rather than set with `-translate-x-1/2`: framer
+            // writes `transform` outright and would wipe the class, leaving the
+            // pill half a width to the right of centre.
+            initial={{ opacity: 0, y: 24, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 24, x: '-50%' }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="md:hidden fixed left-1/2 z-50"
+            style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+            aria-label={t('dashboard')}
+          >
+            <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/80 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl">
+              {navItems.map((item) => {
+                const isActive = view === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleViewChange(item.id)}
+                    aria-label={item.label}
+                    aria-current={isActive ? 'page' : undefined}
+                    title={item.label}
+                    className={`flex h-12 w-14 items-center justify-center rounded-full transition-colors ${
+                      isActive
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                    }`}
+                  >
+                    <item.icon className="h-6 w-6" />
+                  </button>
+                );
+              })}
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

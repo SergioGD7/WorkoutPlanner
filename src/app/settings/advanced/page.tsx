@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CalendarClock, ChevronLeft, Target, TrendingUp } from "lucide-react";
+import { Bell, BellRing, CalendarClock, ChevronLeft, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,7 @@ import { useProfile } from "@/context/profile-context";
 import { useRestTimer } from "@/context/rest-timer-context";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_PROGRESSION, PROGRESSION_LABELS, PROGRESSION_RULES } from "@/lib/progression";
+import { scheduleTestNotification } from "@/lib/rest-notifications";
 import { fromKg, toKg, trimZeros, weightStep } from "@/lib/workout-utils";
 import type { ProgressionRule, WeightUnit } from "@/lib/types";
 
@@ -34,7 +35,7 @@ const REST_PRESETS = [45, 60, 90, 120, 180, 240];
 
 
 export default function AdvancedSettingsPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { settings, updateSettings } = useProfile();
   const { requestNotificationPermission } = useRestTimer();
   const { toast } = useToast();
@@ -87,6 +88,30 @@ export default function AdvancedSettingsPage() {
       next.step = toKg(parsed, unit);
     }
     void updateSettings({ defaultProgression: next });
+  };
+
+  const handleTestNotification = async () => {
+    const result = await scheduleTestNotification(
+      5,
+      t("testNotificationTitle"),
+      t("testNotificationBody"),
+    );
+
+    if (result === "scheduled") {
+      toast({ title: t("testNotification"), description: t("testNotificationScheduled") });
+      return;
+    }
+
+    toast({
+      variant: "destructive",
+      title: t("error"),
+      description:
+        result === "denied"
+          ? t("notificationsDenied")
+          : result === "unavailable"
+            ? t("testNotificationUnavailable")
+            : t("testNotificationFailed"),
+    });
   };
 
   const handleReminderToggle = async (enabled: boolean) => {
@@ -248,6 +273,27 @@ export default function AdvancedSettingsPage() {
                       }
                     />
                   </div>
+
+                  {/* Whether an alert survives being backgrounded depends on
+                      permissions, exact-alarm access and the manufacturer's
+                      battery saver — none of which are visible from in here.
+                      This is the short loop for finding out. */}
+                  {settings.restTimerNotifications && (
+                    <div className="flex items-center justify-between gap-4">
+                      <Label className="pr-2 font-normal text-muted-foreground">
+                        {t("testNotificationHint")}
+                      </Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleTestNotification()}
+                        className="shrink-0"
+                      >
+                        <BellRing className="mr-2 h-4 w-4" />
+                        {t("testNotification")}
+                      </Button>
+                    </div>
+                  )}
                   </div>
 
                   <div className="flex items-center justify-between gap-4">
@@ -414,8 +460,12 @@ export default function AdvancedSettingsPage() {
                     trailing slashes, so the page URL is /settings/advanced/ and
                     ".." only climbs to /settings/. An absolute path with the
                     deploy prefix is correct in both places. */}
+                {/* The language rides along in the URL. `target="_blank"` hands
+                    the link to the system browser, which does not share the
+                    WebView's storage — so the page cannot read the app's saved
+                    language and would fall back to the phone's. */}
                 <a
-                  href={withBasePath('/privacy')}
+                  href={`${withBasePath('/privacy')}?lang=${language}`}
                   className="text-sm text-primary underline"
                   target="_blank"
                   rel="noreferrer"

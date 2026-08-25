@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLanguage } from '@/context/language-context';
+import { useOverlayLock } from '@/context/overlay-context';
 import { useProfile } from '@/context/profile-context';
 import {
   DEFAULT_PLATES_KG,
@@ -36,6 +37,8 @@ const PLATE_COLORS: Record<number, string> = {
 
 export default function PlateCalculator({ isOpen, onClose, initialWeightKg = 0 }: PlateCalculatorProps) {
   const { t } = useLanguage();
+  // A centred dialog still has the nav pill floating over its footer.
+  useOverlayLock(isOpen);
   const { settings, updateSettings } = useProfile();
   const unit = settings.weightUnit;
 

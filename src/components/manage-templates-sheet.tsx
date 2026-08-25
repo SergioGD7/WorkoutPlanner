@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useLanguage } from '@/context/language-context';
+import { useOverlayLock } from '@/context/overlay-context';
 import { useExercises } from '@/context/exercise-context';
 import { useTemplates } from '@/context/template-context';
 import { DEFAULT_TEMPLATE_REPS, DEFAULT_TEMPLATE_SETS } from '@/lib/data';
@@ -40,6 +41,8 @@ interface ManageTemplatesSheetProps {
 
 export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplatesSheetProps) {
   const { t } = useLanguage();
+  // Stand the floating nav down while this sheet covers the screen.
+  useOverlayLock(isOpen);
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useTemplates();
   const { exercises } = useExercises();
 

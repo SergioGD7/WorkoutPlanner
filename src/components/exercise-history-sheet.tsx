@@ -10,6 +10,7 @@ import { Trophy, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLanguage } from '@/context/language-context';
+import { useOverlayLock } from '@/context/overlay-context';
 import { useProfile } from '@/context/profile-context';
 import { useWorkout } from '@/context/workout-context';
 import {
@@ -43,6 +44,8 @@ export default function ExerciseHistorySheet({
   exerciseName,
 }: ExerciseHistorySheetProps) {
   const { t, language } = useLanguage();
+  // Stand the floating nav down while this sheet covers the screen.
+  useOverlayLock(isOpen);
   const { settings } = useProfile();
   const { workoutLog } = useWorkout();
   const unit = settings.weightUnit;
