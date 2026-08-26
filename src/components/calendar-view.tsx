@@ -63,7 +63,12 @@ export default function CalendarView() {
     startOfWeek(new Date(), { weekStartsOn: WEEK_STARTS_ON }),
   );
   const [currentMonth, setCurrentMonth] = useState<Date>(startOfMonth(new Date()));
-  const [isMonthView, setIsMonthView] = useState(true);
+  /**
+   * Collapsed on arrival. The week strip is what you came for — today and the
+   * days around it — and the full month is a deliberate second step, not the
+   * thing that greets you and has to be dismissed.
+   */
+  const [isMonthView, setIsMonthView] = useState(false);
   /**
    * Expanding or collapsing from the title animates; collapsing because a day
    * was picked switches instantly, so the tap feels immediate.

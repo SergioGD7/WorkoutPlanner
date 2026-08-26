@@ -41,7 +41,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ExercisePicker from '@/components/exercise-picker';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ConsistencyHeatmap from '@/components/consistency-heatmap';
 import ExerciseHistorySheet from '@/components/exercise-history-sheet';
@@ -130,6 +130,29 @@ export default function ProgressTracker() {
       .filter((entry) => entry.volume > 0)
       .sort((a, b) => b.volume - a.volume);
   }, [workoutLog, isInSelectedRange, exercises, t, unit]);
+
+  /**
+   * Exercises the 1RM chart can actually draw.
+   *
+   * The chart is Epley over completed weighted sets, so an exercise you have
+   * never loaded produces an empty panel. Offering all 302 turned the picker
+   * into a list of mostly dead ends; this is the handful with something to plot.
+   */
+  const oneRmCandidates = useMemo(() => {
+    const withData = new Set<string>();
+
+    Object.values(workoutLog).forEach((dayExercises) => {
+      dayExercises.forEach((entry) => {
+        if (withData.has(entry.exerciseId)) return;
+        const chartable = entry.sets.some(
+          (set) => isCountedSet(set) && epley1RM(set.weight, set.reps) > 0,
+        );
+        if (chartable) withData.add(entry.exerciseId);
+      });
+    });
+
+    return exercises.filter((exercise) => withData.has(exercise.id));
+  }, [workoutLog, exercises]);
 
   const oneRmData = useMemo(() => {
     if (selectedExerciseFor1RM === 'all') return [];
@@ -361,19 +384,15 @@ export default function ProgressTracker() {
               </CardTitle>
               <CardDescription>{t('trackYour1RM')}</CardDescription>
             </div>
-            <Select value={selectedExerciseFor1RM} onValueChange={setSelectedExerciseFor1RM}>
-              <SelectTrigger className="w-full bg-background sm:w-[250px]">
-                <SelectValue placeholder={t('selectExercise')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">-- {t('selectExercise')} --</SelectItem>
-                {exercises.map((exercise) => (
-                  <SelectItem key={exercise.id} value={exercise.id}>
-                    {t(exercise.name)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ExercisePicker
+              exercises={oneRmCandidates}
+              // 'all' is the parent's sentinel for "nothing picked"; the picker
+              // speaks in ids and the empty string.
+              value={selectedExerciseFor1RM === 'all' ? '' : selectedExerciseFor1RM}
+              onChange={setSelectedExerciseFor1RM}
+              placeholder={t('selectExercise')}
+              className="sm:w-[250px]"
+            />
           </div>
         </CardHeader>
         <CardContent className="h-[350px] p-4">
