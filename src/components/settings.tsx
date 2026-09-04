@@ -47,13 +47,26 @@ export default function Settings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          {/* This route sits outside the app shell, so it needs its own way back. */}
+          {/*
+            * Pops the history rather than pushing `/`.
+            *
+            * A push landed you on the dashboard whatever screen you came from,
+            * grew the history stack every time, and made the shell re-render
+            * from a cold route instead of the client router's cache — the
+            * couple of seconds of blank before the data reappeared.
+            *
+            * `router.back()` needs somewhere to go back *to*, which a deep link
+            * straight to /settings does not have.
+            */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push('/')}
+            onClick={() => {
+              if (window.history.length > 1) router.back();
+              else router.replace('/');
+            }}
             className="-ml-2 rounded-full"
-            aria-label={t('backToDashboard')}
+            aria-label={t('goBack')}
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>

@@ -21,6 +21,19 @@ import { AnimatePresence, motion, Variants } from "framer-motion";
 
 type View = "dashboard" | "library" | "progress" | "calendar";
 
+const VIEWS: View[] = ["dashboard", "library", "progress", "calendar"];
+
+/**
+ * Where you were, so the profile route can hand you back.
+ *
+ * The four tabs are client state, not routes, so leaving for /settings and
+ * returning re-mounts this page at its default and you land on the dashboard no
+ * matter which tab you left from. Session storage, deliberately: within a
+ * session you come back to where you were, and a cold launch still opens on the
+ * dashboard.
+ */
+const VIEW_KEY = "workoutPlanner.view";
+
 const pageVariants: Variants = {
   initial: { opacity: 0, y: 10, scale: 0.98 },
   animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.3, ease: "easeOut" } },
@@ -40,6 +53,13 @@ export default function HomePage() {
     }
   }, [user, loading, router]);
 
+  // Restores the tab on mount. Runs before anything the dashboard fetches has
+  // arrived, so there is nothing on screen to flash.
+  useEffect(() => {
+    const stored = window.sessionStorage.getItem(VIEW_KEY);
+    if (stored && VIEWS.includes(stored as View)) setView(stored as View);
+  }, []);
+
   const handleLogout = () => {
     triggerHaptic('medium');
     logout();
@@ -54,6 +74,7 @@ export default function HomePage() {
     if (view !== newView) {
       triggerHaptic('light');
       setView(newView as View);
+      window.sessionStorage.setItem(VIEW_KEY, newView);
     }
   };
 
