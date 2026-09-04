@@ -17,8 +17,18 @@ jobs:
           node-version: 20
           cache: npm
 
+      # `--no-audit` is the whole point of this line. npm's audit endpoint has
+      # been retired, and `npm ci` waits on it before it will finish: the same
+      # install went from 19s to 5m between 26 Aug and 4 Sep 2026 on an
+      # unchanged lockfile, ending with npm's own "This endpoint is being
+      # retired" notice and no audit performed. Nothing was gained by the wait.
+      #
+      # `--no-fund` skips a second lookup nobody reads in CI.
+      #
+      # This does not drop dependency auditing so much as move it: a security
+      # check belongs on a schedule, where a slow upstream cannot block a push.
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Typecheck
         run: npm run typecheck
