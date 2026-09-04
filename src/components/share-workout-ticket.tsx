@@ -13,7 +13,26 @@ interface ShareWorkoutTicketProps {
   /** Output size in CSS pixels; defaults to a 9:16 story frame. */
   width?: number;
   height?: number;
+  /**
+   * Extra shrink applied after the width scale, so tall content fits a short
+   * frame. Measured by the caller — see `CONTENT_ID`.
+   */
+  fitScale?: number;
 }
+
+/** The caller measures this element to work out `fitScale`. */
+export const TICKET_CONTENT_ID = 'share-workout-content';
+
+/**
+ * Largest and smallest the headline may be, in design pixels.
+ *
+ * The name is user-supplied and the box is 920 px wide (1080 less the padding),
+ * so a fixed size either wastes half the frame on "Mi Entreno" or overflows on
+ * "Entrenamiento de Alejandro". The size comes from the string length instead.
+ */
+const TITLE_MAX = 96;
+const TITLE_MIN = 44;
+const CONTENT_WIDTH = 920;
 
 /**
  * The layout is authored against a fixed 1080 px canvas (every size below is
@@ -23,7 +42,10 @@ interface ShareWorkoutTicketProps {
  */
 const DESIGN_WIDTH = 1080;
 const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
-  ({ dateStr, userName, dailyExercises, exercises, unit, width = 1080, height = 1920 }, ref) => {
+  (
+    { dateStr, userName, dailyExercises, exercises, unit, width = 1080, height = 1920, fitScale = 1 },
+    ref,
+  ) => {
     const { t } = useLanguage();
     const scale = width / DESIGN_WIDTH;
 
@@ -50,6 +72,18 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
       }
     });
 
+    const titleText = userName
+      ? t('workoutOf', { name: userName.split(' ')[0] })
+      : t('myWorkout');
+
+    // Black-weight glyphs average a little over half an em, which is close
+      // enough to keep the line inside 920 px without measuring it — and the
+      // measured `fitScale` catches anything this misses.
+    const titleSize = Math.max(
+      TITLE_MIN,
+      Math.min(TITLE_MAX, Math.floor(CONTENT_WIDTH / (titleText.length * 0.52))),
+    );
+
     const getMuscleColor = (muscle: string) => (musclesWorked.has(muscle) ? '#f97316' : '#333535');
 
     return (
@@ -74,7 +108,23 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
           <div className="absolute left-[-20%] top-[-10%] h-[800px] w-[800px] rounded-full bg-primary/20 mix-blend-screen blur-[150px]" />
           <div className="absolute bottom-[-10%] right-[-20%] h-[1000px] w-[1000px] rounded-full bg-orange-600/20 mix-blend-screen blur-[150px]" />
 
-          <div className="relative z-10 flex w-full flex-1 flex-col">
+          <div
+            id={TICKET_CONTENT_ID}
+            /*
+             * `min-h-0` is what makes this element measurable. A flex child
+             * defaults to `min-height: auto`, so it grows to its own content and
+             * `clientHeight` always equals `scrollHeight` — the overflow is real
+             * but invisible, clipped one level up. Allowing it to be constrained
+             * is what lets the caller see the shortfall.
+             */
+            className="relative z-10 flex min-h-0 w-full flex-1 flex-col"
+            style={{
+              // Shrinks from the top edge so the header stays put and the
+              // slack is taken out of the bottom, where the frame has room.
+              transform: fitScale < 1 ? `scale(${fitScale})` : undefined,
+              transformOrigin: 'top center',
+            }}
+          >
             <div className="mb-24 flex w-full items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-16 w-16 rotate-3 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/30">
@@ -92,8 +142,11 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
             </div>
 
             <div className="mb-32 mt-12 text-center">
-              <h2 className="mb-6 bg-gradient-to-r from-primary to-orange-300 bg-clip-text text-8xl font-black tracking-tighter text-transparent">
-                {userName ? t('workoutOf', { name: userName.split(' ')[0] }) : t('myWorkout')}
+              <h2
+                className="mb-6 whitespace-nowrap bg-gradient-to-r from-primary to-orange-300 bg-clip-text font-black leading-[1.05] tracking-tighter text-transparent"
+                style={{ fontSize: titleSize }}
+              >
+                {titleText}
               </h2>
               <p className="text-4xl font-medium tracking-wide text-neutral-400">{t('crushedIt')}</p>
             </div>
@@ -137,8 +190,8 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                         key={workoutExercise.id}
                         className="flex items-center justify-between border-b border-white/10 pb-8 last:border-0 last:pb-0"
                       >
-                        <div className="flex items-center">
-                          <p className="text-4xl font-bold leading-[1.2] text-white">
+                        <div className="flex min-w-0 flex-1 items-center">
+                          <p className="truncate text-4xl font-bold leading-[1.2] text-white">
                             {resolveExerciseName(workoutExercise, exercises, t)}
                           </p>
                         </div>

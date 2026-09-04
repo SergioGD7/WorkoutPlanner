@@ -24,7 +24,7 @@ import {
 import WorkoutCard from '@/components/workout-card';
 import AddExerciseSheet from '@/components/add-exercise-sheet';
 import LoadTemplateSheet from '@/components/load-template-sheet';
-import ShareWorkoutTicket from '@/components/share-workout-ticket';
+import ShareWorkoutTicket, { TICKET_CONTENT_ID } from '@/components/share-workout-ticket';
 import PlateCalculator from '@/components/plate-calculator';
 import ExerciseHistorySheet from '@/components/exercise-history-sheet';
 import { useExercises } from '@/context/exercise-context';
@@ -70,6 +70,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [isSharing, setIsSharing] = useState(false);
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [ticketSize, setTicketSize] = useState({ width: 1080, height: 1920 });
+  const [ticketFit, setTicketFit] = useState(1);
   const [historyExerciseId, setHistoryExerciseId] = useState<string | null>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
 
@@ -363,9 +364,37 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
       const width = Math.round(window.innerWidth);
       const height = Math.round(window.innerHeight);
       setTicketSize({ width, height });
+      setTicketFit(1);
 
-      // Let the resized ticket lay out before rasterising it.
-      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 80)));
+      const settle = () =>
+        new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 80)));
+
+      // Let the resized ticket lay out before measuring it.
+      await settle();
+
+      /*
+       * Second pass: shrink to fit.
+       *
+       * The ticket is authored against a fixed 1080 px canvas and scaled to the
+       * device width, which leaves its height at the mercy of the phone's aspect
+       * ratio and the number of exercises logged. On a 375×812 screen the
+       * content wanted 2572 px in a 2339 px frame, and `overflow-hidden`
+       * silently ate the last 233 px — the footer. Measuring beats guessing at
+       * margins, because the shortfall depends on data we only have here.
+       */
+      const content = document.getElementById(TICKET_CONTENT_ID);
+      if (content) {
+        // Both numbers come off the element itself. Deriving the available
+        // height from the frame instead meant subtracting the canvas padding by
+        // hand, and getting that wrong left the footer clipped while the maths
+        // insisted everything fitted.
+        const available = content.clientHeight;
+        const needed = content.scrollHeight;
+        if (needed > available && available > 0) {
+          setTicketFit(Math.max(0.5, available / needed));
+          await settle();
+        }
+      }
 
       const blob = await toBlob(ticketRef.current, {
         quality: 0.95,
@@ -622,6 +651,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         unit={unit}
         width={ticketSize.width}
         height={ticketSize.height}
+        fitScale={ticketFit}
       />
     </>
   );
