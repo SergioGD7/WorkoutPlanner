@@ -35,6 +35,25 @@ const TITLE_MIN = 44;
 const CONTENT_WIDTH = 920;
 
 /**
+ * The exercise-name column, and the size range its text may take.
+ *
+ * Same problem as the headline, and worse: catalogue names run to fifty
+ * characters ("Extensión de Tríceps sobre la Cabeza con Mancuerna"), which at a
+ * fixed 36 px wants some 818 px in a 680 px box. It fitted in the browser and
+ * came out cut in the render, because the rasteriser measures with fallback
+ * metrics rather than the loaded face.
+ *
+ * The width below is the pessimistic one: the card's inner width less the
+ * widest the sets column gets, which is when a row also carries a max weight.
+ * `PER_CHAR` is likewise on the generous side of PT Sans's real average, so the
+ * estimate errs towards a slightly small name rather than a clipped one.
+ */
+const NAME_WIDTH = 620;
+const NAME_MAX = 36;
+const NAME_MIN = 20;
+const PER_CHAR = 0.5;
+
+/**
  * The layout is authored against a fixed 1080 px canvas (every size below is
  * absolute, not fluid) and then scaled down to the requested output size, so the
  * shared image matches the device's own screen dimensions without redesigning
@@ -82,6 +101,22 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
     const titleSize = Math.max(
       TITLE_MIN,
       Math.min(TITLE_MAX, Math.floor(CONTENT_WIDTH / (titleText.length * 0.52))),
+    );
+
+    /*
+     * One size for every row, taken from the longest name.
+     *
+     * Sizing each row on its own would fit more text but leave the column
+     * ragged, with a different size on every line. A shared size keeps the list
+     * looking like a list.
+     */
+    const exerciseNames = dailyExercises.map((workoutExercise) =>
+      resolveExerciseName(workoutExercise, exercises, t),
+    );
+    const longestName = exerciseNames.reduce((max, name) => Math.max(max, name.length), 1);
+    const nameSize = Math.max(
+      NAME_MIN,
+      Math.min(NAME_MAX, Math.floor(NAME_WIDTH / (longestName * PER_CHAR))),
     );
 
     const getMuscleColor = (muscle: string) => (musclesWorked.has(muscle) ? '#f97316' : '#333535');
@@ -181,7 +216,7 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                 </h3>
 
                 <div className="space-y-8">
-                  {dailyExercises.map((workoutExercise) => {
+                  {dailyExercises.map((workoutExercise, index) => {
                     const done = workoutExercise.sets.filter((set) => set.completed && isCountedSet(set));
                     const maxWeight = done.reduce((max, set) => Math.max(max, set.weight || 0), 0);
 
@@ -191,8 +226,14 @@ const ShareWorkoutTicket = forwardRef<HTMLDivElement, ShareWorkoutTicketProps>(
                         className="flex items-center justify-between border-b border-white/10 pb-8 last:border-0 last:pb-0"
                       >
                         <div className="flex min-w-0 flex-1 items-center">
-                          <p className="truncate text-4xl font-bold leading-[1.2] text-white">
-                            {resolveExerciseName(workoutExercise, exercises, t)}
+                          {/* `truncate` stays as a backstop for a name longer
+                              than the size floor can absorb; the sizing above is
+                              what keeps it from ever engaging in practice. */}
+                          <p
+                            className="truncate font-bold leading-[1.2] text-white"
+                            style={{ fontSize: nameSize }}
+                          >
+                            {exerciseNames[index]}
                           </p>
                         </div>
                         <div className="ml-4 shrink-0 text-right">
