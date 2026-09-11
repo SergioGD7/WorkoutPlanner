@@ -417,6 +417,8 @@
   "armMeasure": "Brazo",
   "thighMeasure": "Muslo",
   "centimeters": "cm",
+  "inches": "in",
+  "firstReading": "primero",
   "percentSign": "%",
   "saveEntry": "Guardar registro",
   "noBodyEntries": "Aún no hay medidas. Añade tu primer registro para empezar a ver la tendencia.",

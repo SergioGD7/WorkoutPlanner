@@ -417,6 +417,8 @@
   "armMeasure": "Arm",
   "thighMeasure": "Thigh",
   "centimeters": "cm",
+  "inches": "in",
+  "firstReading": "first",
   "percentSign": "%",
   "saveEntry": "Save entry",
   "noBodyEntries": "No measurements yet. Add your first entry to start a trend.",
