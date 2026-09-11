@@ -24,6 +24,19 @@ import { useLanguage } from '@/context/language-context';
 import { useProfile } from '@/context/profile-context';
 import type { BodyEntry } from '@/lib/types';
 import { fromKg, toKg, trimZeros } from '@/lib/workout-utils';
+import {
+  GIRTHS,
+  formatGirth,
+  latestReading,
+  lengthUnitFor,
+  recordedGirths,
+  toCm,
+  type GirthKey,
+} from '@/lib/body-metrics';
+
+/** Every numeric field the editor offers, in form order. */
+type MetricKey = 'weight' | 'fat' | GirthKey;
+const METRIC_KEYS: MetricKey[] = ['weight', 'fat', 'waist', 'chest', 'arm', 'thigh'];
 
 /**
  * Replaces the old profile cards, which showed a single editable weight next to
@@ -33,10 +46,35 @@ export default function BodyMetricsCard() {
   const { t, language } = useLanguage();
   const { settings, bodyEntries, latestBodyEntry, saveBodyEntry, deleteBodyEntry } = useProfile();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [draft, setDraft] = useState<BodyEntry | null>(null);
+  /**
+   * The editor works on text and parses on save.
+   *
+   * It used to hold numbers and derive each field's text from them on every
+   * keystroke. Typing "32." parsed to 32, re-rendered as "32", and the next key
+   * produced "325" — decimals could be pasted but not typed, in the weight field
+   * too. The set rows solved the same thing with per-field focus refs; here the
+   * form is modal, so keeping the whole draft as strings until Save is simpler
+   * and has nothing to get out of sync.
+   */
+  const [draftDate, setDraftDate] = useState('');
+  const [draftText, setDraftText] = useState<Partial<Record<MetricKey, string>>>({});
 
   const unit = settings.weightUnit;
+  // Tape measures follow the scale: pounds means inches.
+  const girthUnit = lengthUnitFor(unit);
+  const girthUnitLabel = girthUnit === 'in' ? t('inches') : t('centimeters');
   const locale = language === 'es' ? es : enUS;
+
+  /**
+   * One reading per girth, each from the latest entry that *has* it. Not from
+   * `latestBodyEntry`, which is the latest entry with a weight and knows nothing
+   * about the days you only picked up the tape.
+   */
+  const girthReadings = useMemo(
+    () => GIRTHS.map((girth) => ({ ...girth, reading: latestReading(bodyEntries, girth.key) })),
+    [bodyEntries],
+  );
+  const hasAnyGirth = girthReadings.some((girth) => girth.reading !== null);
 
   const weightSeries = useMemo(
     () =>
@@ -75,36 +113,55 @@ export default function BodyMetricsCard() {
     return { delta: Number((last.weight - first.weight).toFixed(1)), since: first.date };
   }, [weightSeries]);
 
+  const isGirth = (field: MetricKey): field is GirthKey =>
+    GIRTHS.some((girth) => girth.key === field);
+
+  /** Stored number → text in the display unit, for prefilling a field. */
+  const toText = (field: MetricKey, value: number | undefined): string => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return '';
+    if (field === 'weight') return trimZeros(fromKg(value, unit));
+    if (isGirth(field)) return formatGirth(value, girthUnit);
+    return trimZeros(value);
+  };
+
+  /** Text in the display unit → stored number, or undefined for blank/junk. */
+  const fromText = (field: MetricKey, raw: string | undefined): number | undefined => {
+    if (!raw || raw.trim() === '') return undefined;
+    const parsed = Number(raw.replace(',', '.'));
+    if (!Number.isFinite(parsed)) return undefined;
+    if (field === 'weight') return toKg(parsed, unit);
+    if (isGirth(field)) return toCm(parsed, girthUnit);
+    return parsed;
+  };
+
   const openEditor = (entry?: BodyEntry) => {
-    setDraft(entry ?? { date: format(new Date(), 'yyyy-MM-dd') });
+    setDraftDate(entry?.date ?? format(new Date(), 'yyyy-MM-dd'));
+    setDraftText(
+      Object.fromEntries(METRIC_KEYS.map((field) => [field, toText(field, entry?.[field])])),
+    );
     setIsEditorOpen(true);
   };
 
   const handleSave = async () => {
-    if (!draft?.date) return;
-    await saveBodyEntry(draft);
+    if (!draftDate) return;
+    const entry: BodyEntry = { date: draftDate };
+    METRIC_KEYS.forEach((field) => {
+      const value = fromText(field, draftText[field]);
+      if (value !== undefined) entry[field] = value;
+    });
+    await saveBodyEntry(entry);
     setIsEditorOpen(false);
-    setDraft(null);
   };
 
-  const patchDraft = (patch: Partial<BodyEntry>) => {
-    setDraft((previous) => (previous ? { ...previous, ...patch } : previous));
-  };
+  const setField = (field: MetricKey) => (raw: string) =>
+    setDraftText((previous) => ({ ...previous, [field]: raw }));
 
-  /** Reads a measurement field from the draft as text for a controlled input. */
-  const draftText = (field: keyof BodyEntry): string => {
-    const value = draft?.[field];
-    if (typeof value !== 'number' || Number.isNaN(value)) return '';
-    if (field === 'weight') return String(fromKg(value, unit));
-    return String(value);
-  };
-
-  const numericPatch = (field: keyof BodyEntry, raw: string): Partial<BodyEntry> => {
-    if (raw.trim() === '') return { [field]: undefined } as Partial<BodyEntry>;
-    const parsed = Number(raw.replace(',', '.'));
-    if (!Number.isFinite(parsed)) return {};
-    if (field === 'weight') return { weight: toKg(parsed, unit) };
-    return { [field]: parsed } as Partial<BodyEntry>;
+  /** "▾ 0.5" / "▴ 0.5" / "= 0", or "first" for a lone reading. Neutral on purpose. */
+  const deltaText = (delta: number | null): string => {
+    if (delta === null) return t('firstReading');
+    const shown = formatGirth(Math.abs(delta), girthUnit);
+    if (Number(shown) === 0) return '= 0';
+    return `${delta < 0 ? '▾' : '▴'} ${shown}`;
   };
 
   return (
@@ -173,6 +230,48 @@ export default function BodyMetricsCard() {
                   </p>
                 </div>
               </div>
+
+              {/* The tape-measure row. Quieter than the two numbers above — you
+                  weigh in daily and measure monthly — but present, which until
+                  now it was not: four fields were written and never read back.
+                  Four fixed slots in a fixed order, so a girth does not change
+                  position depending on which ones you happened to record.
+
+                  The arrows do not judge. A smaller waist is the goal on a cut
+                  and a setback on a bulk, and only weight has a declared goal to
+                  measure against — so weight gets colour and these stay grey. */}
+              {hasAnyGirth && (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {girthReadings.map(({ key, labelKey, reading }) => (
+                    <div
+                      key={key}
+                      className="rounded-lg bg-secondary/30 px-2 py-1.5 tabular-nums"
+                      aria-label={`${t(labelKey)}: ${
+                        reading ? `${formatGirth(reading.value, girthUnit)} ${girthUnitLabel}` : '—'
+                      }`}
+                    >
+                      <p className="truncate text-[9px] uppercase tracking-wider text-muted-foreground">
+                        {t(labelKey)}
+                      </p>
+                      {reading ? (
+                        <>
+                          <p className="text-sm font-bold leading-tight">
+                            {formatGirth(reading.value, girthUnit)}
+                            <span className="ml-0.5 text-[9px] font-normal text-muted-foreground">
+                              {girthUnitLabel}
+                            </span>
+                          </p>
+                          <p className="text-[10px] leading-tight text-muted-foreground">
+                            {deltaText(reading.delta)}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm leading-tight text-muted-foreground">—</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {weightSeries.length > 1 && (
                 <div className="h-[160px]">
@@ -258,9 +357,26 @@ export default function BodyMetricsCard() {
                           ? `${trimZeros(fromKg(entry.weight, unit))} ${unit}`
                           : '—'}
                         {typeof entry.fat === 'number' && (
-                          <span className="ml-2 text-xs text-muted-foreground">{entry.fat}%</span>
+                          // Rounded like everywhere else: the raw value showed
+                          // "17.400000000000002%" for an entry saved as 17.4.
+                          <span className="ml-2 text-xs text-muted-foreground">{trimZeros(entry.fat)}%</span>
                         )}
                       </span>
+                      {/* Only what was measured that day, so a scale-only day
+                          stays one line and a tape day says which tape. */}
+                      {recordedGirths(entry).length > 0 && (
+                        <span className="mt-0.5 block text-xs tabular-nums text-muted-foreground">
+                          {recordedGirths(entry).map((girth, index) => (
+                            <span key={girth.key}>
+                              {index > 0 && ' · '}
+                              {t(girth.labelKey)}{' '}
+                              <span className="font-semibold text-foreground">
+                                {formatGirth(girth.value, girthUnit)}
+                              </span>
+                            </span>
+                          ))}
+                        </span>
+                      )}
                     </button>
                     <Button
                       variant="ghost"
@@ -291,50 +407,50 @@ export default function BodyMetricsCard() {
               <Input
                 id="entry-date"
                 type="date"
-                value={draft?.date ?? ''}
-                onChange={(event) => patchDraft({ date: event.target.value })}
+                value={draftDate}
+                onChange={(event) => setDraftDate(event.target.value)}
               />
             </div>
 
             <MetricField
               id="entry-weight"
               label={`${t('bodyWeight')} (${unit})`}
-              value={draftText('weight')}
-              onChange={(raw) => patchDraft(numericPatch('weight', raw))}
+              value={draftText.weight ?? ''}
+              onChange={setField('weight')}
             />
             <MetricField
               id="entry-fat"
               label={`${t('bodyFat')} (%)`}
-              value={draftText('fat')}
-              onChange={(raw) => patchDraft(numericPatch('fat', raw))}
+              value={draftText.fat ?? ''}
+              onChange={setField('fat')}
             />
             <MetricField
               id="entry-waist"
-              label={`${t('waist')} (${t('centimeters')})`}
-              value={draftText('waist')}
-              onChange={(raw) => patchDraft(numericPatch('waist', raw))}
+              label={`${t('waist')} (${girthUnitLabel})`}
+              value={draftText.waist ?? ''}
+              onChange={setField('waist')}
             />
             <MetricField
               id="entry-chest"
-              label={`${t('chestMeasure')} (${t('centimeters')})`}
-              value={draftText('chest')}
-              onChange={(raw) => patchDraft(numericPatch('chest', raw))}
+              label={`${t('chestMeasure')} (${girthUnitLabel})`}
+              value={draftText.chest ?? ''}
+              onChange={setField('chest')}
             />
             <MetricField
               id="entry-arm"
-              label={`${t('armMeasure')} (${t('centimeters')})`}
-              value={draftText('arm')}
-              onChange={(raw) => patchDraft(numericPatch('arm', raw))}
+              label={`${t('armMeasure')} (${girthUnitLabel})`}
+              value={draftText.arm ?? ''}
+              onChange={setField('arm')}
             />
             <MetricField
               id="entry-thigh"
-              label={`${t('thighMeasure')} (${t('centimeters')})`}
-              value={draftText('thigh')}
-              onChange={(raw) => patchDraft(numericPatch('thigh', raw))}
+              label={`${t('thighMeasure')} (${girthUnitLabel})`}
+              value={draftText.thigh ?? ''}
+              onChange={setField('thigh')}
             />
           </div>
 
-          <Button onClick={handleSave} disabled={!draft?.date} className="w-full">
+          <Button onClick={handleSave} disabled={!draftDate} className="w-full">
             {t('saveEntry')}
           </Button>
         </DialogContent>
