@@ -52,8 +52,6 @@
   "emailAlreadyInUse": "Ya existe una cuenta con este correo electrónico.",
   "notLoggedIn": "Debes iniciar sesión para hacer eso.",
   "tryDemo": "Explorar con datos de ejemplo",
-  "demoMode": "Demo",
-  "demoBanner": "Cuenta de ejemplo: los cambios no se guardan.",
   "exitDemo": "Salir de la demo",
   "requiresRecentLogin": "Por seguridad, vuelve a iniciar sesión antes de hacer esto.",
   "dangerZone": "Eliminar cuenta",

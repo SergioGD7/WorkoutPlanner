@@ -52,3 +52,15 @@ WorkoutPlanner leverages a robust and modern tech stack to deliver a high-perfor
 | **Tailwind CSS** | Utility-first CSS framework                                | Rapid UI development, highly customizable designs, and consistency across the application. |
 | **Firebase**     | Backend-as-a-Service (BaaS) for data, auth, and hosting    | Real-time database, authentication, cloud functions, and simplified deployment for rapid iteration. |
 | **Node.js**      | JavaScript runtime environment for server-side operations | Powers Next.js server-side operations and build processes, enabling a full-stack JavaScript ecosystem. |
+
+### Sample account (development only)
+
+The sign-in screen can offer an "Explore with sample data" entry that opens the
+app on an in-memory account with thirteen weeks of fixtures. It is a tool for
+screenshots and for running the app without a Firebase project, and it is not
+shipped to users: the button only exists when the bundle is built with
+`NEXT_PUBLIC_DEMO_MODE=1`.
+
+```bash
+NEXT_PUBLIC_DEMO_MODE=1 npm run dev
+```
