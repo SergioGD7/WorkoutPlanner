@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Dumbbell, HomeIcon, BookOpen, BarChart3, LogOut, CalendarDays, User } from "lucide-react";
@@ -65,6 +65,8 @@ export default function HomePage() {
     router.push('/login');
   };
 
+  const mainRef = useRef<HTMLElement>(null);
+
   const handleViewChange = (newView: string) => {
     if (newView === "settings") {
       router.push('/settings');
@@ -74,6 +76,9 @@ export default function HomePage() {
       triggerHaptic('light');
       setView(newView as View);
       window.sessionStorage.setItem(VIEW_KEY, newView);
+      // Each tab is its own page as far as the user is concerned; do not
+      // carry the previous tab's scroll offset into it.
+      mainRef.current?.scrollTo({ top: 0 });
     }
   };
 
@@ -109,10 +114,16 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    // Fixed to the viewport so <main> is the scroll container: the sidebar and
+    // the header stay put, and on iOS the header keeps covering the status bar
+    // instead of scrolling away and leaving content under the clock.
+    <div className="flex h-dvh w-full bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
-        <div className="flex h-16 items-center border-b px-6">
+        <div
+          className="flex min-h-16 items-center border-b px-6"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
           <Dumbbell className="h-8 w-8 text-primary" />
           <h1 className="ml-2 text-2xl font-bold font-headline whitespace-nowrap">Workout Planner</h1>
         </div>
@@ -163,7 +174,7 @@ export default function HomePage() {
         </header>
 
         {/* Main Content Area with Animations */}
-        <main className="flex-1 overflow-y-auto p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 relative">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6 relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={view}
