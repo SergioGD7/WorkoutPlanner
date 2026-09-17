@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Dumbbell, HomeIcon, BookOpen, BarChart3, LogOut, CalendarDays, User } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Dashboard from "@/components/dashboard";
 import ExerciseLibrary from "@/components/exercise-library";
@@ -146,15 +145,6 @@ export default function HomePage() {
              <h2 className="text-xl font-semibold capitalize font-headline">{t(view)}</h2>
           </div>
           <div className="flex flex-1 md:flex-none justify-end items-center gap-2">
-            {isDemo && (
-              <Badge
-                variant="outline"
-                className="border-primary/40 bg-primary/10 text-[10px] uppercase text-primary"
-                title={t('demoBanner')}
-              >
-                {t('demoMode')}
-              </Badge>
-            )}
             <div className="hidden sm:flex sm:items-center sm:gap-2">
               <LanguageSwitcher />
               <ThemeSwitcher />

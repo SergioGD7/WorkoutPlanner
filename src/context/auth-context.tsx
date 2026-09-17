@@ -29,7 +29,8 @@ export interface LoggedInUser {
   displayName?: string | null;
   /**
    * Read-only sample account. Every data provider serves fixtures instead of
-   * Firestore for this user, which is what App Store review is given access to.
+   * Firestore for this user. Only reachable in builds with
+   * `NEXT_PUBLIC_DEMO_MODE=1` (see `lib/demo-mode.ts`).
    */
   isDemo?: boolean;
 }

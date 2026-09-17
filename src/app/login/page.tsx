@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/context/auth-context';
+import { DEMO_MODE_ENABLED } from '@/lib/demo-mode';
 import { useLanguage } from '@/context/language-context';
 import { useToast } from '@/hooks/use-toast';
 
@@ -225,23 +226,27 @@ export default function LoginPage() {
             </TabsContent>
           </Tabs>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">{t('orContinueWith')}</span>
-            </div>
-          </div>
+          {DEMO_MODE_ENABLED && (
+            <>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">{t('orContinueWith')}</span>
+                </div>
+              </div>
 
-          <Button
-            variant="ghost"
-            className="w-full text-muted-foreground"
-            onClick={enterDemoMode}
-            disabled={isSubmitting}
-          >
-            {t('tryDemo')}
-          </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={enterDemoMode}
+                disabled={isSubmitting}
+              >
+                {t('tryDemo')}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
