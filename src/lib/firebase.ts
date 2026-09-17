@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { getAuth, initializeAuth, indexedDBLocalPersistence, Auth } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -12,7 +13,29 @@ const firebaseConfig = {
 };
 
 const app: FirebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const auth: Auth = getAuth(app);
+
+/**
+ * Auth is wired differently inside the native shells.
+ *
+ * `getAuth()` bundles the popup/redirect resolver, which on start-up loads an
+ * iframe from `authDomain` to prepare for `signInWithRedirect`. On Android the
+ * WebView serves the app from `https://localhost`, so that works. On iOS the
+ * origin is `capacitor://localhost`, the iframe never finishes, initialisation
+ * never completes, and `onAuthStateChanged` never fires — the app sat on its
+ * loading spinner forever with no error anywhere. This app only signs in with
+ * email and password, so the resolver has nothing to do in any case.
+ *
+ * `initializeAuth` with an explicit persistence and no resolver is the
+ * arrangement Capacitor documents for exactly this.
+ */
+function createAuth(): Auth {
+  if (typeof window !== 'undefined' && Capacitor.isNativePlatform()) {
+    return initializeAuth(app, { persistence: indexedDBLocalPersistence });
+  }
+  return getAuth(app);
+}
+
+const auth: Auth = createAuth();
 
 let db: Firestore;
 if (typeof window !== 'undefined') {
