@@ -115,7 +115,10 @@ export default function HomePage() {
     <div className="flex h-dvh w-full bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
-        <div className="flex h-16 items-center border-b px-6">
+        <div
+          className="flex min-h-16 items-center border-b px-6"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
           <Dumbbell className="h-8 w-8 text-primary" />
           <h1 className="ml-2 text-2xl font-bold font-headline whitespace-nowrap">Workout Planner</h1>
         </div>
