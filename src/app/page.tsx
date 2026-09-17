@@ -109,7 +109,10 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    // Fixed to the viewport so <main> is the scroll container: the sidebar and
+    // the header stay put, and on iOS the header keeps covering the status bar
+    // instead of scrolling away and leaving content under the clock.
+    <div className="flex h-dvh w-full bg-background">
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="flex h-16 items-center border-b px-6">
