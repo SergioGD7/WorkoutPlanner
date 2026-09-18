@@ -182,7 +182,11 @@ export default function HomePage() {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="h-full"
+              // min-h-full, not h-full: now that <main> has a fixed height,
+              // h-full pinned this box to the viewport and let the view spill
+              // out of it, so main's bottom padding sat above the content and
+              // the floating nav covered the last card.
+              className="min-h-full"
             >
               {renderView()}
             </motion.div>
