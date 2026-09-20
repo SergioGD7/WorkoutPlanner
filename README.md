@@ -64,3 +64,17 @@ shipped to users: the button only exists when the bundle is built with
 ```bash
 NEXT_PUBLIC_DEMO_MODE=1 npm run dev
 ```
+
+### App icons
+
+Every icon and splash image — PWA, iOS and Android — is rendered from one mark
+(the in-app dumbbell, orange on the dark background) by `scripts/make-icons.mjs`,
+using headless Google Chrome:
+
+```bash
+npm run icons                                     # public/icons
+node scripts/make-icons.mjs --ios ../WorkoutPlanner-iOS
+node scripts/make-icons.mjs --android ../WorkoutPlanner-Android
+```
+
+The native shells wrap the last two as their own `npm run icons`.
