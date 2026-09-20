@@ -13,11 +13,11 @@ import { useLanguage } from '@/context/language-context';
  * `?lang=es` / `?lang=en` pins it, which is what the stores want when they ask
  * for a policy URL per localisation.
  *
- * ⚠️ BEFORE SUBMITTING TO THE STORES: fill in the two values below. They are the
- * only things standing between this draft and a publishable policy.
+ * OWNER is the data controller as declared on the developer accounts;
+ * CONTACT_EMAIL is public (both store listings show it).
  */
-const OWNER = '[TU NOMBRE O EMPRESA — YOUR NAME OR COMPANY]';
-const CONTACT_EMAIL = '[TU EMAIL DE CONTACTO — YOUR CONTACT EMAIL]';
+const OWNER = 'Sergio González Diaz';
+const CONTACT_EMAIL = 'workoutplanner.help@gmail.com';
 
 type Lang = 'en' | 'es';
 
@@ -40,7 +40,7 @@ const LEAD = 'font-medium text-foreground';
 const POLICIES: Record<Lang, Policy> = {
   es: {
     heading: 'Política de privacidad',
-    lastUpdated: '25 de agosto de 2026',
+    lastUpdated: '20 de septiembre de 2026',
     lastUpdatedLabel: 'Última actualización',
     switchLabel: 'Read in English',
     sections: [
@@ -243,7 +243,7 @@ const POLICIES: Record<Lang, Policy> = {
 
   en: {
     heading: 'Privacy policy',
-    lastUpdated: '25 August 2026',
+    lastUpdated: '20 September 2026',
     lastUpdatedLabel: 'Last updated',
     switchLabel: 'Leer en español',
     sections: [
