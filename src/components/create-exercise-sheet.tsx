@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion, AnimatePresence, PanInfo } from "framer-motion";
+import { motion, AnimatePresence, PanInfo, useDragControls } from "framer-motion";
 import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -108,6 +108,8 @@ export default function CreateExerciseSheet({
     onClose();
   };
 
+  const dragControls = useDragControls();
+
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 100 || info.velocity.y > 500) {
       onClose();
@@ -134,13 +136,21 @@ export default function CreateExerciseSheet({
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             drag="y"
+            // The sheet only follows the finger from the handle. With the
+            // default listener on the whole panel, scrolling the list inside
+            // also dragged the sheet, which fought the scroll and dismissed it.
+            dragListener={false}
+            dragControls={dragControls}
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={handleDragEnd}
             className="fixed bottom-0 left-0 right-0 z-50 h-[90vh] bg-card border-t border-border rounded-t-[2rem] shadow-2xl flex flex-col"
           >
             {/* Drag Handle */}
-            <div className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing touch-none">
+            <div
+              className="w-full flex justify-center py-4 cursor-grab active:cursor-grabbing touch-none"
+              onPointerDown={(event) => dragControls.start(event)}
+            >
               <div className="w-12 h-1.5 bg-muted rounded-full" />
             </div>
 
