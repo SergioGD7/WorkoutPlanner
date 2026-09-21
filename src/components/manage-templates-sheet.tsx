@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { AnimatePresence, motion, type PanInfo } from 'framer-motion';
+import { AnimatePresence, motion, type PanInfo, useDragControls } from 'framer-motion';
 import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,8 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
   const [activeDayIndex, setActiveDayIndex] = useState(0);
 
   const activeDay = days[activeDayIndex];
+
+  const dragControls = useDragControls();
 
   const handleDragEnd = (_event: unknown, info: PanInfo) => {
     if (info.offset.y > 100 || info.velocity.y > 500) {
@@ -182,12 +184,20 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             drag="y"
+            // The sheet only follows the finger from the handle. With the
+            // default listener on the whole panel, scrolling the list inside
+            // also dragged the sheet, which fought the scroll and dismissed it.
+            dragListener={false}
+            dragControls={dragControls}
             dragConstraints={{ top: 0 }}
             dragElastic={{ top: 0, bottom: 0.5 }}
             onDragEnd={handleDragEnd}
             className="fixed bottom-0 left-0 right-0 z-50 flex h-[90vh] flex-col rounded-t-[2rem] border-t border-border bg-card shadow-2xl"
           >
-            <div className="flex w-full cursor-grab touch-none justify-center py-4 active:cursor-grabbing">
+            <div
+              className="flex w-full cursor-grab touch-none justify-center py-4 active:cursor-grabbing"
+              onPointerDown={(event) => dragControls.start(event)}
+            >
               <div className="h-1.5 w-12 rounded-full bg-muted" />
             </div>
 
