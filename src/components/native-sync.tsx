@@ -36,7 +36,7 @@ export function takePendingAction(action: PendingAction): boolean {
   }
 }
 
-const getApp = lazyPlugin(() => import('@capacitor/app').then((m) => m.App));
+const getApp = lazyPlugin(() => import('@capacitor/app'), (m) => m.App);
 
 /**
  * Keeps everything that lives outside the WebView in step with the data:

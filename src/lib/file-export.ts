@@ -10,7 +10,7 @@
 import { isNativeApp, lazyPlugin } from './native';
 
 const getFilesystem = lazyPlugin(() => import('@capacitor/filesystem'));
-const getShare = lazyPlugin(() => import('@capacitor/share').then((m) => m.Share));
+const getShare = lazyPlugin(() => import('@capacitor/share'), (m) => m.Share);
 
 export type ExportResult = 'shared' | 'downloaded' | 'cancelled' | 'failed';
 

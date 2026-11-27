@@ -6,7 +6,7 @@
  */
 import { lazyPlugin } from './native';
 
-const getReview = lazyPlugin(() => import('@capacitor-community/in-app-review').then((m) => m.InAppReview));
+const getReview = lazyPlugin(() => import('@capacitor-community/in-app-review'), (m) => m.InAppReview);
 
 const STORAGE_KEY = 'appReview.lastAskedAt';
 const MIN_WORKOUTS = 5;

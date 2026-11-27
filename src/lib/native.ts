@@ -27,14 +27,23 @@ export function nativePlatform(): 'ios' | 'android' | 'web' {
 /**
  * Memoised lazy loader. Resolves to null on the web (unless `allowWeb`) or when
  * the import fails, so callers can treat "no plugin" as "feature unavailable".
+ *
+ * `pick` takes the plugin out of the loaded module *inside* the box. It must
+ * never be returned from a `.then` callback or an async function on its own:
+ * that would make the promise machinery probe the Proxy's `.then`, which turns
+ * into a native call that never answers.
  */
-export function lazyPlugin<T>(load: () => Promise<T>, { allowWeb = false } = {}): () => Promise<Box<T> | null> {
+export function lazyPlugin<M, T = M>(
+  load: () => Promise<M>,
+  pick?: (module: M) => T,
+  { allowWeb = false } = {},
+): () => Promise<Box<T> | null> {
   let promise: Promise<Box<T> | null> | null = null;
   return () => {
     if (typeof window === 'undefined') return Promise.resolve(null);
     if (!allowWeb && !isNativeApp()) return Promise.resolve(null);
     promise ??= load()
-      .then((plugin): Box<T> => ({ plugin }))
+      .then((module): Box<T> => ({ plugin: pick ? pick(module) : (module as unknown as T) }))
       .catch((error) => {
         console.error('Native plugin unavailable:', error);
         return null;
@@ -50,10 +59,10 @@ export function lazyPlugin<T>(load: () => Promise<T>, { allowWeb = false } = {})
  * returns a stub whose calls reject with "not implemented".
  */
 export function customPlugin<T>(name: string): () => Promise<Box<T> | null> {
-  return lazyPlugin(async () => {
-    const { registerPlugin } = await import('@capacitor/core');
-    return registerPlugin<T>(name);
-  });
+  return lazyPlugin(
+    () => import('@capacitor/core'),
+    (core) => core.registerPlugin<T>(name),
+  );
 }
 
 /** Runs a native call and swallows "not implemented" so older shells keep working. */
