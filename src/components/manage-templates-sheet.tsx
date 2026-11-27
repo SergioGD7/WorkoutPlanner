@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion, type PanInfo, useDragControls } from 'framer-motion';
-import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Check, Link2, Link2Off, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { linkWithNext, normaliseSupersets, supersetInfo, unlink } from '@/lib/session';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,7 +121,7 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
     const exists = activeDay.exercises.some((entry) => entry.exerciseId === exerciseId);
     patchDay(activeDayIndex, {
       exercises: exists
-        ? activeDay.exercises.filter((entry) => entry.exerciseId !== exerciseId)
+        ? normaliseSupersets(activeDay.exercises.filter((entry) => entry.exerciseId !== exerciseId))
         : [
             ...activeDay.exercises,
             {
@@ -139,6 +140,19 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
       exercises: activeDay.exercises.map((entry) =>
         entry.exerciseId === exerciseId ? { ...entry, ...patch } : entry,
       ),
+    });
+  };
+
+  const toggleLink = (index: number) => {
+    if (!activeDay) return;
+    const linked = Boolean(
+      activeDay.exercises[index]?.supersetId &&
+        activeDay.exercises[index]?.supersetId === activeDay.exercises[index + 1]?.supersetId,
+    );
+    patchDay(activeDayIndex, {
+      exercises: linked
+        ? unlink(activeDay.exercises, index + 1, uuidv4())
+        : linkWithNext(activeDay.exercises, index, uuidv4()),
     });
   };
 
@@ -391,13 +405,23 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
                             </p>
                           ) : (
                             <div className="space-y-2">
-                              {activeDay.exercises.map((entry) => (
+                              {activeDay.exercises.map((entry, index) => {
+                                const info = supersetInfo(activeDay.exercises)[index];
+                                const linkedToNext =
+                                  Boolean(entry.supersetId) &&
+                                  entry.supersetId === activeDay.exercises[index + 1]?.supersetId;
+                                return (
+                                <div key={entry.exerciseId}>
                                 <div
-                                  key={entry.exerciseId}
-                                  className="rounded-xl border border-border/60 bg-secondary/10 p-3"
+                                  className={`rounded-xl border border-border/60 bg-secondary/10 p-3 ${
+                                    info ? 'border-l-4 border-l-primary' : ''
+                                  }`}
                                 >
                                   <div className="mb-2 flex items-center justify-between gap-2">
                                     <p className="truncate text-sm font-semibold">
+                                      {info && (
+                                        <span className="mr-1.5 text-primary">{`${info.letter}${info.position}`}</span>
+                                      )}
                                       {exerciseName(entry.exerciseId)}
                                     </p>
                                     <Button
@@ -434,7 +458,23 @@ export default function ManageTemplatesSheet({ isOpen, onClose }: ManageTemplate
                                     />
                                   </div>
                                 </div>
-                              ))}
+                                {index < activeDay.exercises.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleLink(index)}
+                                    className={`mx-auto mt-1 flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+                                      linkedToNext
+                                        ? 'bg-primary/15 text-primary'
+                                        : 'text-muted-foreground hover:bg-secondary/40'
+                                    }`}
+                                  >
+                                    {linkedToNext ? <Link2Off className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+                                    {t(linkedToNext ? 'unlinkSuperset' : 'linkWithNext')}
+                                  </button>
+                                )}
+                                </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>

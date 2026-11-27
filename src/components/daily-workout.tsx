@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
 import { Reorder, useDragControls } from 'framer-motion';
-import { Copy, CopyCheck, FileText, Loader2, Plus, Share2 } from 'lucide-react';
+import { CheckCircle2, Copy, CopyCheck, FileText, Flag, Loader2, Plus, Share2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { toBlob } from 'html-to-image';
 import { v4 as uuidv4 } from 'uuid';
@@ -27,6 +27,24 @@ import LoadTemplateSheet from '@/components/load-template-sheet';
 import ShareWorkoutTicket, { TICKET_CONTENT_ID } from '@/components/share-workout-ticket';
 import PlateCalculator from '@/components/plate-calculator';
 import ExerciseHistorySheet from '@/components/exercise-history-sheet';
+import SwapExerciseSheet from '@/components/swap-exercise-sheet';
+import WorkoutSummarySheet from '@/components/workout-summary-sheet';
+import { maybeRequestReview } from '@/lib/app-review';
+import { shareImage } from '@/lib/file-export';
+import { onWorkoutFinished } from '@/lib/native-sync';
+import { takePendingAction } from '@/components/native-sync';
+import { useTemplates } from '@/context/template-context';
+import {
+  applySwap,
+  linkWithNext,
+  normaliseSupersets,
+  planForToday,
+  shouldRestAfter,
+  supersetInfo,
+  unlink,
+  withWarmup,
+  withoutWarmup,
+} from '@/lib/session';
 import { useExercises } from '@/context/exercise-context';
 import { useLanguage } from '@/context/language-context';
 import { useAuth } from '@/context/auth-context';
@@ -55,6 +73,7 @@ import {
   resolvePerSide,
   resolveTracking,
   trimZeros,
+  totalCompletedWorkouts,
   type ExerciseSession,
 } from '@/lib/workout-utils';
 
@@ -72,6 +91,8 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const [ticketSize, setTicketSize] = useState({ width: 1080, height: 1920 });
   const [ticketFit, setTicketFit] = useState(1);
   const [historyExerciseId, setHistoryExerciseId] = useState<string | null>(null);
+  const [swapTarget, setSwapTarget] = useState<WorkoutExercise | null>(null);
+  const [summaryDate, setSummaryDate] = useState<string | null>(null);
   const ticketRef = useRef<HTMLDivElement>(null);
 
   const { exercises: allExercises } = useExercises();
@@ -79,12 +100,15 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { settings } = useProfile();
-  const { start: startRest } = useRestTimer();
-  const { workoutLog, isLoading, saveDay, copiedWorkout, setCopiedWorkout } = useWorkout();
+  const { start: startRest, stop: stopRest } = useRestTimer();
+  const { workoutLog, isLoading, saveDay, sessions, updateSession, copiedWorkout, setCopiedWorkout } = useWorkout();
 
   const unit = settings.weightUnit;
   const formattedDate = format(date, 'yyyy-MM-dd');
   const dailyExercises = useMemo(() => workoutLog[formattedDate] ?? [], [workoutLog, formattedDate]);
+  const session = sessions[formattedDate];
+  const supersets = useMemo(() => supersetInfo(dailyExercises), [dailyExercises]);
+  const hasCompletedSet = dailyExercises.some((exercise) => exercise.sets.some((set) => set.completed));
 
   const locale = language === 'es' ? es : enUS;
   const getFormattedDate = useCallback(() => {
@@ -131,7 +155,8 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   }, [dailyExercises, workoutLog, formattedDate]);
 
   const persist = useCallback(
-    (exercises: WorkoutExercise[], immediate = false) => saveDay(formattedDate, exercises, immediate),
+    (exercises: WorkoutExercise[], immediate = false) =>
+      saveDay(formattedDate, normaliseSupersets(exercises), immediate),
     [saveDay, formattedDate],
   );
 
@@ -186,8 +211,13 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
 
     if (!completed) return;
 
+    // The clock starts with the first ticked set, not when the day was planned.
+    if (!session?.startedAt) updateSession(formattedDate, { startedAt: new Date().toISOString() });
+
     const exerciseName = resolveExerciseName(target, allExercises, t);
-    if (settings.restTimerEnabled) {
+    // In a superset you go straight to the next exercise; the rest comes after
+    // the last one, at that exercise's rest target.
+    if (settings.restTimerEnabled && shouldRestAfter(dailyExercises, workoutExerciseId)) {
       startRest(target.restSeconds ?? settings.defaultRestSeconds, exerciseName);
     }
 
@@ -291,12 +321,20 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
   const handleLoadTemplate = (
     templateExercises: TemplateExercise[],
     routineProgression?: ProgressionConfig,
+    source?: { templateId: string; templateDayId?: string; templateName: string },
   ) => {
     const existingIds = dailyExercises.map((exercise) => exercise.exerciseId);
     const toAdd = templateExercises.filter((entry) => !existingIds.includes(entry.exerciseId));
+    // Fresh group ids per load, so loading two days never merges their supersets.
+    const groupIds = new Map<string, string>();
+
+    if (source && (dailyExercises.length === 0 || !session?.templateId)) {
+      updateSession(formattedDate, source);
+    }
 
     if (toAdd.length > 0) {
       const newExercises: WorkoutExercise[] = toAdd.map((entry) => {
+        if (entry.supersetId && !groupIds.has(entry.supersetId)) groupIds.set(entry.supersetId, uuidv4());
         const definition = allExercises.find((exercise) => exercise.id === entry.exerciseId);
         return {
           id: uuidv4(),
@@ -305,6 +343,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
           bodyPart: definition?.bodyPart,
           restSeconds: entry.restSeconds,
           progression: entry.progression ?? routineProgression,
+          ...(entry.supersetId ? { supersetId: groupIds.get(entry.supersetId) } : {}),
           sets: buildSets(entry.exerciseId, entry.sets, entry.reps || undefined, entry.weight),
         };
       });
@@ -313,6 +352,96 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
 
     setIsTemplateSheetOpen(false);
   };
+
+  const handleSwap = (exerciseId: string) => {
+    if (!swapTarget) return;
+    const definition = allExercises.find((exercise) => exercise.id === exerciseId);
+    // Keep the plan: same number of sets still to do, same reps; the weights
+    // come from the new exercise's own last session.
+    const remaining = swapTarget.sets.filter((set) => !set.completed && set.type !== 'warmup');
+    const planned = remaining.length > 0 ? remaining : swapTarget.sets.filter((set) => set.type !== 'warmup');
+    const fresh = buildSets(exerciseId, planned.length);
+    const sets = fresh.map((set, index) => ({ ...set, reps: planned[index]?.reps || set.reps }));
+    persist(
+      applySwap(dailyExercises, swapTarget.id, {
+        id: uuidv4(),
+        exerciseId,
+        exerciseName: definition ? t(definition.name) : undefined,
+        bodyPart: definition?.bodyPart,
+        sets,
+      }),
+      true,
+    );
+    triggerHaptic('light');
+    setSwapTarget(null);
+  };
+
+  const handleToggleWarmup = (workoutExerciseId: string) => {
+    const target = dailyExercises.find((exercise) => exercise.id === workoutExerciseId);
+    if (!target) return;
+    const hasPending = target.sets.some((set) => set.type === 'warmup' && !set.completed);
+    const next = hasPending ? withoutWarmup(target) : withWarmup(target, settings.barWeight ?? 20, unit);
+    if (next === target) {
+      toast({ title: t('warmupNeedsWeight') });
+      return;
+    }
+    updateExerciseAt(workoutExerciseId, () => next, true);
+  };
+
+  const handleLinkNext = (index: number) => {
+    triggerHaptic('light');
+    persist(linkWithNext(dailyExercises, index, uuidv4()), true);
+  };
+
+  const handleUnlink = (index: number) => {
+    persist(unlink(dailyExercises, index, uuidv4()), true);
+  };
+
+  const handleFinish = () => {
+    const now = new Date().toISOString();
+    updateSession(formattedDate, { finishedAt: now, startedAt: session?.startedAt ?? now });
+    stopRest();
+    triggerHaptic('success');
+    setSummaryDate(formattedDate);
+    const completedCount = totalCompletedWorkouts(workoutLog);
+    void onWorkoutFinished({
+      dateKey: formattedDate,
+      exercises: dailyExercises,
+      startedAt: session?.startedAt ?? now,
+      finishedAt: now,
+      title: session?.templateName ?? t('workout'),
+      healthEnabled: Boolean(settings.healthSyncEnabled),
+    });
+    // After the summary has had a moment on screen.
+    setTimeout(() => void maybeRequestReview(completedCount), 2500);
+  };
+
+  // "Start workout" from Siri, Shortcuts or a widget: load today's routine day.
+  const { templates } = useTemplates();
+  const loadRef = useRef(handleLoadTemplate);
+  loadRef.current = handleLoadTemplate;
+  useEffect(() => {
+    if (isLoading || formattedDate !== format(new Date(), 'yyyy-MM-dd')) return;
+    const run = () => {
+      if (!takePendingAction('start-workout')) return;
+      if (dailyExercises.length > 0) return;
+      const plan = planForToday(workoutLog, sessions, templates, null, formattedDate, t);
+      const template = templates.find((entry) => entry.id === plan?.templateId);
+      const day = template?.days?.find((entry) => entry.id === plan?.templateDayId);
+      if (plan && template && day) {
+        loadRef.current(day.exercises, template.progression, {
+          templateId: template.id,
+          templateDayId: day.id,
+          templateName: plan.title,
+        });
+      } else {
+        setIsTemplateSheetOpen(true);
+      }
+    };
+    run();
+    window.addEventListener('wp:pending-action', run);
+    return () => window.removeEventListener('wp:pending-action', run);
+  }, [isLoading, formattedDate, dailyExercises.length, workoutLog, sessions, templates, t]);
 
   const handleDeleteWorkoutExercise = () => {
     if (!exerciseToConfirmDelete) return;
@@ -409,19 +538,11 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
 
       if (!blob) throw new Error('Failed to generate image');
 
-      const file = new File([blob], `workout-${formattedDate}.png`, { type: 'image/png' });
-      const text = t('shareMessage', { date: getFormattedDate(), count: dailyExercises.length });
-
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: t('myWorkout'), text, files: [file] });
-        toast({ title: t('shared'), description: t('sharedDescription') });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `workout-${formattedDate}.png`;
-        anchor.click();
-        URL.revokeObjectURL(url);
+      // Web Share where it takes files, the native share sheet in the apps
+      // (Android's WebView has no Web Share), a download otherwise.
+      const result = await shareImage(blob, `workout-${formattedDate}.png`, t('myWorkout'));
+      if (result === 'failed') throw new Error('share failed');
+      if (result === 'downloaded') {
         toast({ title: t('imageDownloaded'), description: t('imageDownloadedDescription') });
       }
     } catch (error: any) {
@@ -523,9 +644,15 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
               onReorder={(reordered) => persist(reordered, true)}
               className="space-y-4"
             >
-              {dailyExercises.map((workoutExercise) => (
+              {dailyExercises.map((workoutExercise, index) => (
                 <ReorderableExercise
                   key={workoutExercise.id}
+                  superset={supersets[index]}
+                  canLinkNext={index < dailyExercises.length - 1}
+                  onSwap={() => setSwapTarget(workoutExercise)}
+                  onToggleWarmup={() => handleToggleWarmup(workoutExercise.id)}
+                  onLinkNext={() => handleLinkNext(index)}
+                  onUnlink={() => handleUnlink(index)}
                   workoutExercise={workoutExercise}
                   exerciseName={resolveExerciseName(workoutExercise, allExercises, t)}
                   bodyPart={resolveBodyPart(workoutExercise, allExercises)}
@@ -561,7 +688,25 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
                 />
               ))}
             </Reorder.Group>
-          ) : (
+          ) : null}
+          {!isLoading && dailyExercises.length > 0 && hasCompletedSet && (
+            session?.finishedAt ? (
+              <Button
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => setSummaryDate(formattedDate)}
+              >
+                <CheckCircle2 className="mr-2 h-4 w-4 text-primary" />
+                {t('viewSummary')}
+              </Button>
+            ) : (
+              <Button className="h-12 w-full rounded-full text-base shadow-md" onClick={handleFinish}>
+                <Flag className="mr-2 h-5 w-5" />
+                {t('finishWorkout')}
+              </Button>
+            )
+          )}
+          {!isLoading && dailyExercises.length === 0 && (
             <div className="rounded-xl border border-dashed border-border bg-secondary/10 px-4 py-12 text-center">
               <p className="mb-1 text-lg font-medium text-foreground">{t('noWorkoutPlanned')}</p>
               <p className="mb-4 text-muted-foreground">{t('enjoyRestDay')}</p>
@@ -599,6 +744,16 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
         exerciseId={historyExerciseId}
         exerciseName={historyExerciseName}
       />
+
+      <SwapExerciseSheet
+        target={swapTarget}
+        targetName={swapTarget ? resolveExerciseName(swapTarget, allExercises, t) : ''}
+        excludeIds={dailyExercises.map((exercise) => exercise.exerciseId)}
+        onClose={() => setSwapTarget(null)}
+        onSwap={handleSwap}
+      />
+
+      <WorkoutSummarySheet dateKey={summaryDate} onClose={() => setSummaryDate(null)} />
 
       <AlertDialog
         open={!!exerciseToConfirmDelete}

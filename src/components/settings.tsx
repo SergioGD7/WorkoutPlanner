@@ -9,6 +9,8 @@ import { ChevronLeft, Settings as SettingsIcon, Trophy, User } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import BodyMetricsCard from '@/components/body-metrics-card';
+import AchievementsCard from '@/components/achievements-card';
+import ProgressPhotosCard from '@/components/progress-photos-card';
 import { useAuth } from '@/context/auth-context';
 import { useExercises } from '@/context/exercise-context';
 import { useLanguage } from '@/context/language-context';
@@ -101,7 +103,11 @@ export default function Settings() {
         </div>
       </Card>
 
+      <AchievementsCard />
+
       <BodyMetricsCard />
+
+      <ProgressPhotosCard />
 
       <div>
         <h3 className="mb-4 flex items-center gap-2 font-headline text-xl font-bold">

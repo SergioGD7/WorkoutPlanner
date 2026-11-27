@@ -40,7 +40,7 @@ const LEAD = 'font-medium text-foreground';
 const POLICIES: Record<Lang, Policy> = {
   es: {
     heading: 'Política de privacidad',
-    lastUpdated: '20 de septiembre de 2026',
+    lastUpdated: '27 de noviembre de 2026',
     lastUpdatedLabel: 'Última actualización',
     switchLabel: 'Read in English',
     sections: [
@@ -84,7 +84,7 @@ const POLICIES: Record<Lang, Policy> = {
             <p className={LEAD}>Qué NO recoge nunca</p>
             <ul className={LIST}>
               <li>Tu ubicación.</li>
-              <li>Tus contactos, tus fotos ni tus archivos.</li>
+              <li>Tus contactos, tus fotos ni tus archivos. Las fotos de progreso que añadas se quedan en tu dispositivo (más abajo).</li>
               <li>Datos de Apple Salud ni de Google Fit.</li>
               <li>
                 Identificadores de publicidad. La app no tiene anuncios ni SDK de analítica o
@@ -186,6 +186,46 @@ const POLICIES: Record<Lang, Policy> = {
         ),
       },
       {
+        title: 'Apple Salud y Health Connect',
+        body: (
+          <>
+            <p>
+              Solo si lo activas en Ajustes › Salud y copias, la app guarda en Apple Salud (iPhone) o
+              Health Connect (Android) tus entrenos terminados como sesiones de fuerza (hora de inicio,
+              fin y nombre de la rutina) y el peso corporal que registres, y lee tu peso corporal para
+              importarlo.
+            </p>
+            <p>
+              Estos datos de salud se usan únicamente para esas funciones: no se envían a nuestros
+              servidores ni a terceros, no se usan para publicidad y puedes retirar el permiso en
+              cualquier momento desde los ajustes del sistema.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Fotos de progreso',
+        body: (
+          <p>
+            Las fotos de progreso se guardan solo en tu dispositivo, dentro del almacenamiento
+            privado de la app, y en tus copias automáticas. Nunca se suben a nuestros servidores. La
+            cámara y la galería solo se usan cuando añades una foto. Al eliminar tu cuenta se borran
+            del dispositivo.
+          </p>
+        ),
+      },
+      {
+        title: 'Copias automáticas',
+        body: (
+          <p>
+            Si activas la copia semanal, la app guarda un archivo con tus datos (y tus fotos de
+            progreso) en tu iCloud Drive (iPhone) o en el almacenamiento privado de la app, que
+            Android incluye en tu copia de Google. Esas copias están en tu cuenta de Apple o Google,
+            no en la nuestra; se guardan las ocho últimas y se borran al eliminar tu cuenta.
+          </p>
+        ),
+      },
+      {
         title: 'Datos sin conexión en tu dispositivo',
         body: (
           <p>
@@ -243,7 +283,7 @@ const POLICIES: Record<Lang, Policy> = {
 
   en: {
     heading: 'Privacy policy',
-    lastUpdated: '20 September 2026',
+    lastUpdated: '27 November 2026',
     lastUpdatedLabel: 'Last updated',
     switchLabel: 'Leer en español',
     sections: [
@@ -284,7 +324,7 @@ const POLICIES: Record<Lang, Policy> = {
             <p className={LEAD}>What it never collects</p>
             <ul className={LIST}>
               <li>Your location.</li>
-              <li>Your contacts, photos or files.</li>
+              <li>Your contacts, photos or files. Progress photos you add stay on your device (see below).</li>
               <li>Data from Apple Health or Google Fit.</li>
               <li>
                 Advertising identifiers. There are no ads and no analytics or attribution SDKs in
@@ -382,6 +422,46 @@ const POLICIES: Record<Lang, Policy> = {
             The sign-in screen offers &ldquo;Explore with sample data&rdquo;. That mode uses invented
             data held only in your device&apos;s memory, sends nothing to any server, and stores
             nothing.
+          </p>
+        ),
+      },
+      {
+        title: 'Apple Health and Health Connect',
+        body: (
+          <>
+            <p>
+              Only if you turn it on in Settings › Health and backups, the app writes your finished
+              workouts to Apple Health (iPhone) or Health Connect (Android) as strength sessions
+              (start, end and routine name) together with the body weight you log, and reads your body
+              weight to import it.
+            </p>
+            <p>
+              This health data is used only for those features: it is not sent to our servers or to
+              anyone else, it is never used for advertising, and you can revoke access at any time in
+              the system settings.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: 'Progress photos',
+        body: (
+          <p>
+            Progress photos are stored only on your device, in the app&apos;s private storage, and in
+            your automatic backups. They are never uploaded to our servers. The camera and photo
+            library are used only when you add a photo. Deleting your account removes them from the
+            device.
+          </p>
+        ),
+      },
+      {
+        title: 'Automatic backups',
+        body: (
+          <p>
+            If you turn on the weekly backup, the app saves a file with your data (and your progress
+            photos) to your iCloud Drive (iPhone) or to the app&apos;s private storage, which Android
+            includes in your Google backup. Those copies live in your Apple or Google account, not
+            ours; the last eight are kept and they are deleted when you delete your account.
           </p>
         ),
       },

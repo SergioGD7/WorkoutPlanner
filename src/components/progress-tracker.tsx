@@ -1,5 +1,8 @@
 "use client";
 
+import { exportFile, toCsv } from '@/lib/file-export';
+import MonthlyRecap from '@/components/monthly-recap';
+import StrengthGoalsCard from '@/components/strength-goals-card';
 import { useMemo, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import {
@@ -317,17 +320,17 @@ export default function ProgressTracker() {
 
     try {
       setIsExporting(true);
-      // Loaded on demand: the xlsx bundle is far too heavy to ship on first paint.
-      const xlsx = await import('xlsx');
-      const worksheet = xlsx.utils.json_to_sheet(rows);
-      const workbook = xlsx.utils.book_new();
-      xlsx.utils.book_append_sheet(workbook, worksheet, t('workoutLogs'));
-
       const from = format(exportDateRange.from, 'yyyy-MM-dd');
       const to = format(exportDateRange.to, 'yyyy-MM-dd');
-      xlsx.writeFile(workbook, `${t('workoutLogs')}_${from}_${to}.xlsx`);
+      const result = await exportFile({
+        filename: `${t('workoutLogs')}_${from}_${to}.csv`,
+        data: toCsv(rows),
+        mimeType: 'text/csv',
+        title: t('workoutLogs'),
+      });
+      if (result === 'failed') throw new Error('export failed');
     } catch (error) {
-      console.error('Excel export failed:', error);
+      console.error('CSV export failed:', error);
       toast({ title: t('error'), description: t('unknownError'), variant: 'destructive' });
     } finally {
       setIsExporting(false);
@@ -373,7 +376,11 @@ export default function ProgressTracker() {
         </Popover>
       </div>
 
+      <MonthlyRecap />
+
       <ConsistencyHeatmap />
+
+      <StrengthGoalsCard />
 
       <Card className="glass-effect border-primary/20">
         <CardHeader className="p-4 pb-2 sm:p-6">

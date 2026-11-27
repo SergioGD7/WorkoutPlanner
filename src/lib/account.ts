@@ -40,4 +40,12 @@ export async function deleteAllUserData(uid: string): Promise<void> {
   const batch = writeBatch(db);
   USER_DOCUMENTS.forEach((path) => batch.delete(doc(db, `users/${uid}/${path}`)));
   await batch.commit();
+
+  // On-device data goes too: progress photos and automatic backups.
+  const [{ deleteAllPhotos }, { deleteLocalBackups }] = await Promise.all([
+    import('./photo-store'),
+    import('./cloud-backup'),
+  ]);
+  await deleteAllPhotos(uid);
+  await deleteLocalBackups(uid);
 }

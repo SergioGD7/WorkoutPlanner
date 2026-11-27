@@ -9,13 +9,19 @@ import {
   Flame,
   GripVertical,
   History,
+  Link2,
+  Link2Off,
+  MoreVertical,
   Play,
+  Repeat,
   Square,
   StickyNote,
   Trash2,
   Trophy,
   Zap,
 } from 'lucide-react';
+import type { SupersetInfo } from '@/lib/session';
+import { setLabels } from '@/lib/session';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -93,6 +99,15 @@ interface WorkoutCardProps {
   onOpenHistory: () => void;
   onOpenPlates: (weightKg: number) => void;
   onDelete: () => void;
+  /** Position in a superset, or null when the exercise stands alone. */
+  superset?: SupersetInfo | null;
+  /** There is an exercise below this one to link with. */
+  canLinkNext?: boolean;
+  onSwap?: () => void;
+  /** Adds the warm-up ramp, or removes it when one is already there. */
+  onToggleWarmup?: () => void;
+  onLinkNext?: () => void;
+  onUnlink?: () => void;
 }
 
 export default function WorkoutCard({
@@ -118,9 +133,17 @@ export default function WorkoutCard({
   onOpenHistory,
   onOpenPlates,
   onDelete,
+  superset = null,
+  canLinkNext = false,
+  onSwap,
+  onToggleWarmup,
+  onLinkNext,
+  onUnlink,
 }: WorkoutCardProps) {
   const { t } = useLanguage();
   const [showNotes, setShowNotes] = useState(Boolean(workoutExercise.notes));
+  const labels = setLabels(workoutExercise.sets, t('warmupLetter'));
+  const hasWarmupSets = workoutExercise.sets.some((set) => set.type === 'warmup' && !set.completed);
 
   const lastTimeSummary = lastSession
     ? lastSession.sets
@@ -134,9 +157,19 @@ export default function WorkoutCard({
     : null;
 
   return (
-    <Card className="overflow-hidden border-border/50 transition-all hover:shadow-md">
+    <Card
+      className={`overflow-hidden border-border/50 transition-all hover:shadow-md ${
+        superset ? 'border-l-4 border-l-primary' : ''
+      }`}
+    >
       <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
         <div className="min-w-0 flex-1">
+          {superset && (
+            <p className="mb-1 truncate text-[11px] font-semibold uppercase tracking-wider text-primary">
+              {`${superset.letter}${superset.position} · ${t(superset.size > 2 ? 'circuit' : 'superset')}`}
+              {!superset.isLast && <span className="font-normal normal-case text-muted-foreground"> · {t('supersetNoRest')}</span>}
+            </p>
+          )}
           <CardTitle className="flex items-center gap-2 font-headline text-xl">
             <span
               onPointerDown={onDragHandlePointerDown}
@@ -233,15 +266,44 @@ export default function WorkoutCard({
               }`}
             />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onDelete}
-            aria-label={t('deleteExercise')}
-          >
-            <Trash2 className="h-4 w-4 text-muted-foreground transition-colors hover:text-destructive" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('moreOptions')}>
+                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              {onSwap && (
+                <DropdownMenuItem onClick={onSwap}>
+                  <Repeat className="mr-2 h-4 w-4" />
+                  {t('swapExercise')}
+                </DropdownMenuItem>
+              )}
+              {onToggleWarmup && tracking === 'weight' && (
+                <DropdownMenuItem onClick={onToggleWarmup}>
+                  <Flame className="mr-2 h-4 w-4 text-amber-500" />
+                  {t(hasWarmupSets ? 'removeWarmup' : 'addWarmup')}
+                </DropdownMenuItem>
+              )}
+              {superset && onUnlink ? (
+                <DropdownMenuItem onClick={onUnlink}>
+                  <Link2Off className="mr-2 h-4 w-4" />
+                  {t('unlinkSuperset')}
+                </DropdownMenuItem>
+              ) : null}
+              {canLinkNext && onLinkNext && !(superset && !superset.isLast) && (
+                <DropdownMenuItem onClick={onLinkNext}>
+                  <Link2 className="mr-2 h-4 w-4" />
+                  {t('linkWithNext')}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('deleteExercise')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
 
@@ -252,6 +314,7 @@ export default function WorkoutCard({
               key={`${workoutExercise.id}-${index}`}
               set={set}
               index={index}
+              label={labels[index]}
               timerKey={workTimerKey(workoutExercise.id, index)}
               exerciseName={exerciseName}
               tracking={tracking}
@@ -293,6 +356,8 @@ export default function WorkoutCard({
 interface SetRowProps {
   set: Set;
   index: number;
+  /** "1", "2"… for working sets, "C"/"W" for warm-ups. */
+  label: string;
   /** Identifies this exact set to the work timer. */
   timerKey: string;
   exerciseName: string;
@@ -309,6 +374,7 @@ interface SetRowProps {
 function SetRow({
   set,
   index,
+  label,
   timerKey,
   exerciseName,
   tracking,
@@ -373,7 +439,7 @@ function SetRow({
     if (!durationFocused.current) setDurationText(numberToText(set.duration ?? 0));
   }, [set.duration]);
 
-  const setLabel = `${t('set')} ${index + 1}`;
+  const setLabel = set.type === 'warmup' ? t('warmup') : `${t('set')} ${label}`;
 
   /**
    * What goes on each side. Reps are not split: you do the same number on both
@@ -428,8 +494,8 @@ function SetRow({
               title={t(SET_TYPE_LABEL_KEYS[setType])}
             >
               <span className="flex items-center gap-0.5">
-                {index + 1}
-                {typeIcon && <typeIcon.Icon className={`h-3 w-3 ${typeIcon.className}`} />}
+                {label}
+                {set.type !== 'warmup' && typeIcon && <typeIcon.Icon className={`h-3 w-3 ${typeIcon.className}`} />}
               </span>
               {set.rpe ? <span className="block text-[10px] opacity-70">@{set.rpe}</span> : null}
             </button>

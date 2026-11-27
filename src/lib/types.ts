@@ -42,6 +42,11 @@ export interface WorkoutExercise {
    * from a template that may have changed since.
    */
   progression?: ProgressionConfig;
+  /**
+   * Exercises sharing an id form a superset or circuit, done back to back with
+   * the rest only after the last one. Members are always contiguous.
+   */
+  supersetId?: string;
 }
 
 export interface WorkoutLog {
@@ -107,6 +112,8 @@ export interface TemplateExercise {
   restSeconds?: number;
   /** Overrides the routine's rule for this exercise only. */
   progression?: ProgressionConfig;
+  /** Same meaning as on WorkoutExercise; copied over when the day is loaded. */
+  supersetId?: string;
 }
 
 export interface TemplateDay {
@@ -169,6 +176,48 @@ export interface ProfileSettings {
   /** Weekly set target per muscle group, shown as a band on the volume chart. */
   weeklySetTargetMin: number;
   weeklySetTargetMax: number;
+  strengthGoals?: StrengthGoal[];
+  /** Write finished workouts and body weight to Apple Health / Health Connect. */
+  healthSyncEnabled?: boolean;
+  /** Weekly automatic backup to iCloud Drive (iOS) or the device (Android). */
+  autoBackupEnabled?: boolean;
+  /** Notification on the 1st with last month's recap. */
+  monthlyRecapNotification?: boolean;
+}
+
+/**
+ * Facts about a training day that aren't sets: when it started and ended, and
+ * which routine day it came from. Stored next to `exercises` in the day doc.
+ */
+export interface DaySession {
+  /** ISO timestamp of the first ticked set. */
+  startedAt?: string;
+  /** ISO timestamp of "Finish workout". */
+  finishedAt?: string;
+  templateId?: string;
+  templateDayId?: string;
+  /** Snapshot of the routine/day name at load time, for display. */
+  templateName?: string;
+}
+
+export interface DaySessions {
+  [date: string]: DaySession;
+}
+
+export type StrengthGoalKind = 'weight' | 'reps' | 'oneRm';
+
+/** A per-exercise target: lift X kg, do N reps at X kg, or reach an e1RM. */
+export interface StrengthGoal {
+  id: string;
+  exerciseId: string;
+  kind: StrengthGoalKind;
+  /** kg for 'weight' and 'oneRm'; for 'reps' the load the reps are done at. */
+  weight: number;
+  /** Only for 'reps'. */
+  reps?: number;
+  createdAt: string;
+  /** Set once the goal has been met. */
+  achievedAt?: string;
 }
 
 export interface BackupPayload {
@@ -179,4 +228,7 @@ export interface BackupPayload {
   templates: WorkoutTemplate[];
   bodyEntries: BodyEntry[];
   settings?: Partial<ProfileSettings>;
+  sessions?: DaySessions;
+  /** Progress photos, base64 JPEG. Only in device / iCloud backups. */
+  photos?: { id: string; date: string; pose: string; data: string }[];
 }

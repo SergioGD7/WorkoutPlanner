@@ -25,6 +25,7 @@ import DeleteAccountDialog from "@/components/delete-account-dialog";
 import ChangePasswordForm from "@/components/change-password-form";
 import LanguageSwitcher from "@/components/language-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import SyncSettings from "@/components/sync-settings";
 import { useLanguage } from "@/context/language-context";
 import { useProfile } from "@/context/profile-context";
 import { useRestTimer } from "@/context/rest-timer-context";
@@ -463,6 +464,13 @@ export default function AdvancedSettingsPage() {
                   {t("security")}
                 </h3>
                 <ChangePasswordForm />
+              </section>
+
+              <section className="glass-effect rounded-xl border border-border/50 bg-card p-6 shadow-sm">
+                <h3 className="mb-4 font-headline text-lg font-semibold">
+                  {t("syncAndBackup")}
+                </h3>
+                <SyncSettings />
               </section>
 
               {/* Backup is available to every account, not just one hardcoded address. */}
