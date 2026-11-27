@@ -34,9 +34,9 @@ import {
   type BackupFile,
   type BackupTarget,
 } from '@/lib/cloud-backup';
-import { isNativeApp } from '@/lib/native';
+import { isNativeApp, nativePlatform } from '@/lib/native';
 import {
-  healthProviderName,
+  healthProviderKey,
   isHealthAvailable,
   readBodyWeightsFromHealth,
   requestHealthAuthorization,
@@ -76,7 +76,8 @@ export default function SyncSettings() {
     void refresh();
   }, [native, refresh]);
 
-  const provider = healthProviderName();
+  const providerKey = healthProviderKey();
+  const provider = providerKey ? t(providerKey) : null;
 
   const toggleHealth = async (checked: boolean) => {
     if (checked) {
@@ -184,7 +185,13 @@ export default function SyncSettings() {
                 {t(target === 'icloud' ? 'autoBackupICloud' : 'autoBackupDevice')}
               </span>
               <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                {t(target === 'icloud' ? 'autoBackupICloudHint' : 'autoBackupDeviceHint')}
+                {t(
+                  target === 'icloud'
+                    ? 'autoBackupICloudHint'
+                    : nativePlatform() === 'ios'
+                      ? 'autoBackupDeviceHintIOS'
+                      : 'autoBackupDeviceHint',
+                )}
               </span>
             </Label>
             <Switch

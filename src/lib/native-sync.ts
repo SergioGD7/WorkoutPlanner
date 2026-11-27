@@ -20,11 +20,11 @@ interface HealthPlugin {
 
 const getHealth = customPlugin<HealthPlugin>('WPHealth');
 
-/** "Apple Salud" on iOS, "Health Connect" on Android, null on the web. */
-export function healthProviderName(): string | null {
+/** i18n key of the health store's name on this platform, null on the web. */
+export function healthProviderKey(): 'appleHealth' | 'healthConnect' | null {
   const platform = nativePlatform();
-  if (platform === 'ios') return 'Apple Health';
-  if (platform === 'android') return 'Health Connect';
+  if (platform === 'ios') return 'appleHealth';
+  if (platform === 'android') return 'healthConnect';
   return null;
 }
 

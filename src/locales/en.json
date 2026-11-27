@@ -557,5 +557,8 @@
   "widgetWeek": "This week",
   "widgetToday": "Today",
   "widgetRestDay": "Rest day",
-  "widgetDays": "days"
+  "widgetDays": "days",
+  "appleHealth": "Apple Health",
+  "healthConnect": "Health Connect",
+  "autoBackupDeviceHintIOS": "iCloud Drive is off, so it is kept in the app (part of the iPhone's iCloud backup). The last 8 are kept."
 }

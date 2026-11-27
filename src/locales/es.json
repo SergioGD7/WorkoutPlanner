@@ -557,5 +557,8 @@
   "widgetWeek": "Esta semana",
   "widgetToday": "Hoy toca",
   "widgetRestDay": "Descanso",
-  "widgetDays": "días"
+  "widgetDays": "días",
+  "appleHealth": "Apple Salud",
+  "healthConnect": "Health Connect",
+  "autoBackupDeviceHintIOS": "iCloud Drive no está activo, así que se guarda en la app (incluida en la copia de iCloud del iPhone). Se guardan las 8 últimas."
 }
