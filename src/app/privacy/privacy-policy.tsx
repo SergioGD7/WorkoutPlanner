@@ -84,7 +84,7 @@ const POLICIES: Record<Lang, Policy> = {
             <p className={LEAD}>Qué NO recoge nunca</p>
             <ul className={LIST}>
               <li>Tu ubicación.</li>
-              <li>Tus contactos, tus fotos ni tus archivos.</li>
+              <li>Tus contactos, tus fotos ni tus archivos. Las fotos de progreso que añadas se quedan en tu dispositivo (más abajo).</li>
               <li>Datos de Apple Salud ni de Google Fit.</li>
               <li>
                 Identificadores de publicidad. La app no tiene anuncios ni SDK de analítica o
@@ -324,7 +324,7 @@ const POLICIES: Record<Lang, Policy> = {
             <p className={LEAD}>What it never collects</p>
             <ul className={LIST}>
               <li>Your location.</li>
-              <li>Your contacts, photos or files.</li>
+              <li>Your contacts, photos or files. Progress photos you add stay on your device (see below).</li>
               <li>Data from Apple Health or Google Fit.</li>
               <li>
                 Advertising identifiers. There are no ads and no analytics or attribution SDKs in
