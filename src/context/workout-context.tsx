@@ -22,8 +22,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from './auth-context';
-import type { WorkoutExercise, WorkoutLog } from '@/lib/types';
-import { buildDemoWorkoutLog } from '@/lib/demo-data';
+import type { DaySession, DaySessions, WorkoutExercise, WorkoutLog } from '@/lib/types';
+import { buildDemoSessions, buildDemoWorkoutLog } from '@/lib/demo-data';
 
 /**
  * One Firestore document per training day (`users/{uid}/workout_days/{yyyy-MM-dd}`).
@@ -41,8 +41,12 @@ interface WorkoutContextType {
   isLoading: boolean;
   /** Optimistic + debounced. Pass `immediate` for destructive actions. */
   saveDay: (dateKey: string, exercises: WorkoutExercise[], immediate?: boolean) => void;
+  /** Start/finish time and source routine per day. */
+  sessions: DaySessions;
+  /** Merges fields into a day's session. Written immediately. */
+  updateSession: (dateKey: string, patch: Partial<DaySession>) => void;
   /** Overwrites many days at once (import / restore). */
-  replaceLog: (log: WorkoutLog) => Promise<void>;
+  replaceLog: (log: WorkoutLog, sessions?: DaySessions) => Promise<void>;
   /** Writes days without touching any that are not in `log`. */
   mergeDays: (log: WorkoutLog) => Promise<void>;
   copiedWorkout: WorkoutExercise[] | null;
@@ -86,6 +90,7 @@ async function migrateLegacyLog(uid: string): Promise<void> {
 export function WorkoutProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [workoutLog, setWorkoutLog] = useState<WorkoutLog>({});
+  const [sessions, setSessions] = useState<DaySessions>({});
   const [isLoading, setIsLoading] = useState(true);
   const [copiedWorkout, setCopiedWorkout] = useState<WorkoutExercise[] | null>(null);
 
@@ -119,7 +124,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       if (pending.length === 0) {
         await deleteDoc(ref);
       } else {
-        await setDoc(ref, { exercises: pending, updatedAt: new Date().toISOString() });
+        // Merge, so the day's `session` field survives every set edit.
+        await setDoc(ref, { exercises: pending, updatedAt: new Date().toISOString() }, { merge: true });
       }
     } catch (error) {
       console.error(`Failed to save workout for ${dateKey}:`, error);
@@ -136,6 +142,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setWorkoutLog({});
+      setSessions({});
       setIsLoading(false);
       return;
     }
@@ -143,6 +150,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     // Demo account: fixtures in memory, no reads and no writes.
     if (user.isDemo) {
       setWorkoutLog(buildDemoWorkoutLog());
+      setSessions(buildDemoSessions());
       setIsLoading(false);
       return;
     }
@@ -162,12 +170,17 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         daysCollection(user.uid),
         (snapshot) => {
           const remote: WorkoutLog = {};
+          const remoteSessions: DaySessions = {};
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             if (Array.isArray(data?.exercises)) {
               remote[docSnap.id] = data.exercises as WorkoutExercise[];
             }
+            if (data?.session && typeof data.session === 'object') {
+              remoteSessions[docSnap.id] = data.session as DaySession;
+            }
           });
+          setSessions(remoteSessions);
 
           // Local edits win until they've been written.
           pendingRef.current.forEach((exercises, dateKey) => {
@@ -236,8 +249,19 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     [flushDay],
   );
 
+  const updateSession = useCallback((dateKey: string, patch: Partial<DaySession>) => {
+    setSessions((previous) => ({ ...previous, [dateKey]: { ...previous[dateKey], ...patch } }));
+    const uid = uidRef.current;
+    if (!uid || isDemoRef.current) return;
+    // Firestore rejects undefined; strip it so "clear a field" is just omission.
+    const clean = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+    void setDoc(doc(daysCollection(uid), dateKey), { session: clean }, { merge: true }).catch((error) =>
+      console.error(`Failed to save session for ${dateKey}:`, error),
+    );
+  }, []);
+
   const replaceLog = useCallback(
-    async (log: WorkoutLog) => {
+    async (log: WorkoutLog, incomingSessions?: DaySessions) => {
       const uid = uidRef.current;
       if (!uid || isDemoRef.current) return;
 
@@ -260,7 +284,12 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       for (const dateKey of incomingKeys) {
         const exercises = log[dateKey];
         if (!Array.isArray(exercises) || exercises.length === 0) continue;
-        batch.set(doc(daysCollection(uid), dateKey), { exercises, updatedAt: new Date().toISOString() });
+        const session = incomingSessions?.[dateKey];
+        batch.set(doc(daysCollection(uid), dateKey), {
+          exercises,
+          updatedAt: new Date().toISOString(),
+          ...(session ? { session } : {}),
+        });
         count += 1;
         await commitIfNeeded();
       }
@@ -293,10 +322,11 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       dateKeys.slice(i, i + 400).forEach((dateKey) => {
         const exercises = log[dateKey];
         if (!Array.isArray(exercises) || exercises.length === 0) return;
-        batch.set(doc(daysCollection(uid), dateKey), {
-          exercises,
-          updatedAt: new Date().toISOString(),
-        });
+        batch.set(
+          doc(daysCollection(uid), dateKey),
+          { exercises, updatedAt: new Date().toISOString() },
+          { merge: true },
+        );
         count += 1;
       });
       if (count > 0) await batch.commit();
@@ -304,8 +334,18 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ workoutLog, isLoading, saveDay, replaceLog, mergeDays, copiedWorkout, setCopiedWorkout }),
-    [workoutLog, isLoading, saveDay, replaceLog, mergeDays, copiedWorkout],
+    () => ({
+      workoutLog,
+      isLoading,
+      saveDay,
+      sessions,
+      updateSession,
+      replaceLog,
+      mergeDays,
+      copiedWorkout,
+      setCopiedWorkout,
+    }),
+    [workoutLog, isLoading, saveDay, sessions, updateSession, replaceLog, mergeDays, copiedWorkout],
   );
 
   return <WorkoutContext.Provider value={value}>{children}</WorkoutContext.Provider>;

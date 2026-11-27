@@ -1,6 +1,14 @@
 import { addDays, format, startOfWeek, subWeeks } from 'date-fns';
 import { initialExercises, workoutTemplates } from './data';
-import type { BodyEntry, Exercise, Set, WorkoutExercise, WorkoutLog, WorkoutTemplate } from './types';
+import type {
+  BodyEntry,
+  DaySessions,
+  Exercise,
+  Set,
+  WorkoutExercise,
+  WorkoutLog,
+  WorkoutTemplate,
+} from './types';
 
 /**
  * Read-only sample account.
@@ -76,7 +84,12 @@ export function buildDemoWorkoutLog(today: Date = new Date()): WorkoutLog {
         const sets: Set[] = Array.from({ length: entry.sets }, (_, setIndex) => {
           const set: Set = {
             reps: isTimed ? 0 : Math.max(4, entry.reps - (setIndex > 1 ? 1 : 0)),
-            weight: entry.startWeight === 0 ? 0 : round(weight - (entry.sets - 1 - setIndex) * entry.step),
+            weight:
+              entry.startWeight === 0
+                ? 0
+                : setIndex === 0
+                  ? round(weight * 0.5, 2.5)
+                  : round(weight - (entry.sets - 1 - setIndex) * entry.step),
             // The current day is left partly unticked so the app looks in-use.
             completed: !isToday || setIndex < entry.sets - 1,
             type: setIndex === 0 && entry.startWeight > 0 ? 'warmup' : 'normal',
@@ -92,6 +105,8 @@ export function buildDemoWorkoutLog(today: Date = new Date()): WorkoutLog {
           exerciseName: definition?.name,
           bodyPart: definition?.bodyPart,
           restSeconds: entry.reps <= 6 ? 180 : 90,
+          // Monday's last two accessories run as a superset.
+          ...(weekday === 1 && exerciseIndex >= 2 ? { supersetId: 'demo-mon-a' } : {}),
           sets,
         };
       });
@@ -101,6 +116,33 @@ export function buildDemoWorkoutLog(today: Date = new Date()): WorkoutLog {
   }
 
   return log;
+}
+
+const DEMO_DAY_NAMES: Record<number, string> = { 1: 'Torso A', 2: 'Pierna A', 4: 'Torso B', 5: 'Pierna B' };
+
+/** Start and finish times for every past demo day, and the routine day it came from. */
+export function buildDemoSessions(today: Date = new Date()): DaySessions {
+  const sessions: DaySessions = {};
+  const todayKey = format(today, 'yyyy-MM-dd');
+  Object.keys(buildDemoWorkoutLog(today)).forEach((dateKey, index) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    // Today's session started 50 minutes ago, so finishing it shows a duration.
+    const started =
+      dateKey === todayKey
+        ? new Date(today.getTime() - 50 * 60_000)
+        : new Date(year, month - 1, day, 18, 30 + (index % 4) * 5);
+    const weekday = new Date(year, month - 1, day).getDay();
+    sessions[dateKey] = {
+      startedAt: started.toISOString(),
+      ...(dateKey === todayKey
+        ? {}
+        : { finishedAt: new Date(started.getTime() + (52 + (index % 5) * 4) * 60_000).toISOString() }),
+      templateId: 'demo-upper-lower',
+      templateDayId: `day-${weekday}`,
+      templateName: DEMO_DAY_NAMES[weekday],
+    };
+  });
+  return sessions;
 }
 
 export function buildDemoBodyEntries(today: Date = new Date()): BodyEntry[] {

@@ -16,7 +16,11 @@ interface LoadTemplateSheetProps {
   isOpen: boolean;
   onClose: () => void;
   /** The routine's progression rule travels with its exercises onto the log. */
-  onLoadTemplate: (exercises: TemplateExercise[], progression?: ProgressionConfig) => void;
+  onLoadTemplate: (
+    exercises: TemplateExercise[],
+    progression?: ProgressionConfig,
+    source?: { templateId: string; templateDayId?: string; templateName: string },
+  ) => void;
 }
 
 export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: LoadTemplateSheetProps) {
@@ -40,7 +44,11 @@ export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: L
       setDayPickerFor(template);
       return;
     }
-    onLoadTemplate(days[0]?.exercises ?? [], template.progression);
+    onLoadTemplate(days[0]?.exercises ?? [], template.progression, {
+      templateId: template.id,
+      templateDayId: days[0]?.id,
+      templateName: t(template.nameKey),
+    });
   };
 
   return (
@@ -115,7 +123,11 @@ export default function LoadTemplateSheet({ isOpen, onClose, onLoadTemplate }: L
                       key={day.id}
                       type="button"
                       onClick={() => {
-                        onLoadTemplate(day.exercises, dayPickerFor.progression);
+                        onLoadTemplate(day.exercises, dayPickerFor.progression, {
+                          templateId: dayPickerFor.id,
+                          templateDayId: day.id,
+                          templateName: `${t(dayPickerFor.nameKey)} · ${t(day.name)}`,
+                        });
                         setDayPickerFor(null);
                       }}
                       className="flex w-full items-center justify-between rounded-2xl border border-transparent bg-secondary/10 p-4 text-left transition-all hover:border-border/50 hover:bg-secondary/30 active:scale-[0.98]"

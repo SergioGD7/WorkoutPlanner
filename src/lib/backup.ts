@@ -20,6 +20,8 @@ export function normaliseBackup(parsed: unknown): BackupPayload | null {
       templates: Array.isArray(candidate.templates) ? candidate.templates : [],
       bodyEntries: Array.isArray(candidate.bodyEntries) ? candidate.bodyEntries : [],
       settings: candidate.settings,
+      sessions: candidate.sessions && typeof candidate.sessions === 'object' ? candidate.sessions : undefined,
+      photos: Array.isArray(candidate.photos) ? candidate.photos : undefined,
     };
   }
 

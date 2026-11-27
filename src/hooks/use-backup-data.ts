@@ -12,7 +12,7 @@ import type { BackupPayload } from '@/lib/types';
  * "Download backup" button and the automatic iCloud / device backup.
  */
 export function useBackupData() {
-  const { workoutLog, replaceLog } = useWorkout();
+  const { workoutLog, sessions, replaceLog } = useWorkout();
   const { exercises, replaceExercises } = useExercises();
   const { templates, replaceTemplates } = useTemplates();
   const { settings, bodyEntries, replaceBodyEntries, updateSettings } = useProfile();
@@ -26,8 +26,9 @@ export function useBackupData() {
       templates,
       bodyEntries,
       settings,
+      sessions,
     }),
-    [workoutLog, exercises, templates, bodyEntries, settings],
+    [workoutLog, exercises, templates, bodyEntries, settings, sessions],
   );
 
   const restorePayload = useCallback(
@@ -37,7 +38,7 @@ export function useBackupData() {
       if (payload.bodyEntries?.length) await replaceBodyEntries(payload.bodyEntries);
       if (payload.settings) await updateSettings(payload.settings);
       // Workouts last: it's the slowest write and the one worth retrying alone.
-      await replaceLog(payload.workoutLog);
+      await replaceLog(payload.workoutLog, payload.sessions);
     },
     [replaceExercises, replaceTemplates, replaceBodyEntries, updateSettings, replaceLog],
   );
