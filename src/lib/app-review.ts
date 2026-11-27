@@ -1,12 +1,16 @@
 /**
- * The native "Rate this app" prompt (SKStoreReviewController / Play In-App
- * Review). Asked only after finishing a workout, once there are five behind
- * you, and at most every four months; the OS applies its own quota on top and
- * may show nothing at all, which is expected.
+ * The native "Rate this app" prompt (StoreKit on iOS, Play In-App Review on
+ * Android), through the shells' own WPReview plugin. Asked only after finishing
+ * a workout, once there are five behind you, and at most every four months; the
+ * OS applies its own quota on top and may show nothing at all, which is expected.
  */
-import { lazyPlugin } from './native';
+import { callNative, customPlugin } from './native';
 
-const getReview = lazyPlugin(() => import('@capacitor-community/in-app-review'), (m) => m.InAppReview);
+interface ReviewPlugin {
+  requestReview(): Promise<void>;
+}
+
+const getReview = customPlugin<ReviewPlugin>('WPReview');
 
 const STORAGE_KEY = 'appReview.lastAskedAt';
 const MIN_WORKOUTS = 5;
@@ -20,7 +24,7 @@ export async function maybeRequestReview(completedWorkouts: number): Promise<voi
     const box = await getReview();
     if (!box) return;
     localStorage.setItem(STORAGE_KEY, String(Date.now()));
-    await box.plugin.requestReview();
+    await callNative(getReview, (plugin) => plugin.requestReview());
   } catch (error) {
     console.warn('In-app review unavailable:', error);
   }
