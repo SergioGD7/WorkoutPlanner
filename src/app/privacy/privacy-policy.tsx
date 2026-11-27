@@ -220,7 +220,8 @@ const POLICIES: Record<Lang, Policy> = {
           <p>
             Si activas la copia semanal, la app guarda un archivo con tus datos (y tus fotos de
             progreso) en tu iCloud Drive (iPhone) o en el almacenamiento privado de la app, que
-            Android incluye en tu copia de Google. Esas copias están en tu cuenta de Apple o Google,
+            Android incluye en tu copia de Google. En iCloud Drive no se guardan tus medidas
+            corporales (peso, grasa y perímetros): siguen solo en tu cuenta. Esas copias están en tu cuenta de Apple o Google,
             no en la nuestra; se guardan las ocho últimas y se borran al eliminar tu cuenta.
           </p>
         ),
@@ -460,7 +461,8 @@ const POLICIES: Record<Lang, Policy> = {
           <p>
             If you turn on the weekly backup, the app saves a file with your data (and your progress
             photos) to your iCloud Drive (iPhone) or to the app&apos;s private storage, which Android
-            includes in your Google backup. Those copies live in your Apple or Google account, not
+            includes in your Google backup. Body measurements (weight, body fat, girths) are never
+            saved to iCloud Drive; they stay in your account only. Those copies live in your Apple or Google account, not
             ours; the last eight are kept and they are deleted when you delete your account.
           </p>
         ),

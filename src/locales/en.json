@@ -544,7 +544,7 @@
   "healthImportWeight": "Import weight from {provider}",
   "healthImported": "{count} weights imported",
   "autoBackupICloud": "Weekly backup to iCloud Drive",
-  "autoBackupICloudHint": "Files › iCloud Drive › Workout Planner. The last 8 are kept, with your progress photos. Body weight is left out; it stays in your account.",
+  "autoBackupICloudHint": "Files › iCloud Drive › Workout Planner. The last 8 are kept, with your progress photos. Body measurements are left out; they stay in your account.",
   "autoBackupDevice": "Weekly automatic backup",
   "autoBackupDeviceHint": "In the app's private storage, included in Android's Google Drive backup. The last 8 are kept.",
   "lastBackup": "Last backup: {date}",
