@@ -2,7 +2,7 @@
  * In-gym helpers that operate on a single day: supersets, warm-up ramps,
  * swapping an exercise, and the end-of-workout summary. All pure.
  */
-import { differenceInMinutes, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
 import type { DaySession, DaySessions, Exercise, Set, WeightUnit, WorkoutExercise, WorkoutLog } from './types';
 import {
   DEFAULT_PLATES_KG,
@@ -249,19 +249,21 @@ export function applySwap(
 /* -------------------------------------------------------------------------- */
 
 export interface WorkoutSummary {
-  durationMinutes: number | null;
+  /** Seconds from the first ticked set to "Finish", or null when unknown. */
+  durationSeconds: number | null;
   volumeKg: number;
   sets: number;
   exercises: number;
   prs: { exerciseId: string; name: string; weight: number; reps: number; kind: 'weight' | 'oneRm' }[];
   /** Previous session of the same routine day, if there is one. */
-  previous: { date: string; volumeKg: number; sets: number; durationMinutes: number | null } | null;
+  previous: { date: string; volumeKg: number; sets: number; durationSeconds: number | null } | null;
 }
 
-function minutesBetween(session: DaySession | undefined): number | null {
+function secondsBetween(session: DaySession | undefined): number | null {
   if (!session?.startedAt || !session.finishedAt) return null;
-  const minutes = differenceInMinutes(parseISO(session.finishedAt), parseISO(session.startedAt));
-  return minutes > 0 && minutes < 600 ? minutes : null;
+  const seconds = Math.round((parseISO(session.finishedAt).getTime() - parseISO(session.startedAt).getTime()) / 1000);
+  // A real session: not negative, not left open across a whole day.
+  return seconds >= 0 && seconds < 10 * 3600 ? seconds : null;
 }
 
 function completedOnly(exercises: WorkoutExercise[]): WorkoutExercise[] {
@@ -314,13 +316,13 @@ export function buildWorkoutSummary(
         date: previousKey,
         volumeKg: dayVolume(previousDay),
         sets: countedSets(previousDay),
-        durationMinutes: minutesBetween(sessions[previousKey]),
+        durationSeconds: secondsBetween(sessions[previousKey]),
       };
     }
   }
 
   return {
-    durationMinutes: minutesBetween(session),
+    durationSeconds: secondsBetween(session),
     volumeKg: dayVolume(day),
     sets: countedSets(day),
     exercises: day.length,

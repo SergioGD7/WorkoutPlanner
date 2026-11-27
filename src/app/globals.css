@@ -97,3 +97,12 @@ body {
     @apply bg-background/50 backdrop-blur-sm transition-colors duration-300;
   }
 }
+
+/*
+ * Cards that get rendered to a shared image (see SHARE_CARD_FONT): every
+ * element, headings included, uses the system face the image ends up with.
+ */
+.share-card,
+.share-card * {
+  font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", Roboto, Arial, sans-serif !important;
+}

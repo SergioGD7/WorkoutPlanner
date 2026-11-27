@@ -3,6 +3,7 @@ import { initialExercises, workoutTemplates } from './data';
 import type {
   BodyEntry,
   DaySessions,
+  StrengthGoal,
   Exercise,
   Set,
   WorkoutExercise,
@@ -187,3 +188,21 @@ const DEMO_ROUTINE: WorkoutTemplate = {
 };
 
 export const DEMO_TEMPLATES: WorkoutTemplate[] = [DEMO_ROUTINE, ...workoutTemplates];
+
+/** Two goals a bit above the demo's records, so the trend chart has a target to aim at. */
+export function buildDemoStrengthGoals(today: Date = new Date()): StrengthGoal[] {
+  const log = buildDemoWorkoutLog(today);
+  const best = (exerciseId: string) =>
+    Math.max(
+      0,
+      ...Object.values(log).flatMap((day) =>
+        day.filter((entry) => entry.exerciseId === exerciseId).flatMap((entry) => entry.sets.map((set) => set.weight)),
+      ),
+    );
+  const above = (kg: number) => Math.ceil((kg * 1.08) / 2.5) * 2.5;
+  const createdAt = subWeeks(today, 6).toISOString();
+  return [
+    { id: 'demo-goal-bench', exerciseId: 'ex1', kind: 'weight', weight: above(best('ex1')), createdAt },
+    { id: 'demo-goal-deadlift', exerciseId: 'ex6', kind: 'oneRm', weight: above(best('ex6') * 1.17), createdAt },
+  ];
+}

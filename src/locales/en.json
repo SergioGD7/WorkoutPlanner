@@ -517,7 +517,7 @@
   "timeTraining": "Time training",
   "topExercises": "Most trained",
   "setsCount": "{count} sets",
-  "recapPrs": "{count} PR days",
+  "recapPrs": "{count} records",
   "recapNotificationTitle": "Your {month} recap is ready",
   "recapNotificationBody": "Workouts, volume and records for the month. Open it in Progress.",
   "monthlyRecapNotification": "Monthly recap notification",
@@ -560,5 +560,12 @@
   "widgetDays": "days",
   "appleHealth": "Apple Health",
   "healthConnect": "Health Connect",
-  "autoBackupDeviceHintIOS": "iCloud Drive is off, so it is kept in the app (part of the iPhone's iCloud backup). The last 8 are kept."
+  "autoBackupDeviceHintIOS": "iCloud Drive is off, so it is kept in the app (part of the iPhone's iCloud backup). The last 8 are kept.",
+  "goalOneRmNow": "Estimated 1RM {weight}",
+  "goalRatePerMonth": "up about {weight} a month",
+  "goalFlatTrend": "no gain in the last 12 weeks",
+  "goalChartLabel": "Estimated 1RM over the last 12 weeks, goal and projection",
+  "achievementUnlocked": "Achievement unlocked",
+  "shareAchievement": "Share achievement",
+  "goalReadyNow": "Your estimated 1RM is already there: go for it!"
 }

@@ -110,3 +110,13 @@ export function toCsv(rows: Record<string, string | number>[]): string {
   const lines = [headers.map(escape).join(','), ...rows.map((row) => headers.map((h) => escape(row[h] ?? '')).join(','))];
   return '﻿' + lines.join('\r\n');
 }
+
+/**
+ * Font for anything rendered to a shared image. html-to-image draws without
+ * the app's web font (it is skipped, see share-workout-ticket), so the picture
+ * falls back to the system face, which is wider: text that fitted on screen
+ * wrapped in the image. Using the system face on screen too makes both match.
+ */
+export const SHARE_CARD_FONT: { fontFamily: string } = {
+  fontFamily: 'system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", Roboto, Arial, sans-serif',
+};

@@ -16,7 +16,7 @@ import { useLanguage } from '@/context/language-context';
 import { useProfile } from '@/context/profile-context';
 import { useWorkout } from '@/context/workout-context';
 import { useToast } from '@/hooks/use-toast';
-import { shareImage } from '@/lib/file-export';
+import { SHARE_CARD_FONT, shareImage } from '@/lib/file-export';
 import { buildMonthlyRecap } from '@/lib/progress-insights';
 import { fromKg, resolveExerciseName } from '@/lib/workout-utils';
 
@@ -148,7 +148,7 @@ export default function MonthlyRecap() {
           </Button>
         }
       >
-        <div ref={cardRef} className="space-y-5 rounded-2xl bg-background p-4">
+        <div ref={cardRef} style={SHARE_CARD_FONT} className="share-card space-y-5 rounded-2xl bg-background p-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">{t('monthlyRecap')}</p>
             <p className="font-headline text-2xl font-bold">{monthLabel(month)}</p>
@@ -203,18 +203,18 @@ export default function MonthlyRecap() {
                 <div key={exercise.exerciseId} className="flex items-center gap-3 text-sm">
                   <span className="w-4 font-bold text-primary">{index + 1}</span>
                   <span className="min-w-0 flex-1 truncate">{exercise.name}</span>
-                  <span className="text-muted-foreground">{t('setsCount', { count: exercise.sets })}</span>
+                  <span className="shrink-0 whitespace-nowrap text-muted-foreground">{t('setsCount', { count: exercise.sets })}</span>
                 </div>
               ))}
             </section>
           )}
 
           <div className="flex flex-wrap gap-2 text-sm">
-            <span className="rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary">
+            <span className="whitespace-nowrap rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary">
               {t('recapPrs', { count: recap.prCount })}
             </span>
             {recap.achievements.map((achievement) => (
-              <span key={achievement.id} className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">
+              <span key={achievement.id} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-amber-500/10 px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">
                 <Medal className="h-3.5 w-3.5" />
                 {achievementTitle(achievement)}
               </span>

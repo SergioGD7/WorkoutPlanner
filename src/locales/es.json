@@ -517,7 +517,7 @@
   "timeTraining": "Tiempo entrenando",
   "topExercises": "Más trabajados",
   "setsCount": "{count} series",
-  "recapPrs": "{count} días con récord",
+  "recapPrs": "{count} récords",
   "recapNotificationTitle": "Tu resumen de {month} está listo",
   "recapNotificationBody": "Entrenos, volumen y récords del mes. Ábrelo en Progreso.",
   "monthlyRecapNotification": "Aviso del resumen mensual",
@@ -560,5 +560,12 @@
   "widgetDays": "días",
   "appleHealth": "Apple Salud",
   "healthConnect": "Health Connect",
-  "autoBackupDeviceHintIOS": "iCloud Drive no está activo, así que se guarda en la app (incluida en la copia de iCloud del iPhone). Se guardan las 8 últimas."
+  "autoBackupDeviceHintIOS": "iCloud Drive no está activo, así que se guarda en la app (incluida en la copia de iCloud del iPhone). Se guardan las 8 últimas.",
+  "goalOneRmNow": "1RM estimado {weight}",
+  "goalRatePerMonth": "subes unos {weight} al mes",
+  "goalFlatTrend": "sin subida en las últimas 12 semanas",
+  "goalChartLabel": "1RM estimado de las últimas 12 semanas, objetivo y proyección",
+  "achievementUnlocked": "Logro desbloqueado",
+  "shareAchievement": "Compartir logro",
+  "goalReadyNow": "Tu 1RM estimado ya llega: ¡pruébalo!"
 }

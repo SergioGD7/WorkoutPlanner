@@ -229,6 +229,16 @@ export interface GoalProgress {
   achievedOn: string | null;
   /** Projected date from the e1RM trend, or null when there's no upward trend. */
   estimatedDate: string | null;
+  /** Best e1RM per session over the last 12 weeks; x is days from today (≤ 0). */
+  history: { x: number; y: number }[];
+  /** e1RM the goal is worth, the line the chart aims at. */
+  targetOneRm: number;
+  /** Trend in kg of e1RM per 30 days; null with fewer than three sessions. */
+  kgPerMonth: number | null;
+  /** Where the projection starts (today) and how many days it takes. */
+  projection: { fromY: number; days: number } | null;
+  /** Not met yet, but the estimated 1RM already covers it: time to try. */
+  readyNow: boolean;
 }
 
 /** e1RM that the goal amounts to, so every kind can share one trend line. */
@@ -252,9 +262,10 @@ function goalMetOnDay(goal: StrengthGoal, exercises: WorkoutExercise[]): boolean
 }
 
 /** Least-squares slope (e1RM per day) over the last 12 weeks of sessions. */
-export function e1rmTrend(log: WorkoutLog, exerciseId: string, today: Date): { slope: number; fitToday: number } | null {
+/** Best completed e1RM per session over the last 12 weeks, oldest first. */
+export function e1rmHistory(log: WorkoutLog, exerciseId: string, today: Date): { x: number; y: number }[] {
   const from = format(addDays(today, -84), 'yyyy-MM-dd');
-  const points = getExerciseSessions(log, exerciseId)
+  return getExerciseSessions(log, exerciseId)
     .filter((session) => session.date >= from && session.sets.some((set) => set.completed))
     .map((session) => ({
       x: differenceInCalendarDays(parseISO(session.date), today),
@@ -263,7 +274,13 @@ export function e1rmTrend(log: WorkoutLog, exerciseId: string, today: Date): { s
         0,
       ),
     }))
-    .filter((point) => point.y > 0);
+    .filter((point) => point.y > 0)
+    .sort((a, b) => a.x - b.x);
+}
+
+/** Least-squares slope (e1RM per day) over the last 12 weeks of sessions. */
+export function e1rmTrend(log: WorkoutLog, exerciseId: string, today: Date): { slope: number; fitToday: number } | null {
+  const points = e1rmHistory(log, exerciseId, today);
   if (points.length < 3) return null;
   const n = points.length;
   const meanX = points.reduce((sum, point) => sum + point.x, 0) / n;
@@ -298,16 +315,33 @@ export function evaluateGoal(goal: StrengthGoal, log: WorkoutLog, today: Date = 
       .sort()[0] ?? null;
   const achieved = current >= target - 1e-9;
 
+  const targetOneRm = goalOneRm(goal);
+  const trend = e1rmTrend(log, goal.exerciseId, today);
   let estimatedDate: string | null = null;
-  if (!achieved) {
-    const trend = e1rmTrend(log, goal.exerciseId, today);
-    if (trend && trend.slope > 0.005) {
-      const days = Math.ceil((goalOneRm(goal) - Math.max(trend.fitToday, pr.best1RM)) / trend.slope);
-      if (days > 0 && days <= 730) estimatedDate = format(addDays(today, days), 'yyyy-MM-dd');
+  let projection: GoalProgress['projection'] = null;
+  if (!achieved && trend && trend.slope > 0.005) {
+    const fromY = Math.max(trend.fitToday, pr.best1RM);
+    const days = Math.ceil((targetOneRm - fromY) / trend.slope);
+    if (days > 0 && days <= 730) {
+      estimatedDate = format(addDays(today, days), 'yyyy-MM-dd');
+      projection = { fromY, days };
     }
   }
 
-  return { goal, current, target, progress: target > 0 ? Math.min(1, current / target) : 0, achieved, achievedOn, estimatedDate };
+  return {
+    goal,
+    current,
+    target,
+    progress: target > 0 ? Math.min(1, current / target) : 0,
+    achieved,
+    achievedOn,
+    estimatedDate,
+    history: e1rmHistory(log, goal.exerciseId, today),
+    targetOneRm,
+    kgPerMonth: trend ? trend.slope * 30 : null,
+    projection,
+    readyNow: !achieved && pr.best1RM >= targetOneRm,
+  };
 }
 
 /* -------------------------------------------------------------------------- */

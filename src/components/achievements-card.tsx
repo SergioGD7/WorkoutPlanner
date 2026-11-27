@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
 import { CalendarDays, ChevronRight, Dumbbell, Flame, Lock, Medal, Weight } from 'lucide-react';
 import BottomSheet from '@/components/bottom-sheet';
+import { ShareAchievementButton, useShareAchievement } from '@/components/achievement-share';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useLanguage } from '@/context/language-context';
@@ -13,10 +14,10 @@ import { useProfile } from '@/context/profile-context';
 import { useWorkout } from '@/context/workout-context';
 import { computeAchievements, type AchievementCategory, type AchievementState } from '@/lib/progress-insights';
 
-const ICONS = { medal: Medal, flame: Flame, dumbbell: Dumbbell, weight: Weight, calendar: CalendarDays };
+export const ACHIEVEMENT_ICONS = { medal: Medal, flame: Flame, dumbbell: Dumbbell, weight: Weight, calendar: CalendarDays };
 
 /** Bronze, silver, gold. Tailwind palette so both themes keep their contrast. */
-const TIER_CLASSES: Record<1 | 2 | 3, string> = {
+export const TIER_CLASSES: Record<1 | 2 | 3, string> = {
   1: 'bg-orange-700/15 text-orange-600 dark:text-orange-400 border-orange-700/30',
   2: 'bg-slate-400/15 text-slate-600 dark:text-slate-300 border-slate-400/40',
   3: 'bg-amber-400/15 text-amber-600 dark:text-amber-300 border-amber-400/40',
@@ -34,7 +35,7 @@ export function useAchievementTitle() {
 }
 
 function Badge({ achievement, size = 'md' }: { achievement: AchievementState; size?: 'sm' | 'md' }) {
-  const Icon = ICONS[achievement.icon];
+  const Icon = ACHIEVEMENT_ICONS[achievement.icon];
   const unlocked = Boolean(achievement.unlockedAt);
   const box = size === 'sm' ? 'h-11 w-11' : 'h-12 w-12';
   return (
@@ -55,6 +56,7 @@ export default function AchievementsCard() {
   const [isOpen, setIsOpen] = useState(false);
   const locale = language === 'es' ? es : enUS;
   const title = useAchievementTitle();
+  const { share, sharingId, card } = useShareAchievement();
 
   const achievements = useMemo(() => computeAchievements(workoutLog, bodyEntries), [workoutLog, bodyEntries]);
   const unlocked = achievements.filter((achievement) => achievement.unlockedAt);
@@ -128,6 +130,9 @@ export default function AchievementsCard() {
                         <Progress value={achievement.progress * 100} className="mt-1.5 h-1.5" />
                       )}
                     </div>
+                    {achievement.unlockedAt && (
+                      <ShareAchievementButton achievement={achievement} sharingId={sharingId} onShare={share} />
+                    )}
                   </div>
                 ))}
               </section>
@@ -135,6 +140,7 @@ export default function AchievementsCard() {
           })}
         </div>
       </BottomSheet>
+      {card}
     </>
   );
 }
