@@ -399,7 +399,9 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
 
   const handleFinish = () => {
     const now = new Date().toISOString();
-    updateSession(formattedDate, { finishedAt: now, startedAt: session?.startedAt ?? now });
+    // No invented start: a day whose sets were ticked before 2.0 has none, and
+    // its summary shows no duration rather than a made-up zero.
+    updateSession(formattedDate, { finishedAt: now });
     stopRest();
     triggerHaptic('success');
     setSummaryDate(formattedDate);
@@ -407,6 +409,7 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     void onWorkoutFinished({
       dateKey: formattedDate,
       exercises: dailyExercises,
+      // Health needs some span; onWorkoutFinished stretches it to a minute.
       startedAt: session?.startedAt ?? now,
       finishedAt: now,
       title: session?.templateName ?? t('workout'),

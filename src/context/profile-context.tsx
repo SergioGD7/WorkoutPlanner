@@ -15,7 +15,7 @@ import { auth, db } from '@/lib/firebase';
 import { useAuth } from './auth-context';
 import type { BodyEntry, ProfileSettings } from '@/lib/types';
 import { DEFAULT_PROGRESSION } from '@/lib/progression';
-import { buildDemoBodyEntries } from '@/lib/demo-data';
+import { buildDemoBodyEntries, buildDemoStrengthGoals } from '@/lib/demo-data';
 
 export const DEFAULT_SETTINGS: ProfileSettings = {
   weightUnit: 'kg',
@@ -125,7 +125,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
 
     if (user.isDemo) {
-      setSettings(DEFAULT_SETTINGS);
+      setSettings({ ...DEFAULT_SETTINGS, strengthGoals: buildDemoStrengthGoals() });
       setBodyEntries(buildDemoBodyEntries());
       setIsLoading(false);
       return;

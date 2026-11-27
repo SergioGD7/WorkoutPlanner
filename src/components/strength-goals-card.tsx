@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
@@ -8,6 +8,7 @@ import { CalendarClock, CheckCircle2, Plus, Target, Trash2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid';
 import BottomSheet from '@/components/bottom-sheet';
 import ExercisePicker from '@/components/exercise-picker';
+import GoalTrendChart from '@/components/goal-trend-chart';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -64,7 +65,9 @@ export default function StrengthGoalsCard() {
   };
 
   const formatCurrent = (goal: StrengthGoal, current: number) =>
-    goal.kind === 'reps' ? `${current} / ${goal.reps ?? 1} reps` : `${trimZeros(Math.round(fromKg(current, unit) * 10) / 10)} / ${trimZeros(fromKg(goal.weight, unit))} ${unit}`;
+    goal.kind === 'reps'
+      ? `${current} / ${goal.reps ?? 1} reps`
+      : `${trimZeros(Math.round(fromKg(current, unit) * 10) / 10)} / ${trimZeros(fromKg(goal.weight, unit))} ${unit}`;
 
   const weightValue = Number(weightText.replace(',', '.'));
   const repsValue = Number(repsText);
@@ -100,7 +103,13 @@ export default function StrengthGoalsCard() {
             </CardTitle>
             <CardDescription>{t('strengthGoalsDescription')}</CardDescription>
           </div>
-          <Button size="icon" variant="outline" className="shrink-0 rounded-full" onClick={() => setIsOpen(true)} aria-label={t('addGoal')}>
+          <Button
+            size="icon"
+            variant="outline"
+            className="shrink-0 rounded-full"
+            onClick={() => setIsOpen(true)}
+            aria-label={t('addGoal')}
+          >
             <Plus className="h-5 w-5" />
           </Button>
         </CardHeader>
@@ -114,38 +123,67 @@ export default function StrengthGoalsCard() {
               {t('noGoalsYet')}
             </button>
           ) : (
-            evaluated.map(({ goal, current, progress, achieved, achievedOn, estimatedDate }) => (
-              <div key={goal.id} className="rounded-xl border border-border/60 bg-secondary/10 p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{exerciseName(goal.exerciseId)}</p>
-                    <p className="text-xs text-muted-foreground">{describe(goal)}</p>
+            evaluated.map((result) => {
+              const { goal, current, progress, achieved, achievedOn, estimatedDate, history, kgPerMonth, readyNow } =
+                result;
+              const bestOneRm = history.reduce((max, point) => Math.max(max, point.y), 0);
+              return (
+                <div key={goal.id} className="rounded-xl border border-border/60 bg-secondary/10 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{exerciseName(goal.exerciseId)}</p>
+                      <p className="text-xs text-muted-foreground">{describe(goal)}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 shrink-0"
+                      onClick={() => remove(goal.id)}
+                      aria-label={t('delete')}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => remove(goal.id)} aria-label={t('delete')}>
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
-                </div>
-                <Progress value={progress * 100} className="mt-2 h-2" />
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
-                  <span className="font-mono text-muted-foreground">{formatCurrent(goal, current)}</span>
-                  {achieved ? (
-                    <span className="flex items-center gap-1 font-semibold text-emerald-500">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {achievedOn
-                        ? t('goalAchievedOn', { date: format(parseISO(achievedOn), 'd MMM yyyy', { locale }) })
-                        : t('goalAchieved')}
-                    </span>
-                  ) : estimatedDate ? (
-                    <span className="flex items-center gap-1 text-primary">
-                      <CalendarClock className="h-3.5 w-3.5" />
-                      {t('goalEta', { date: format(parseISO(estimatedDate), 'd MMM yyyy', { locale }) })}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">{t('goalNoTrend')}</span>
+                  <Progress value={progress * 100} className="mt-2 h-2" />
+                  {!achieved && bestOneRm > 0 && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {t('goalOneRmNow', {
+                        weight: `${trimZeros(Math.round(fromKg(bestOneRm, unit) * 2) / 2)} ${unit}`,
+                      })}
+                      {kgPerMonth !== null &&
+                        ` · ${
+                          kgPerMonth > 0.05
+                            ? t('goalRatePerMonth', {
+                                weight: `${(Math.round(fromKg(kgPerMonth, unit) * 10) / 10).toLocaleString(language)} ${unit}`,
+                              })
+                            : t('goalFlatTrend')
+                        }`}
+                    </p>
                   )}
+                  {!achieved && <GoalTrendChart progress={result} label={t('goalChartLabel')} />}
+                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+                    <span className="font-mono text-muted-foreground">{formatCurrent(goal, current)}</span>
+                    {achieved ? (
+                      <span className="flex items-center gap-1 font-semibold text-emerald-500">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {achievedOn
+                          ? t('goalAchievedOn', { date: format(parseISO(achievedOn), 'd MMM yyyy', { locale }) })
+                          : t('goalAchieved')}
+                      </span>
+                    ) : readyNow ? (
+                      <span className="font-semibold text-primary">{t('goalReadyNow')}</span>
+                    ) : estimatedDate ? (
+                      <span className="flex items-center gap-1 text-primary">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        {t('goalEta', { date: format(parseISO(estimatedDate), 'd MMM yyyy', { locale }) })}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">{t('goalNoTrend')}</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>
@@ -164,7 +202,12 @@ export default function StrengthGoalsCard() {
         <div className="space-y-5">
           <div className="space-y-2">
             <Label>{t('exercise')}</Label>
-            <ExercisePicker exercises={weightExercises} value={exerciseId} onChange={setExerciseId} placeholder={t('selectExercise')} />
+            <ExercisePicker
+              exercises={weightExercises}
+              value={exerciseId}
+              onChange={setExerciseId}
+              placeholder={t('selectExercise')}
+            />
           </div>
           <div className="space-y-2">
             <Label>{t('goalType')}</Label>
@@ -175,7 +218,9 @@ export default function StrengthGoalsCard() {
                   type="button"
                   onClick={() => setKind(option)}
                   className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition-colors ${
-                    kind === option ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground'
+                    kind === option
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border/60 text-muted-foreground'
                   }`}
                 >
                   {t(`goalKind_${option}`)}
@@ -187,12 +232,22 @@ export default function StrengthGoalsCard() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="goal-weight">{`${t(kind === 'oneRm' ? 'estimated1RM' : 'weight')} (${unit})`}</Label>
-              <Input id="goal-weight" inputMode="decimal" value={weightText} onChange={(event) => setWeightText(event.target.value)} />
+              <Input
+                id="goal-weight"
+                inputMode="decimal"
+                value={weightText}
+                onChange={(event) => setWeightText(event.target.value)}
+              />
             </div>
             {kind === 'reps' && (
               <div className="space-y-2">
                 <Label htmlFor="goal-reps">{t('reps')}</Label>
-                <Input id="goal-reps" inputMode="numeric" value={repsText} onChange={(event) => setRepsText(event.target.value)} />
+                <Input
+                  id="goal-reps"
+                  inputMode="numeric"
+                  value={repsText}
+                  onChange={(event) => setRepsText(event.target.value)}
+                />
               </div>
             )}
           </div>

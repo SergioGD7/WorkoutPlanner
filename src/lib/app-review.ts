@@ -7,7 +7,11 @@
 import { callNative, customPlugin } from './native';
 
 interface ReviewPlugin {
-  requestReview(): Promise<void>;
+  /**
+   * `skipped` says the store would never show the sheet here: a TestFlight
+   * build on iOS, or an Android install that didn't come from Google Play.
+   */
+  requestReview(): Promise<{ skipped?: 'testflight' | 'not-play-store' }>;
 }
 
 const getReview = customPlugin<ReviewPlugin>('WPReview');
@@ -21,10 +25,10 @@ export async function maybeRequestReview(completedWorkouts: number): Promise<voi
   try {
     const last = Number(localStorage.getItem(STORAGE_KEY) ?? 0);
     if (last && Date.now() - last < COOLDOWN_DAYS * 86_400_000) return;
-    const box = await getReview();
-    if (!box) return;
-    localStorage.setItem(STORAGE_KEY, String(Date.now()));
-    await callNative(getReview, (plugin) => plugin.requestReview());
+    const result = await callNative(getReview, (plugin) => plugin.requestReview());
+    // Test builds never show the sheet; don't let them start the cooldown, or
+    // the tester's own device would wait months once the store version lands.
+    if (result && !result.skipped) localStorage.setItem(STORAGE_KEY, String(Date.now()));
   } catch (error) {
     console.warn('In-app review unavailable:', error);
   }
