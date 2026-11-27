@@ -16,14 +16,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useLanguage } from '@/context/language-context';
-import { useExercises } from '@/context/exercise-context';
-import { useProfile } from '@/context/profile-context';
-import { useTemplates } from '@/context/template-context';
-import { useWorkout } from '@/context/workout-context';
 import { useToast } from '@/hooks/use-toast';
-import type { BackupPayload, WorkoutLog } from '@/lib/types';
-
-const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+import type { BackupPayload } from '@/lib/types';
+import { normaliseBackup } from '@/lib/backup';
+import { useBackupData } from '@/hooks/use-backup-data';
+import { exportFile } from '@/lib/file-export';
 
 /**
  * Full-account JSON backup, available to every user. Previously only a
@@ -33,35 +30,21 @@ const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 export default function BackupDataForm() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const { workoutLog, replaceLog } = useWorkout();
-  const { exercises, replaceExercises } = useExercises();
-  const { templates, replaceTemplates } = useTemplates();
-  const { settings, bodyEntries, replaceBodyEntries, updateSettings } = useProfile();
-
+  const { buildPayload, restorePayload } = useBackupData();
   const [isRestoring, setIsRestoring] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<BackupPayload | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleExport = () => {
-    const payload: BackupPayload = {
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      workoutLog,
-      exercises,
-      templates,
-      bodyEntries,
-      settings,
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `workout-planner-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-
-    toast({ title: t('backupExported') });
+  const handleExport = async () => {
+    const payload = buildPayload();
+    const result = await exportFile({
+      filename: `workout-planner-backup-${format(new Date(), 'yyyy-MM-dd')}.json`,
+      data: JSON.stringify(payload, null, 2),
+      mimeType: 'application/json',
+      title: t('exportBackup'),
+    });
+    if (result === 'downloaded' || result === 'shared') toast({ title: t('backupExported') });
+    else if (result === 'failed') toast({ variant: 'destructive', title: t('error'), description: t('unknownError') });
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,12 +82,7 @@ export default function BackupDataForm() {
 
     setIsRestoring(true);
     try {
-      if (pendingBackup.exercises?.length) await replaceExercises(pendingBackup.exercises);
-      if (pendingBackup.templates?.length) await replaceTemplates(pendingBackup.templates);
-      if (pendingBackup.bodyEntries?.length) await replaceBodyEntries(pendingBackup.bodyEntries);
-      if (pendingBackup.settings) await updateSettings(pendingBackup.settings);
-      // Workouts last: it's the slowest write and the one worth retrying alone.
-      await replaceLog(pendingBackup.workoutLog);
+      await restorePayload(pendingBackup);
 
       toast({ title: t('backupImported') });
     } catch (error) {
@@ -165,43 +143,4 @@ export default function BackupDataForm() {
       </AlertDialog>
     </>
   );
-}
-
-/**
- * Accepts both the current backup envelope and the bare `{date: exercises[]}`
- * workout log that older exports produced.
- */
-function normaliseBackup(parsed: unknown): BackupPayload | null {
-  if (!parsed || typeof parsed !== 'object') return null;
-
-  const candidate = parsed as Partial<BackupPayload> & Record<string, unknown>;
-
-  if (candidate.workoutLog && typeof candidate.workoutLog === 'object') {
-    return {
-      version: 2,
-      exportedAt: typeof candidate.exportedAt === 'string' ? candidate.exportedAt : new Date().toISOString(),
-      workoutLog: candidate.workoutLog as WorkoutLog,
-      exercises: Array.isArray(candidate.exercises) ? candidate.exercises : [],
-      templates: Array.isArray(candidate.templates) ? candidate.templates : [],
-      bodyEntries: Array.isArray(candidate.bodyEntries) ? candidate.bodyEntries : [],
-      settings: candidate.settings,
-    };
-  }
-
-  const keys = Object.keys(candidate);
-  const looksLikeLegacyLog =
-    keys.length > 0 && keys.every((key) => DATE_KEY.test(key) && Array.isArray(candidate[key]));
-
-  if (looksLikeLegacyLog) {
-    return {
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      workoutLog: candidate as unknown as WorkoutLog,
-      exercises: [],
-      templates: [],
-      bodyEntries: [],
-    };
-  }
-
-  return null;
 }
