@@ -13,7 +13,8 @@ import { useWorkout } from '@/context/workout-context';
 import { useExercises } from '@/context/exercise-context';
 import { useBackupData } from '@/hooks/use-backup-data';
 import { runAutoBackup } from '@/lib/cloud-backup';
-import { isNativeApp, lazyPlugin } from '@/lib/native';
+import { withoutBodyWeight } from '@/lib/backup';
+import { isNativeApp, lazyPlugin, nativePlatform } from '@/lib/native';
 import { updateWidgets } from '@/lib/native-sync';
 import { exportPhotos } from '@/lib/photo-store';
 import { cancelNotification, scheduleNotification } from '@/lib/rest-notifications';
@@ -114,7 +115,7 @@ export default function NativeSync() {
     backupRanRef.current = user.uid;
     const uid = user.uid;
     void runAutoBackup(uid, async () =>
-      JSON.stringify({ ...buildPayload(), photos: await exportPhotos(uid) }),
+      JSON.stringify({ ...(nativePlatform() === 'ios' ? withoutBodyWeight(buildPayload()) : buildPayload()), photos: await exportPhotos(uid) }),
     ).catch((error) => console.error('Automatic backup failed:', error));
   }, [isLoading, user, settings.autoBackupEnabled, workoutLog, buildPayload]);
 

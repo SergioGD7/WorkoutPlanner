@@ -23,7 +23,7 @@ import { useLanguage } from '@/context/language-context';
 import { useProfile } from '@/context/profile-context';
 import { useBackupData } from '@/hooks/use-backup-data';
 import { useToast } from '@/hooks/use-toast';
-import { normaliseBackup } from '@/lib/backup';
+import { normaliseBackup, withoutBodyWeight } from '@/lib/backup';
 import {
   backupDate,
   backupTarget,
@@ -117,7 +117,7 @@ export default function SyncSettings() {
     if (!uid) return;
     setBusy('backup');
     try {
-      const file = await runAutoBackup(uid, async () => JSON.stringify({ ...buildPayload(), photos: await exportPhotos(uid) }), true);
+      const file = await runAutoBackup(uid, async () => JSON.stringify({ ...(nativePlatform() === 'ios' ? withoutBodyWeight(buildPayload()) : buildPayload()), photos: await exportPhotos(uid) }), true);
       if (file) toast({ title: t('backupSaved') });
       await refresh();
     } catch (error) {
