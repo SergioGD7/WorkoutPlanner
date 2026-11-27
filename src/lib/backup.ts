@@ -46,15 +46,13 @@ export function normaliseBackup(parsed: unknown): BackupPayload | null {
 /**
  * Copy for the automatic iCloud Drive backup. App Store guideline 5.1.3 bars
  * apps that use HealthKit from storing personal health information in iCloud,
- * so body weight (and the weight goal) stay out of it. Restoring is unaffected:
- * body entries and settings are merged, so the weights kept in the account
- * survive a restore from one of these files.
+ * so every body measurement (weight, body fat, girths) and the weight goal stay
+ * out of it. Restoring is unaffected: with no body entries in the file the
+ * restore leaves them alone, and settings are merged, so the measurements kept
+ * in the account survive.
  */
-export function withoutBodyWeight(payload: BackupPayload): BackupPayload {
-  const bodyEntries = payload.bodyEntries
-    .map(({ weight: _weight, ...rest }) => rest)
-    .filter((entry) => Object.keys(entry).length > 1);
+export function withoutBodyMeasurements(payload: BackupPayload): BackupPayload {
   const settings = payload.settings ? { ...payload.settings } : undefined;
   if (settings) delete settings.bodyWeightGoal;
-  return { ...payload, bodyEntries, settings };
+  return { ...payload, bodyEntries: [], settings };
 }
