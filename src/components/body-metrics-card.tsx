@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { takePendingAction } from '@/components/native-sync';
+import { saveBodyWeightToHealth } from '@/lib/native-sync';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
@@ -151,7 +153,19 @@ export default function BodyMetricsCard() {
     });
     await saveBodyEntry(entry);
     setIsEditorOpen(false);
+    if (settings.healthSyncEnabled && entry.weight) void saveBodyWeightToHealth(entry.weight, entry.date);
   };
+
+  // "Log weight" from Siri / Shortcuts opens the editor straight away.
+  useEffect(() => {
+    const run = () => {
+      if (takePendingAction('log-weight')) openEditor();
+    };
+    run();
+    window.addEventListener('wp:pending-action', run);
+    return () => window.removeEventListener('wp:pending-action', run);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setField = (field: MetricKey) => (raw: string) =>
     setDraftText((previous) => ({ ...previous, [field]: raw }));

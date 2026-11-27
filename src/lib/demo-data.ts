@@ -169,4 +169,21 @@ export function buildDemoBodyEntries(today: Date = new Date()): BodyEntry[] {
 
 export const DEMO_EXERCISES: Exercise[] = initialExercises;
 
-export const DEMO_TEMPLATES: WorkoutTemplate[] = workoutTemplates;
+/** The routine the demo history follows, so "today's plan" and comparisons work. */
+const DEMO_ROUTINE: WorkoutTemplate = {
+  id: 'demo-upper-lower',
+  nameKey: 'Torso / Pierna',
+  days: [1, 2, 4, 5].map((weekday) => ({
+    id: `day-${weekday}`,
+    name: DEMO_DAY_NAMES[weekday],
+    exercises: SPLIT[weekday].map((entry, index) => ({
+      exerciseId: entry.exerciseId,
+      sets: entry.sets,
+      reps: entry.reps,
+      restSeconds: entry.reps <= 6 ? 180 : 90,
+      ...(weekday === 1 && index >= 2 ? { supersetId: 'demo-mon-a' } : {}),
+    })),
+  })),
+};
+
+export const DEMO_TEMPLATES: WorkoutTemplate[] = [DEMO_ROUTINE, ...workoutTemplates];

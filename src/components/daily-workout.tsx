@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale/es';
 import { enUS } from 'date-fns/locale/en-US';
@@ -32,10 +32,13 @@ import WorkoutSummarySheet from '@/components/workout-summary-sheet';
 import { maybeRequestReview } from '@/lib/app-review';
 import { shareImage } from '@/lib/file-export';
 import { onWorkoutFinished } from '@/lib/native-sync';
+import { takePendingAction } from '@/components/native-sync';
+import { useTemplates } from '@/context/template-context';
 import {
   applySwap,
   linkWithNext,
   normaliseSupersets,
+  planForToday,
   shouldRestAfter,
   supersetInfo,
   unlink,
@@ -412,6 +415,33 @@ export default function DailyWorkout({ date }: DailyWorkoutProps) {
     // After the summary has had a moment on screen.
     setTimeout(() => void maybeRequestReview(completedCount), 2500);
   };
+
+  // "Start workout" from Siri, Shortcuts or a widget: load today's routine day.
+  const { templates } = useTemplates();
+  const loadRef = useRef(handleLoadTemplate);
+  loadRef.current = handleLoadTemplate;
+  useEffect(() => {
+    if (isLoading || formattedDate !== format(new Date(), 'yyyy-MM-dd')) return;
+    const run = () => {
+      if (!takePendingAction('start-workout')) return;
+      if (dailyExercises.length > 0) return;
+      const plan = planForToday(workoutLog, sessions, templates, null, formattedDate, t);
+      const template = templates.find((entry) => entry.id === plan?.templateId);
+      const day = template?.days?.find((entry) => entry.id === plan?.templateDayId);
+      if (plan && template && day) {
+        loadRef.current(day.exercises, template.progression, {
+          templateId: template.id,
+          templateDayId: day.id,
+          templateName: plan.title,
+        });
+      } else {
+        setIsTemplateSheetOpen(true);
+      }
+    };
+    run();
+    window.addEventListener('wp:pending-action', run);
+    return () => window.removeEventListener('wp:pending-action', run);
+  }, [isLoading, formattedDate, dailyExercises.length, workoutLog, sessions, templates, t]);
 
   const handleDeleteWorkoutExercise = () => {
     if (!exerciseToConfirmDelete) return;

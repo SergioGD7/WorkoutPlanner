@@ -15,7 +15,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { importPhotos } from '@/lib/photo-store';
 import { useToast } from '@/hooks/use-toast';
 import type { BackupPayload } from '@/lib/types';
 import { normaliseBackup } from '@/lib/backup';
@@ -31,6 +33,7 @@ export default function BackupDataForm() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { buildPayload, restorePayload } = useBackupData();
+  const { user } = useAuth();
   const [isRestoring, setIsRestoring] = useState(false);
   const [pendingBackup, setPendingBackup] = useState<BackupPayload | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -83,6 +86,7 @@ export default function BackupDataForm() {
     setIsRestoring(true);
     try {
       await restorePayload(pendingBackup);
+      if (pendingBackup.photos?.length && user) await importPhotos(user.uid, pendingBackup.photos);
 
       toast({ title: t('backupImported') });
     } catch (error) {

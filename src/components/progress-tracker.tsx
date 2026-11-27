@@ -1,6 +1,8 @@
 "use client";
 
 import { exportFile, toCsv } from '@/lib/file-export';
+import MonthlyRecap from '@/components/monthly-recap';
+import StrengthGoalsCard from '@/components/strength-goals-card';
 import { useMemo, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
 import {
@@ -374,7 +376,11 @@ export default function ProgressTracker() {
         </Popover>
       </div>
 
+      <MonthlyRecap />
+
       <ConsistencyHeatmap />
+
+      <StrengthGoalsCard />
 
       <Card className="glass-effect border-primary/20">
         <CardHeader className="p-4 pb-2 sm:p-6">

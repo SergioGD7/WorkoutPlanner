@@ -14,6 +14,7 @@ import { AuthProvider } from '@/context/auth-context';
 import { WorkoutProvider } from '@/context/workout-context';
 import ErrorBoundary from '@/components/error-boundary';
 import WorkoutReminderSync from '@/components/workout-reminder-sync';
+import NativeSync from '@/components/native-sync';
 import { withBasePath } from '@/lib/base-path';
 
 // Self-hosted by Next: no runtime request to Google Fonts, which also means the
@@ -77,6 +78,7 @@ export default function RootLayout({
                             <OverlayProvider>
                               {children}
                               <WorkoutReminderSync />
+                              <NativeSync />
                               <Toaster />
                             </OverlayProvider>
                           </WorkTimerProvider>

@@ -328,3 +328,65 @@ export function buildWorkoutSummary(
     previous,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* What's on today                                                             */
+/* -------------------------------------------------------------------------- */
+
+export interface TodayPlan {
+  /** Already logged today, or predicted from the routine rotation. */
+  source: 'logged' | 'predicted';
+  title: string;
+  exerciseIds: string[];
+  templateId?: string;
+  templateDayId?: string;
+}
+
+/**
+ * Today's workout: what's logged if anything, otherwise the routine day after
+ * the last one you did of the routine you're following. Null when there is no
+ * routine history to go on, or when today isn't one of your training days.
+ */
+export function planForToday(
+  log: WorkoutLog,
+  sessions: DaySessions,
+  templates: { id: string; nameKey: string; days?: { id: string; name: string; exercises: { exerciseId: string }[] }[] }[],
+  trainingDays: number[] | null,
+  todayKey: string,
+  translate: (key: string) => string,
+): TodayPlan | null {
+  const today = log[todayKey];
+  if (today?.length) {
+    return {
+      source: 'logged',
+      title: sessions[todayKey]?.templateName ?? translate('workout'),
+      exerciseIds: today.map((exercise) => exercise.exerciseId),
+      templateId: sessions[todayKey]?.templateId,
+      templateDayId: sessions[todayKey]?.templateDayId,
+    };
+  }
+
+  if (trainingDays && trainingDays.length > 0) {
+    const [year, month, day] = todayKey.split('-').map(Number);
+    if (!trainingDays.includes(new Date(year, month - 1, day).getDay())) return null;
+  }
+
+  const lastKey = Object.keys(sessions)
+    .filter((key) => key < todayKey && sessions[key]?.templateId && isWorkoutCompleted(log[key]))
+    .sort()
+    .pop();
+  if (!lastKey) return null;
+  const last = sessions[lastKey];
+  const template = templates.find((entry) => entry.id === last.templateId);
+  const days = template?.days ?? [];
+  if (!template || days.length === 0) return null;
+  const index = days.findIndex((entry) => entry.id === last.templateDayId);
+  const next = days[(index + 1) % days.length];
+  return {
+    source: 'predicted',
+    title: days.length > 1 ? `${translate(template.nameKey)} · ${translate(next.name)}` : translate(template.nameKey),
+    exerciseIds: next.exercises.map((exercise) => exercise.exerciseId),
+    templateId: template.id,
+    templateDayId: next.id,
+  };
+}

@@ -17,6 +17,13 @@ import {
   requestRestNotificationPermission,
   scheduleRestNotification,
 } from '@/lib/rest-notifications';
+import {
+  endRestActivity,
+  onRestActivityChanged,
+  readRestActivityState,
+  startRestActivity,
+  updateRestActivity,
+} from '@/lib/rest-activity';
 import { useLanguage } from './language-context';
 import { useProfile } from './profile-context';
 
@@ -53,6 +60,10 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   const [label, setLabel] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(0);
   const firedRef = useRef(false);
+  const endsAtRef = useRef<number | null>(null);
+  endsAtRef.current = endsAt;
+  const totalRef = useRef(total);
+  totalRef.current = total;
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -82,6 +93,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     firedRef.current = true;
     window.localStorage.removeItem(STORAGE_KEY);
     void cancelRestNotification();
+    endRestActivity();
   }, []);
 
   const finish = useCallback(() => {
@@ -104,6 +116,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     }
     // Hidden: leave the scheduled notification alone. It is the only thing that
     // will actually reach a phone sitting in a pocket.
+    endRestActivity();
 
     setEndsAt(null);
     setRemaining(0);
@@ -142,6 +155,17 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       setRemaining(duration);
       window.localStorage.setItem(STORAGE_KEY, String(end));
 
+      const translateNow = translateRef.current;
+      startRestActivity(end, duration, {
+        label: nextLabel ?? translateNow('restTimer'),
+        title: translateNow('restShort'),
+        skipLabel: translateNow('skip'),
+        alertTitle: translateNow('restOverTitle'),
+        alertBody: nextLabel
+          ? translateNow('restOverBodyExercise', { exercise: nextLabel })
+          : translateNow('restOverBody'),
+      });
+
       // Hand the alert to the OS now: by the time the rest ends the WebView may
       // be suspended in a pocket and no timer of ours will be running.
       if (settingsRef.current.restTimerNotifications) {
@@ -164,6 +188,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       const next = Math.max(Date.now(), previous + delta * 1000);
       window.localStorage.setItem(STORAGE_KEY, String(next));
       firedRef.current = false;
+      updateRestActivity(next, totalRef.current);
 
       // The scheduled alert is keyed by a fixed id, so this replaces it.
       if (settingsRef.current.restTimerNotifications) {
@@ -177,6 +202,47 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
 
       return next;
     });
+  }, []);
+
+  /*
+   * Follow the lock-screen buttons. The shell already moved (or removed) the
+   * system alert, so only the in-app state changes here.
+   */
+  useEffect(() => {
+    const apply = (nativeEndsAt: number | null | undefined) => {
+      if (nativeEndsAt === undefined) return;
+      const local = endsAtRef.current;
+      if (nativeEndsAt === null || nativeEndsAt <= Date.now()) {
+        if (local !== null && nativeEndsAt === null) {
+          firedRef.current = true;
+          setEndsAt(null);
+          setRemaining(0);
+          setLabel(null);
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+        return;
+      }
+      if (local === null || Math.abs(nativeEndsAt - local) > 1000) {
+        firedRef.current = false;
+        setEndsAt(nativeEndsAt);
+        setRemaining(Math.ceil((nativeEndsAt - Date.now()) / 1000));
+        window.localStorage.setItem(STORAGE_KEY, String(nativeEndsAt));
+      }
+    };
+
+    const sync = () => {
+      if (document.visibilityState === 'visible') void readRestActivityState().then(apply);
+    };
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    let unsubscribe: (() => void) | null = null;
+    void onRestActivityChanged((value) => apply(value)).then((remove) => {
+      unsubscribe = remove;
+    });
+    return () => {
+      document.removeEventListener('visibilitychange', sync);
+      unsubscribe?.();
+    };
   }, []);
 
   const requestNotificationPermission = useCallback(
